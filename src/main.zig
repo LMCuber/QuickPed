@@ -5,7 +5,7 @@ const c = @cImport({
     @cInclude("rlImGui.h");
 });
 const rl = @import("raylib");
-const zgui = @import("zgui");
+const z = @import("zgui");
 
 // namespaces
 const commons = @import("commons.zig");
@@ -32,12 +32,12 @@ pub fn main() !void {
     c.rlImGuiSetup(true);
     defer c.rlImGuiShutdown();
 
-    zgui.initNoContext(std.heap.c_allocator);
-    defer zgui.deinitNoContext();
+    z.initNoContext(std.heap.c_allocator);
+    defer z.deinitNoContext();
 
     // custom font
-    const font = zgui.io.addFontFromFile("fonts/Cousine-Regular.ttf", 20);
-    zgui.io.setDefaultFont(font);
+    const font = z.io.addFontFromFile("fonts/Cousine-Regular.ttf", 20);
+    z.io.setDefaultFont(font);
     c.rlImGuiReloadFonts();
 
     // seeding
@@ -51,7 +51,7 @@ pub fn main() !void {
     defer agents.deinit();
 
     const camera_default = rl.Camera2D{
-        .target = .{ .x = @floatFromInt(-settings.tabWidth()), .y = 0 },
+        .target = .{ .x = 0, .y = 0 },
         .offset = .{ .x = 0, .y = 0 },
         .rotation = 0.0,
         .zoom = 1.0,
@@ -74,24 +74,25 @@ pub fn main() !void {
         {
             rl.beginDrawing();
             defer rl.endDrawing();
-            rl.clearBackground(commons.arrToColor(sim_data.bg_color));
+            rl.clearBackground(color.BLACK);
 
             {
                 rl.beginMode2D(camera);
                 defer rl.endMode2D();
 
-                rl.drawRectangleLinesEx(rect, 4, commons.arrToColor(color.WHITE));
+                rl.drawRectangle(rect.x, rect.y, rect.width, rect.height, color.arrToColor(sim_data.bg_color));
+                rl.drawRectangleLinesEx(rect, 4, color.WHITE);
 
                 for (agents.items) |*a| {
-                    a.update(&agent_data);
+                    a.update();
                 }
                 for (agents.items) |*a| {
-                    a.draw(&agent_data);
+                    a.draw();
                 }
 
                 // Make sure to check that ImGui is not capturing the mouse inputs
                 // before checking mouse inputs in Raylib!
-                capture = zgui.io.getWantCaptureMouse();
+                capture = z.io.getWantCaptureMouse();
                 if (!capture) {
                     const mouse_position = rl.getMousePosition();
                     defer prev_mouse_position = mouse_position;
@@ -110,7 +111,7 @@ pub fn main() !void {
                 }
             }
 
-            rl.drawFPS(settings.tabWidth() + 12, 12);
+            rl.drawFPS(12, 12);
 
             // Draw ImGui
             {
@@ -118,41 +119,49 @@ pub fn main() !void {
                 defer c.rlImGuiEnd();
 
                 // var open = true;
-                // zgui.setNextWindowCollapsed(.{ .collapsed = true, .cond = .first_use_ever });
-                // zgui.showDemoWindow(&open);
+                // z.setNextWindowCollapsed(.{ .collapsed = true, .cond = .first_use_ever });
+                // z.showDemoWindow(&open);
 
-                zgui.setNextWindowPos(.{ .x = 0, .y = 0 });
-                zgui.setNextWindowSize(.{
+                z.setNextWindowPos(.{ .x = @floatFromInt(settings.width), .y = 0 });
+                z.setNextWindowSize(.{
                     .w = @floatFromInt(settings.tabWidth()),
                     .h = settings.height,
                 });
 
-                _ = zgui.begin("Settings", .{});
-                defer zgui.end();
-                if (zgui.collapsingHeader("Simulation", .{ .default_open = true })) {
-                    _ = zgui.colorEdit3("bg", .{ .col = @ptrCast(&sim_data.bg_color) });
-                    if (zgui.button("Recenter", .{})) {
+                _ = z.begin("Settings", .{});
+                defer z.end();
+                if (z.collapsingHeader("Simulation", .{ .default_open = true })) {
+                    _ = z.colorEdit3("bg", .{ .col = @ptrCast(&sim_data.bg_color) });
+                    if (z.button("Recenter", .{})) {
                         camera = camera_default;
                     }
                 }
-                if (zgui.collapsingHeader("Agent", .{ .default_open = true })) {
-                    zgui.separatorText("Lifetime");
+                if (z.collapsingHeader("Agent", .{ .default_open = true })) {
+                    z.separatorText("Lifetime");
                     // place N agents
-                    _ = zgui.sliderInt("count", .{ .v = &agent_data.num_to_place, .min = 2, .max = 50 });
-                    if (zgui.button("place", .{})) {
+                    _ = z.sliderInt("count", .{ .v = &agent_data.num_to_place, .min = 1, .max = 50 });
+                    if (z.button("place", .{})) {
                         try agent.create(
                             &agents,
-                            .{ .x = 100, .y = 100 },
+                            &agent_data,
                             agent_data.num_to_place,
                         );
                     }
-                    zgui.sameLine(.{});
-                    if (zgui.button("delete", .{})) {
-                        // TODO: delete agents
+                    z.sameLine(.{});
+                    if (z.button("delete", .{})) {
+                        agent.delete(
+                            &agents,
+                            agent_data.num_to_place,
+                        );
                     }
 
-                    zgui.separatorText("Properties");
-                    _ = zgui.sliderInt("radius", .{ .v = &agent_data.radius, .min = 2, .max = 16 });
+                    z.separatorText("Properties");
+                    _ = z.sliderFloat("speed", .{ .v = &agent_data.speed, .min = 0.1, .max = 5.0 });
+                    _ = z.sliderFloat("tau", .{ .v = &agent_data.relaxation, .min = 10, .max = 50 });
+                    _ = z.sliderFloat("repuls.", .{ .v = &agent_data.a_ped, .min = 0.01, .max = 0.1 });
+                    _ = z.sliderFloat("range", .{ .v = &agent_data.b_ped, .min = 1, .max = 10 });
+                    _ = z.sliderInt("radius", .{ .v = &agent_data.radius, .min = 2, .max = 16 });
+                    _ = z.checkbox("show vectors", .{ .v = &agent_data.show_vectors });
                 }
             }
         }
