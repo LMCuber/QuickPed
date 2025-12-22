@@ -6,6 +6,7 @@ const c = @cImport({
 });
 const rl = @import("raylib");
 const z = @import("zgui");
+const imnodes = @import("imnodes");
 
 // namespaces
 const commons = @import("commons.zig");
@@ -28,7 +29,7 @@ pub fn main() !void {
     rl.initWindow(
         settings.tabWidth + settings.width,
         settings.height,
-        "Agent Based Model Simulation",
+        "QuickPed",
     );
     defer rl.closeWindow();
     rl.setTargetFPS(settings.fps_cap);
@@ -38,6 +39,9 @@ pub fn main() !void {
 
     z.initNoContext(std.heap.c_allocator);
     defer z.deinitNoContext();
+
+    imnodes.createContext();
+    defer imnodes.destroyContext();
 
     // custom font
     const font = z.io.addFontFromFile("fonts/DroidSans.ttf", 20);
@@ -57,8 +61,12 @@ pub fn main() !void {
     defer contours.deinit();
 
     const _c = Contour.init(&[_]rl.Vector2{
-        .{ .x = 100, .y = 100 },
-        .{ .x = 200, .y = 500 },
+        .{ .x = 0, .y = 0 },
+        .{ .x = settings.width, .y = 0 },
+        .{ .x = settings.width, .y = settings.height },
+        .{ .x = 0, .y = settings.height },
+        .{ .x = 500, .y = 208 },
+        .{ .x = 30, .y = 730 },
     });
 
     try contours.append(_c);
@@ -94,7 +102,7 @@ pub fn main() !void {
                 defer rl.endMode2D();
 
                 rl.drawRectangle(rect.x, rect.y, rect.width, rect.height, color.arrToColor(sim_data.bg_color));
-                rl.drawRectangleLinesEx(rect, 4, color.WHITE);
+                // rl.drawRectangleLinesEx(rect, 4, color.WHITE);
 
                 for (agents.items) |*a| {
                     a.update();
@@ -132,9 +140,6 @@ pub fn main() !void {
                 }
             }
 
-            rl.drawFPS(12, 12);
-            // rl.drawText()
-
             // Draw ImGui
             {
                 c.rlImGuiBegin();
@@ -152,8 +157,61 @@ pub fn main() !void {
 
                 _ = z.begin("Settings", .{});
                 defer z.end();
-                sim_data.show_stats(&camera, camera_default);
-                try agent_data.show_stats(&agents, &contours);
+
+                if (z.beginTable("split", .{ .column = 2 })) {
+                    defer z.endTable();
+
+                    _ = z.tableNextColumn();
+                    const fps: f32 = @floatFromInt(rl.getFPS());
+                    const frametime: f32 = if (fps > 0) 1000.0 / fps else 0.0;
+                    z.text("FPS: {d:.1} | {d:.3} ms frame", .{ fps, frametime });
+                    sim_data.show_stats(&camera, camera_default);
+
+                    _ = z.tableNextColumn();
+                    try agent_data.show_stats(&agents, &contours);
+                }
+
+                // imnodes
+                imnodes.beginNodeEditor();
+
+                imnodes.beginNode(1);
+
+                imnodes.beginNodeTitleBar();
+                z.textUnformatted("Nodetext");
+                imnodes.endNodeTitleBar();
+
+                imnodes.beginInputAttribute(2);
+                z.text("input", .{});
+                imnodes.endInputAttribute();
+
+                imnodes.beginOutputAttribute(3);
+                z.indent(.{ .indent_w = 40 });
+                z.text("output", .{});
+                imnodes.endOutputAttribute();
+
+                imnodes.endNode();
+
+                imnodes.beginNode(2);
+
+                imnodes.beginNodeTitleBar();
+                z.textUnformatted("Nodetext");
+                imnodes.endNodeTitleBar();
+
+                imnodes.beginInputAttribute(4);
+                z.text("input", .{});
+                imnodes.endInputAttribute();
+
+                imnodes.beginOutputAttribute(5);
+                z.indent(.{ .indent_w = 40 });
+                z.text("output", .{});
+                imnodes.endOutputAttribute();
+
+                imnodes.endNode();
+
+                imnodes.link(6, 3, 4);
+
+                imnodes.minimap();
+                imnodes.endNodeEditor();
             }
         }
     }

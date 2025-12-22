@@ -31,24 +31,28 @@ pub fn init(pos: rl.Vector2, target: rl.Vector2, agent_data: *AgentData, agents:
 
 fn calculateObstacleForce(self: *Self) rl.Vector2 {
     var force: rl.Vector2 = .{ .x = 0, .y = 0 };
+    // iterate over all contour objects
     for (self.contours.items) |contour| {
-        const A: rl.Vector2 = contour.points[0];
-        const B: rl.Vector2 = contour.points[1];
-        const AB = B.subtract(A);
-        const t: f32 = std.math.clamp(
-            self.pos.subtract(A).dotProduct(AB) / AB.dotProduct(AB),
-            0,
-            1,
-        );
-        const C = A.add(AB.scale(t));
-        const D = self.pos.subtract(C);
-        const dist = D.length();
-        const n = D.normalize();
+        // iterate over all line segements in that contour
+        for (0..contour.points.len) |i| {
+            const A: rl.Vector2 = contour.points[i];
+            const B: rl.Vector2 = contour.points[if (i == contour.points.len - 1) 0 else (i + 1)];
+            const AB = B.subtract(A);
+            const t: f32 = std.math.clamp(
+                self.pos.subtract(A).dotProduct(AB) / AB.dotProduct(AB),
+                0,
+                1,
+            );
+            const C = A.add(AB.scale(t));
+            const D = self.pos.subtract(C);
+            const dist = D.length();
+            const n = D.normalize();
 
-        const radius_float: f32 = @floatFromInt(self.agent_data.radius);
-        const exp_term: f32 = std.math.exp((radius_float - dist) / self.agent_data.b_ped);
-        const f_ob = n.scale(self.agent_data.a_ob * exp_term);
-        force = force.add(f_ob);
+            const radius_float: f32 = @floatFromInt(self.agent_data.radius);
+            const exp_term: f32 = std.math.exp((radius_float - dist) / self.agent_data.b_ped);
+            const f_ob = n.scale(self.agent_data.a_ob * exp_term);
+            force = force.add(f_ob);
+        }
     }
     return force;
 }

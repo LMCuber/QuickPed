@@ -12,5 +12,6 @@
             .hash = "1220d370be5b6aa21c78ba299c5ea91bfcfcc272ce7f0871646c9db2395beee39d89",
         },
         .zgui = .{ .path = "vendor/zgui" },
+        .imnodes = .{ .path = "vendor/imnodes" },
     },
 }

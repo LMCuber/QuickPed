@@ -30,6 +30,12 @@ pub fn build(b: *std.Build) !void {
     exe.linkLibrary(zgui.artifact("imgui"));
     exe.addIncludePath(b.path("vendor/zgui/libs/imgui"));
 
+    // =====================================================================
+    const imnodes = b.dependency("imnodes", .{});
+    exe.linkLibrary(imnodes.artifact("imnodes"));
+    exe.root_module.addImport("imnodes", imnodes.module("root"));
+    // =====================================================================
+
     const rlimgui = b.dependency("rlimgui", .{
         .target = target,
         .optimize = optimize,
