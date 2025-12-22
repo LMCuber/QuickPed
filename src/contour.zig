@@ -1,0 +1,20 @@
+const Self = @This();
+const std = @import("std");
+const rl = @import("raylib");
+const color = @import("color.zig");
+
+points: []const rl.Vector2,
+
+pub fn init(points: []const rl.Vector2) Self {
+    return .{
+        .points = points,
+    };
+}
+
+pub fn update(_: *Self) void {
+    return;
+}
+
+pub fn draw(self: Self) void {
+    rl.drawLineStrip(@constCast(self.points), color.WHITE);
+}

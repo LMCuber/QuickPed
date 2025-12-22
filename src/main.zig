@@ -9,20 +9,24 @@ const z = @import("zgui");
 
 // namespaces
 const commons = @import("commons.zig");
-const color = @import("color.zig").Color;
-const agent = @import("agent.zig");
+const color = @import("color.zig");
+const settings = @import("settings.zig");
 
 // classes
+const Agent = @import("agent.zig");
+const Contour = @import("contour.zig");
 
-// objects
-const settings = @import("settings.zig").Settings{};
-var sim_data = @import("sim_data.zig").SimData{};
-var agent_data = @import("agent_data.zig").AgentData{};
+// data objects
+const SimData = @import("sim_data.zig");
+const AgentData = @import("agent_data.zig");
 
 // main
 pub fn main() !void {
+    var sim_data = SimData.init();
+    var agent_data = AgentData.init();
+
     rl.initWindow(
-        settings.tabWidth() + settings.width,
+        settings.tabWidth + settings.width,
         settings.height,
         "Agent Based Model Simulation",
     );
@@ -36,19 +40,28 @@ pub fn main() !void {
     defer z.deinitNoContext();
 
     // custom font
-    const font = z.io.addFontFromFile("fonts/Cousine-Regular.ttf", 20);
+    const font = z.io.addFontFromFile("fonts/DroidSans.ttf", 20);
     z.io.setDefaultFont(font);
     c.rlImGuiReloadFonts();
 
     // seeding
     rl.setRandomSeed(123);
 
-    // agents
+    // entities for the simulation
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
-    var agents = std.ArrayList(agent.Agent).init(allocator);
+    var agents = std.ArrayList(Agent).init(allocator);
+    var contours = std.ArrayList(Contour).init(allocator);
     defer agents.deinit();
+    defer contours.deinit();
+
+    const _c = Contour.init(&[_]rl.Vector2{
+        .{ .x = 100, .y = 100 },
+        .{ .x = 200, .y = 500 },
+    });
+
+    try contours.append(_c);
 
     const camera_default = rl.Camera2D{
         .target = .{ .x = 0, .y = 0 },
@@ -63,7 +76,7 @@ pub fn main() !void {
 
     // Main loop
     while (!rl.windowShouldClose()) {
-        const rect = rl.Rectangle{
+        const rect: rl.Rectangle = .{
             .x = 0,
             .y = 0,
             .width = settings.width,
@@ -90,6 +103,14 @@ pub fn main() !void {
                     a.draw();
                 }
 
+                for (contours.items) |*con| {
+                    con.update();
+                }
+
+                for (contours.items) |*con| {
+                    con.draw();
+                }
+
                 // Make sure to check that ImGui is not capturing the mouse inputs
                 // before checking mouse inputs in Raylib!
                 capture = z.io.getWantCaptureMouse();
@@ -112,6 +133,7 @@ pub fn main() !void {
             }
 
             rl.drawFPS(12, 12);
+            // rl.drawText()
 
             // Draw ImGui
             {
@@ -124,45 +146,14 @@ pub fn main() !void {
 
                 z.setNextWindowPos(.{ .x = @floatFromInt(settings.width), .y = 0 });
                 z.setNextWindowSize(.{
-                    .w = @floatFromInt(settings.tabWidth()),
+                    .w = @floatFromInt(settings.tabWidth),
                     .h = settings.height,
                 });
 
                 _ = z.begin("Settings", .{});
                 defer z.end();
-                if (z.collapsingHeader("Simulation", .{ .default_open = true })) {
-                    _ = z.colorEdit3("bg", .{ .col = @ptrCast(&sim_data.bg_color) });
-                    if (z.button("Recenter", .{})) {
-                        camera = camera_default;
-                    }
-                }
-                if (z.collapsingHeader("Agent", .{ .default_open = true })) {
-                    z.separatorText("Lifetime");
-                    // place N agents
-                    _ = z.sliderInt("count", .{ .v = &agent_data.num_to_place, .min = 1, .max = 50 });
-                    if (z.button("place", .{})) {
-                        try agent.create(
-                            &agents,
-                            &agent_data,
-                            agent_data.num_to_place,
-                        );
-                    }
-                    z.sameLine(.{});
-                    if (z.button("delete", .{})) {
-                        agent.delete(
-                            &agents,
-                            agent_data.num_to_place,
-                        );
-                    }
-
-                    z.separatorText("Properties");
-                    _ = z.sliderFloat("speed", .{ .v = &agent_data.speed, .min = 0.1, .max = 5.0 });
-                    _ = z.sliderFloat("tau", .{ .v = &agent_data.relaxation, .min = 10, .max = 50 });
-                    _ = z.sliderFloat("repuls.", .{ .v = &agent_data.a_ped, .min = 0.01, .max = 0.1 });
-                    _ = z.sliderFloat("range", .{ .v = &agent_data.b_ped, .min = 1, .max = 10 });
-                    _ = z.sliderInt("radius", .{ .v = &agent_data.radius, .min = 2, .max = 16 });
-                    _ = z.checkbox("show vectors", .{ .v = &agent_data.show_vectors });
-                }
+                sim_data.show_stats(&camera, camera_default);
+                try agent_data.show_stats(&agents, &contours);
             }
         }
     }

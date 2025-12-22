@@ -1,9 +1,4 @@
-pub const Settings = struct {
-    width: i32 = 800,
-    height: i32 = 800,
-    fps_cap: i32 = 60,
-
-    pub fn tabWidth(self: Settings) i32 {
-        return @divFloor(self.width, 3);
-    }
-};
+pub const width = 800;
+pub const height = 800;
+pub const fps_cap = 60;
+pub const tabWidth = width / 3;

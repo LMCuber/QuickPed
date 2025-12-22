@@ -1,60 +1,59 @@
 const rl = @import("raylib");
 const commons = @import("commons.zig");
 
-pub const Color = struct {
-    pub const NAVY: rl.Color = .{ .r = 51, .g = 76, .b = 102, .a = 255 };
-    pub const WHITE: rl.Color = .{ .r = 204, .g = 204, .b = 204, .a = 255 };
-    pub const BLACK: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
-    pub const ORANGE: rl.Color = .{ .r = 255, .g = 144, .b = 0, .a = 255 };
-    pub const GREEN: rl.Color = .{ .r = 0, .g = 245, .b = 0, .a = 255 };
+pub const NAVY: rl.Color = .{ .r = 51, .g = 76, .b = 102, .a = 255 };
+pub const WHITE: rl.Color = .{ .r = 204, .g = 204, .b = 204, .a = 255 };
+pub const BLACK: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
+pub const ORANGE: rl.Color = .{ .r = 255, .g = 144, .b = 0, .a = 255 };
+pub const GREEN: rl.Color = .{ .r = 0, .g = 245, .b = 0, .a = 255 };
+pub const LIGHT_GRAY: rl.Color = .{ .r = 160, .g = 160, .b = 160, .a = 255 };
 
-    pub fn getAgentColor() rl.Color {
-        const palette = [_][]const u8{
-            "#73464c",
-            "#ab5675",
-            "#ee6a7c",
-            "#ffa7a5",
-            "#ffe07e",
-            "#ffe7d6",
-            "#72dcbb",
-            "#34acba",
-        };
+pub fn getAgentColor() rl.Color {
+    const palette = [_][]const u8{
+        "#73464c",
+        "#ab5675",
+        "#ee6a7c",
+        "#ffa7a5",
+        "#ffe07e",
+        "#ffe7d6",
+        "#72dcbb",
+        "#34acba",
+    };
 
-        const index: i32 = rl.getRandomValue(0, palette.len - 1);
-        const hex = palette[@as(usize, @intCast(index))];
-        return hexToColor(hex);
+    const index: i32 = rl.getRandomValue(0, palette.len - 1);
+    const hex = palette[@as(usize, @intCast(index))];
+    return hexToColor(hex);
+}
+
+pub fn arrToColor(col: [4]f32) rl.Color {
+    return .{
+        .r = @intFromFloat(col[0] * 255),
+        .g = @intFromFloat(col[1] * 255),
+        .b = @intFromFloat(col[2] * 255),
+        .a = @intFromFloat(col[3] * 255),
+    };
+}
+
+fn hexCharToInt(c: u8) u8 {
+    if (c >= '0' and c <= '9') return c - '0';
+    if (c >= 'A' and c <= 'F') return c - 'A' + 10;
+    if (c >= 'a' and c <= 'f') return c - 'a' + 10;
+    @panic("Invalid hex character");
+}
+
+fn hexPairToU8(hex: []const u8) u8 {
+    return (hexCharToInt(hex[0]) << 4) | hexCharToInt(hex[1]);
+}
+
+pub fn hexToColor(hex: []const u8) rl.Color {
+    if (hex.len != 7 or hex[0] != '#') {
+        @panic("Expected hex string like '#RRGGBB'");
     }
 
-    pub fn arrToColor(col: [4]f32) rl.Color {
-        return .{
-            .r = @intFromFloat(col[0] * 255),
-            .g = @intFromFloat(col[1] * 255),
-            .b = @intFromFloat(col[2] * 255),
-            .a = @intFromFloat(col[3] * 255),
-        };
-    }
-
-    fn hexCharToInt(c: u8) u8 {
-        if (c >= '0' and c <= '9') return c - '0';
-        if (c >= 'A' and c <= 'F') return c - 'A' + 10;
-        if (c >= 'a' and c <= 'f') return c - 'a' + 10;
-        @panic("Invalid hex character");
-    }
-
-    fn hexPairToU8(hex: []const u8) u8 {
-        return (hexCharToInt(hex[0]) << 4) | hexCharToInt(hex[1]);
-    }
-
-    pub fn hexToColor(hex: []const u8) rl.Color {
-        if (hex.len != 7 or hex[0] != '#') {
-            @panic("Expected hex string like '#RRGGBB'");
-        }
-
-        return rl.Color{
-            .r = hexPairToU8(hex[1..3]),
-            .g = hexPairToU8(hex[3..5]),
-            .b = hexPairToU8(hex[5..7]),
-            .a = 255,
-        };
-    }
-};
+    return rl.Color{
+        .r = hexPairToU8(hex[1..3]),
+        .g = hexPairToU8(hex[3..5]),
+        .b = hexPairToU8(hex[5..7]),
+        .a = 255,
+    };
+}
