@@ -7,19 +7,18 @@ pub const BLACK: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
 pub const ORANGE: rl.Color = .{ .r = 255, .g = 144, .b = 0, .a = 255 };
 pub const GREEN: rl.Color = .{ .r = 0, .g = 245, .b = 0, .a = 255 };
 pub const LIGHT_GRAY: rl.Color = .{ .r = 160, .g = 160, .b = 160, .a = 255 };
+pub const palette = [_][]const u8{
+    "#73464c",
+    "#ab5675",
+    "#ee6a7c",
+    "#ffa7a5",
+    "#ffe07e",
+    "#ffe7d6",
+    "#72dcbb",
+    "#34acba",
+};
 
 pub fn getAgentColor() rl.Color {
-    const palette = [_][]const u8{
-        "#73464c",
-        "#ab5675",
-        "#ee6a7c",
-        "#ffa7a5",
-        "#ffe07e",
-        "#ffe7d6",
-        "#72dcbb",
-        "#34acba",
-    };
-
     const index: i32 = rl.getRandomValue(0, palette.len - 1);
     const hex = palette[@as(usize, @intCast(index))];
     return hexToColor(hex);

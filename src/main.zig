@@ -11,26 +11,30 @@ const imnodes = @import("imnodes");
 // namespaces
 const commons = @import("commons.zig");
 const color = @import("color.zig");
-const settings = @import("settings.zig");
 
 // classes
 const Agent = @import("agent.zig");
 const Contour = @import("contour.zig");
 
 // data objects
+const Settings = @import("settings.zig");
 const SimData = @import("sim_data.zig");
 const AgentData = @import("agent_data.zig");
+const NodeEditor = @import("node_editor.zig");
+
+const settings = Settings.init();
+var sim_data = SimData.init();
+var agent_data = AgentData.init();
+var node_editor = NodeEditor.init();
 
 // main
 pub fn main() !void {
-    var sim_data = SimData.init();
-    var agent_data = AgentData.init();
-
     rl.initWindow(
-        settings.tabWidth + settings.width,
+        settings.width,
         settings.height,
         "QuickPed",
     );
+
     defer rl.closeWindow();
     rl.setTargetFPS(settings.fps_cap);
 
@@ -62,9 +66,9 @@ pub fn main() !void {
 
     const _c = Contour.init(&[_]rl.Vector2{
         .{ .x = 0, .y = 0 },
-        .{ .x = settings.width, .y = 0 },
-        .{ .x = settings.width, .y = settings.height },
-        .{ .x = 0, .y = settings.height },
+        .{ .x = @floatFromInt(settings.sim_width), .y = 0 },
+        .{ .x = @floatFromInt(settings.sim_width), .y = @floatFromInt(settings.sim_height) },
+        .{ .x = 0, .y = @floatFromInt(settings.sim_height) },
         .{ .x = 500, .y = 208 },
         .{ .x = 30, .y = 730 },
     });
@@ -77,20 +81,21 @@ pub fn main() !void {
         .rotation = 0.0,
         .zoom = 1.0,
     };
+
     var camera = camera_default;
 
     var prev_mouse_position = rl.getMousePosition();
     var capture = false;
 
+    const sim_rect: rl.Rectangle = .{
+        .x = 0,
+        .y = 0,
+        .width = @floatFromInt(settings.sim_width),
+        .height = @floatFromInt(settings.sim_height),
+    };
+
     // Main loop
     while (!rl.windowShouldClose()) {
-        const rect: rl.Rectangle = .{
-            .x = 0,
-            .y = 0,
-            .width = settings.width,
-            .height = settings.height,
-        };
-
         // Draw Raylib
         {
             rl.beginDrawing();
@@ -101,20 +106,18 @@ pub fn main() !void {
                 rl.beginMode2D(camera);
                 defer rl.endMode2D();
 
-                rl.drawRectangle(rect.x, rect.y, rect.width, rect.height, color.arrToColor(sim_data.bg_color));
-                // rl.drawRectangleLinesEx(rect, 4, color.WHITE);
+                rl.drawRectangleRec(sim_rect, color.arrToColor(sim_data.bg_color));
+                rl.drawRectangleLinesEx(sim_rect, 4, color.WHITE);
+                renderGrid();
 
-                for (agents.items) |*a| {
-                    a.update();
+                if (!sim_data.paused) {
+                    for (agents.items) |*a| {
+                        a.update();
+                    }
                 }
                 for (agents.items) |*a| {
                     a.draw();
                 }
-
-                for (contours.items) |*con| {
-                    con.update();
-                }
-
                 for (contours.items) |*con| {
                     con.draw();
                 }
@@ -140,79 +143,69 @@ pub fn main() !void {
                 }
             }
 
-            // Draw ImGui
+            // draw ImGui
             {
                 c.rlImGuiBegin();
                 defer c.rlImGuiEnd();
 
-                // var open = true;
-                // z.setNextWindowCollapsed(.{ .collapsed = true, .cond = .first_use_ever });
-                // z.showDemoWindow(&open);
-
-                z.setNextWindowPos(.{ .x = @floatFromInt(settings.width), .y = 0 });
+                z.setNextWindowPos(.{ .x = @floatFromInt(settings.width - settings.tab_width), .y = 0 });
                 z.setNextWindowSize(.{
-                    .w = @floatFromInt(settings.tabWidth),
-                    .h = settings.height,
+                    .w = @floatFromInt(settings.tab_width),
+                    .h = @floatFromInt(settings.height),
                 });
 
-                _ = z.begin("Settings", .{});
-                defer z.end();
+                // draw all options (except node editor)
+                {
+                    _ = z.begin("Settings", .{});
+                    defer z.end();
 
-                if (z.beginTable("split", .{ .column = 2 })) {
-                    defer z.endTable();
-
-                    _ = z.tableNextColumn();
                     const fps: f32 = @floatFromInt(rl.getFPS());
                     const frametime: f32 = if (fps > 0) 1000.0 / fps else 0.0;
                     z.text("FPS: {d:.1} | {d:.3} ms frame", .{ fps, frametime });
-                    sim_data.show_stats(&camera, camera_default);
+                    sim_data.render(&camera, camera_default);
 
-                    _ = z.tableNextColumn();
-                    try agent_data.show_stats(&agents, &contours);
+                    try agent_data.render(&agents, &contours);
+
+                    // draw environment items to render
+                    if (z.collapsingHeader("Environment", .{ .default_open = true })) {
+                        if (z.button("Spawner", .{})) {
+                            std.debug.print("ASDASD", .{});
+                        }
+                    }
                 }
 
-                // imnodes
-                imnodes.beginNodeEditor();
+                // draw node editor
+                {
+                    z.setNextWindowPos(.{ .x = 0, .y = 0 });
+                    z.setNextWindowSize(.{
+                        .w = @floatFromInt(settings.width),
+                        .h = @floatFromInt(settings.height),
+                    });
 
-                imnodes.beginNode(1);
-
-                imnodes.beginNodeTitleBar();
-                z.textUnformatted("Nodetext");
-                imnodes.endNodeTitleBar();
-
-                imnodes.beginInputAttribute(2);
-                z.text("input", .{});
-                imnodes.endInputAttribute();
-
-                imnodes.beginOutputAttribute(3);
-                z.indent(.{ .indent_w = 40 });
-                z.text("output", .{});
-                imnodes.endOutputAttribute();
-
-                imnodes.endNode();
-
-                imnodes.beginNode(2);
-
-                imnodes.beginNodeTitleBar();
-                z.textUnformatted("Nodetext");
-                imnodes.endNodeTitleBar();
-
-                imnodes.beginInputAttribute(4);
-                z.text("input", .{});
-                imnodes.endInputAttribute();
-
-                imnodes.beginOutputAttribute(5);
-                z.indent(.{ .indent_w = 40 });
-                z.text("output", .{});
-                imnodes.endOutputAttribute();
-
-                imnodes.endNode();
-
-                imnodes.link(6, 3, 4);
-
-                imnodes.minimap();
-                imnodes.endNodeEditor();
+                    node_editor.render();
+                }
             }
         }
+    }
+}
+
+pub fn renderGrid() void {
+    const num_blocks: i32 = 40;
+    const offset: i32 = settings.sim_height / num_blocks;
+    for (0..num_blocks) |i| {
+        rl.drawLine(
+            0,
+            @intCast(i * offset),
+            settings.sim_width,
+            @intCast(i * offset),
+            color.NAVY,
+        );
+        rl.drawLine(
+            @intCast(i * offset),
+            0,
+            @intCast(i * offset),
+            settings.sim_height,
+            color.NAVY,
+        );
     }
 }

@@ -23,7 +23,7 @@ pub fn init() Self {
     return .{};
 }
 
-pub fn show_stats(self: *Self, agents: *std.ArrayList(Agent), contours: *std.ArrayList(Contour)) !void {
+pub fn render(self: *Self, agents: *std.ArrayList(Agent), contours: *std.ArrayList(Contour)) !void {
     if (z.collapsingHeader("Agent", .{ .default_open = true })) {
         z.separatorText("Creation");
         // place N agents

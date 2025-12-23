@@ -11,10 +11,6 @@ pub fn init(points: []const rl.Vector2) Self {
     };
 }
 
-pub fn update(_: *Self) void {
-    return;
-}
-
 pub fn draw(self: Self) void {
     rl.drawLineStrip(@constCast(self.points), color.WHITE);
     rl.drawLineV(self.points[0], self.points[self.points.len - 1], color.WHITE);
