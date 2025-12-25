@@ -4,7 +4,7 @@ const rl = @import("raylib");
 const commons = @import("commons.zig");
 const color = @import("color.zig");
 const AgentData = @import("agent_data.zig");
-const Contour = @import("contour.zig");
+const Contour = @import("environment/contour.zig");
 
 const Self = @This();
 
@@ -34,9 +34,9 @@ fn calculateObstacleForce(self: *Self) rl.Vector2 {
     // iterate over all contour objects
     for (self.contours.items) |contour| {
         // iterate over all line segements in that contour
-        for (0..contour.points.len) |i| {
-            const A: rl.Vector2 = contour.points[i];
-            const B: rl.Vector2 = contour.points[if (i == contour.points.len - 1) 0 else (i + 1)];
+        for (0..contour.points.items.len) |i| {
+            const A: rl.Vector2 = contour.points.items[i];
+            const B: rl.Vector2 = contour.points.items[if (i == contour.points.items.len - 1) 0 else (i + 1)];
             const AB = B.subtract(A);
             const t: f32 = std.math.clamp(
                 self.pos.subtract(A).dotProduct(AB) / AB.dotProduct(AB),
@@ -81,7 +81,7 @@ fn calculateDriveForce(self: *Self) rl.Vector2 {
 
 pub fn update(self: *Self) void {
     // debug
-    self.target = rl.getMousePosition();
+    self.target = commons.mousePos();
 
     // get force components
     const drive_force = self.calculateDriveForce();
@@ -100,17 +100,17 @@ pub fn draw(self: *const Self) void {
     // render sphere
     const f_radius: f32 = @floatFromInt(self.agent_data.radius);
     rl.drawCircleV(self.pos, f_radius, self.col);
-    rl.drawCircleLinesV(self.pos, f_radius, color.WHITE);
+    rl.drawCircleLinesV(self.pos, f_radius, color.white);
 
     if (self.agent_data.show_vectors) {
         const m: u32 = 12;
         // render velocity vector
         const norm_vel = self.vel.normalize().scale(m);
-        rl.drawLineEx(self.pos, self.pos.add(norm_vel), 2, color.GREEN);
+        rl.drawLineEx(self.pos, self.pos.add(norm_vel), 2, color.green);
 
         // render acceleration vector
         const norm_acc = self.acc.normalize().scale(m);
-        rl.drawLineEx(self.pos, self.pos.add(norm_acc), 2, color.ORANGE);
+        rl.drawLineEx(self.pos, self.pos.add(norm_acc), 2, color.orange);
     }
 }
 

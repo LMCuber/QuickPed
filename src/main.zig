@@ -12,9 +12,11 @@ const imnodes = @import("imnodes");
 const commons = @import("commons.zig");
 const color = @import("color.zig");
 
-// classes
+// environment
+const Entity = @import("environment/entity.zig").Entity;
 const Agent = @import("agent.zig");
-const Contour = @import("contour.zig");
+const Contour = @import("environment/contour.zig");
+const Spawner = @import("environment/spawner.zig");
 
 // data objects
 const Settings = @import("settings.zig");
@@ -60,31 +62,29 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
     var agents = std.ArrayList(Agent).init(allocator);
-    var contours = std.ArrayList(Contour).init(allocator);
     defer agents.deinit();
+    var entities = std.ArrayList(Entity).init(allocator);
+    defer entities.deinit();
+
+    var current_entity: ?*Entity = null;
+    var entity_storage: Entity = undefined;
+
+    // specific entities
+    var contours = std.ArrayList(Contour).init(allocator);
     defer contours.deinit();
+    var spawners = std.ArrayList(Spawner).init(allocator);
+    defer spawners.deinit();
 
-    const _c = Contour.init(&[_]rl.Vector2{
-        .{ .x = 0, .y = 0 },
-        .{ .x = @floatFromInt(settings.sim_width), .y = 0 },
-        .{ .x = @floatFromInt(settings.sim_width), .y = @floatFromInt(settings.sim_height) },
-        .{ .x = 0, .y = @floatFromInt(settings.sim_height) },
-        .{ .x = 500, .y = 208 },
-        .{ .x = 30, .y = 730 },
-    });
-
-    try contours.append(_c);
-
+    // camera shenanigans
     const camera_default = rl.Camera2D{
         .target = .{ .x = 0, .y = 0 },
         .offset = .{ .x = 0, .y = 0 },
         .rotation = 0.0,
         .zoom = 1.0,
     };
-
     var camera = camera_default;
-
-    var prev_mouse_position = rl.getMousePosition();
+    commons.camera = &camera;
+    var prev_mouse_position = commons.mousePos();
     var capture = false;
 
     const sim_rect: rl.Rectangle = .{
@@ -100,16 +100,16 @@ pub fn main() !void {
         {
             rl.beginDrawing();
             defer rl.endDrawing();
-            rl.clearBackground(color.BLACK);
+            rl.clearBackground(color.black);
 
             {
                 rl.beginMode2D(camera);
                 defer rl.endMode2D();
 
                 rl.drawRectangleRec(sim_rect, color.arrToColor(sim_data.bg_color));
-                rl.drawRectangleLinesEx(sim_rect, 4, color.WHITE);
                 renderGrid();
 
+                // update and render the agents
                 if (!sim_data.paused) {
                     for (agents.items) |*a| {
                         a.update();
@@ -118,15 +118,22 @@ pub fn main() !void {
                 for (agents.items) |*a| {
                     a.draw();
                 }
-                for (contours.items) |*con| {
-                    con.draw();
+
+                // update and render the environmental entities, including the selected one
+                if (current_entity) |ce| {
+                    ce.update(sim_data);
+                    ce.draw();
+                }
+                for (entities.items) |*ent| {
+                    ent.update(sim_data);
+                    ent.draw();
                 }
 
                 // Make sure to check that ImGui is not capturing the mouse inputs
                 // before checking mouse inputs in Raylib!
                 capture = z.io.getWantCaptureMouse();
                 if (!capture) {
-                    const mouse_position = rl.getMousePosition();
+                    const mouse_position = commons.mousePos();
                     defer prev_mouse_position = mouse_position;
 
                     const zoom_delta = rl.getMouseWheelMove() * 0.01;
@@ -135,7 +142,7 @@ pub fn main() !void {
                     if (rl.isMouseButtonDown(rl.MouseButton.mouse_button_left)) {
                         const delta_x = mouse_position.x - prev_mouse_position.x;
                         const delta_y = mouse_position.y - prev_mouse_position.y;
-                        camera.target = rl.Vector2{
+                        camera.target = .{
                             .x = camera.target.x - delta_x,
                             .y = camera.target.y - delta_y,
                         };
@@ -169,8 +176,24 @@ pub fn main() !void {
                     // draw environment items to render
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
                         if (z.button("Spawner", .{})) {
-                            std.debug.print("ASDASD", .{});
+                            entity_storage = try Entity.initContour(gpa.allocator());
+                            current_entity = &entity_storage;
                         }
+                        z.sameLine(.{});
+                        if (z.button("Contour", .{})) {
+                            std.debug.print("contour!", .{});
+                        }
+
+                        // var current_item: i32 = 0;
+                        // var buf: [256]u8 = undefined;
+                        // for (entities.items) |*ent| {
+                        //     switch (ent.*) {
+                        //         inline else => |inner| {
+                        //             _ = try std.fmt.bufPrint(&buf, "{s}", .{inner.getName()});
+                        //         },
+                        //     }
+                        // }
+                        // _ = z.combo("name", .{ .current_item = &current_item, .items_separated_by_zeros = "Contour\x00Spawner" });
                     }
                 }
 
@@ -190,22 +213,23 @@ pub fn main() !void {
 }
 
 pub fn renderGrid() void {
-    const num_blocks: i32 = 40;
-    const offset: i32 = settings.sim_height / num_blocks;
-    for (0..num_blocks) |i| {
+    const num_blocks = @divTrunc(settings.sim_width, sim_data.grid_size);
+    for (0..@as(usize, @intCast(num_blocks))) |i| {
+        const i_i32: i32 = @intCast(i);
+        const grid_pos = i_i32 * sim_data.grid_size;
         rl.drawLine(
             0,
-            @intCast(i * offset),
+            grid_pos,
             settings.sim_width,
-            @intCast(i * offset),
-            color.NAVY,
+            grid_pos,
+            color.navy,
         );
         rl.drawLine(
-            @intCast(i * offset),
+            grid_pos,
             0,
-            @intCast(i * offset),
+            grid_pos,
             settings.sim_height,
-            color.NAVY,
+            color.navy,
         );
     }
 }

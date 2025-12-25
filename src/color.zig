@@ -1,12 +1,12 @@
 const rl = @import("raylib");
 const commons = @import("commons.zig");
 
-pub const NAVY: rl.Color = .{ .r = 51, .g = 76, .b = 102, .a = 255 };
-pub const WHITE: rl.Color = .{ .r = 204, .g = 204, .b = 204, .a = 255 };
-pub const BLACK: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
-pub const ORANGE: rl.Color = .{ .r = 255, .g = 144, .b = 0, .a = 255 };
-pub const GREEN: rl.Color = .{ .r = 0, .g = 245, .b = 0, .a = 255 };
-pub const LIGHT_GRAY: rl.Color = .{ .r = 160, .g = 160, .b = 160, .a = 255 };
+pub const navy: rl.Color = .{ .r = 15, .g = 42, .b = 65, .a = 255 };
+pub const light_gray: rl.Color = .{ .r = 160, .g = 160, .b = 160, .a = 255 };
+pub const white: rl.Color = .{ .r = 204, .g = 204, .b = 204, .a = 255 };
+pub const black: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
+pub const orange: rl.Color = .{ .r = 255, .g = 144, .b = 0, .a = 255 };
+pub const green: rl.Color = .{ .r = 0, .g = 245, .b = 0, .a = 255 };
 pub const palette = [_][]const u8{
     "#73464c",
     "#ab5675",
@@ -17,6 +17,21 @@ pub const palette = [_][]const u8{
     "#72dcbb",
     "#34acba",
 };
+
+const Palette = enum(u8) {
+    hazel = 0,
+    clay = 1,
+    pink = 2,
+    salmon = 3,
+    lemon = 4,
+    cream = 5,
+    teal = 6,
+    foam = 7,
+};
+
+pub fn fromPalette(p: Palette) []const u8 {
+    return palette[@intFromEnum(p)];
+}
 
 pub fn getAgentColor() rl.Color {
     const index: i32 = rl.getRandomValue(0, palette.len - 1);

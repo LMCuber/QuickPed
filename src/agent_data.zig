@@ -2,7 +2,7 @@ const Self = @This();
 const std = @import("std");
 const z = @import("zgui");
 const Agent = @import("agent.zig");
-const Contour = @import("contour.zig");
+const Contour = @import("environment/contour.zig");
 
 // lifetime
 num_to_place: i32 = 10,
@@ -24,7 +24,7 @@ pub fn init() Self {
 }
 
 pub fn render(self: *Self, agents: *std.ArrayList(Agent), contours: *std.ArrayList(Contour)) !void {
-    if (z.collapsingHeader("Agent", .{ .default_open = true })) {
+    if (z.collapsingHeader("Agent", .{ .default_open = false })) {
         z.separatorText("Creation");
         // place N agents
         _ = z.sliderInt("count", .{ .v = &self.num_to_place, .min = 1, .max = 50 });
@@ -113,13 +113,7 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent), contours: *std.ArrayLi
             self.* = default_data;
         }
 
-        _ = z.checkbox("##vectors", .{ .v = &self.show_vectors });
-        z.sameLine(.{});
-        _ = z.text("vectors", .{});
-        if (z.isItemHovered(.{})) {
-            _ = z.beginTooltip();
-            defer z.endTooltip();
-            _ = z.text("Shows velocity and acceleration vectors of agents", .{});
-        }
+        _ = z.checkbox("show vectors", .{ .v = &self.show_vectors });
+        z.newLine();
     }
 }
