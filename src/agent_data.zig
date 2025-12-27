@@ -14,7 +14,7 @@ radius: i32 = 8,
 a_ped: f32 = 0.08,
 b_ped: f32 = 4,
 a_ob: f32 = 2.0,
-b_ob: f32 = 0.5,
+b_ob: f32 = 4,
 show_vectors: bool = false,
 
 const default_data = Self.init();
@@ -23,7 +23,7 @@ pub fn init() Self {
     return .{};
 }
 
-pub fn render(self: *Self, agents: *std.ArrayList(Agent), contours: *std.ArrayList(Contour)) !void {
+pub fn render(self: *Self, agents: *std.ArrayList(Agent), contours: *std.ArrayList(*Contour)) !void {
     if (z.collapsingHeader("Agent", .{ .default_open = false })) {
         z.separatorText("Creation");
         // place N agents
@@ -88,7 +88,7 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent), contours: *std.ArrayLi
         if (z.isItemHovered(.{})) {
             _ = z.beginTooltip();
             defer z.endTooltip();
-            _ = z.text("The distance the agents want to keep from obstacles", .{});
+            _ = z.text("The distance the agents want to keep from each other", .{});
         }
 
         _ = z.sliderFloat("##a_ob", .{ .v = &self.a_ob, .min = 0.1, .max = 4 });
@@ -100,13 +100,13 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent), contours: *std.ArrayLi
             _ = z.text("Repulsive force: how badly the agents want to stay away from the obstacles", .{});
         }
 
-        _ = z.sliderFloat("##b_ob", .{ .v = &self.b_ob, .min = 0.1, .max = 2 });
+        _ = z.sliderFloat("##b_ob", .{ .v = &self.b_ob, .min = 0.1, .max = 10 });
         z.sameLine(.{});
         _ = z.text("B_ob", .{});
         if (z.isItemHovered(.{})) {
             _ = z.beginTooltip();
             defer z.endTooltip();
-            _ = z.text("The distance the agents want to keep from each other", .{});
+            _ = z.text("The distance the agents want to keep from the obstacles", .{});
         }
 
         if (z.button("reset", .{})) {

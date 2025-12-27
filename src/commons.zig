@@ -1,5 +1,6 @@
 const std = @import("std");
 const rl = @import("raylib");
+const SimData = @import("sim_data.zig");
 
 pub var camera: *rl.Camera2D = undefined;
 
@@ -16,4 +17,24 @@ pub fn mousePos() rl.Vector2 {
         .x = rl.getMousePosition().x + camera.target.x,
         .y = rl.getMousePosition().y + camera.target.y,
     };
+}
+
+pub fn roundMousePos(sim_data: SimData) rl.Vector2 {
+    return .{
+        .x = @floatFromInt(roundN(@intFromFloat(mousePos().x), sim_data.grid_size)),
+        .y = @floatFromInt(roundN(@intFromFloat(mousePos().y), sim_data.grid_size)),
+    };
+}
+
+pub fn readFile(
+    allocator: std.mem.Allocator,
+    path: []const u8,
+) ![]u8 {
+    const file = try std.fs.cwd().openFile(path, .{});
+    defer file.close();
+
+    return try file.readToEndAlloc(
+        allocator,
+        std.math.maxInt(usize),
+    );
 }

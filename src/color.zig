@@ -4,9 +4,11 @@ const commons = @import("commons.zig");
 pub const navy: rl.Color = .{ .r = 15, .g = 42, .b = 65, .a = 255 };
 pub const light_gray: rl.Color = .{ .r = 160, .g = 160, .b = 160, .a = 255 };
 pub const white: rl.Color = .{ .r = 204, .g = 204, .b = 204, .a = 255 };
+pub const white_t: rl.Color = .{ .r = 204, .g = 204, .b = 204, .a = 120 };
 pub const black: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
 pub const orange: rl.Color = .{ .r = 255, .g = 144, .b = 0, .a = 255 };
 pub const green: rl.Color = .{ .r = 0, .g = 245, .b = 0, .a = 255 };
+pub const green_t: rl.Color = .{ .r = 0, .g = 245, .b = 0, .a = 120 };
 pub const palette = [_][]const u8{
     "#73464c",
     "#ab5675",

@@ -5,27 +5,52 @@ const commons = @import("../commons.zig");
 const std = @import("std");
 const rl = @import("raylib");
 
-pub const EntityAction = enum { none, place };
+pub const EntitySnapshot = union(enum) {
+    contour: Contour.ContourSnapshot,
+    spawner: Spawner.SpawnerSnapshot,
+};
 
 pub const Entity = union(enum) {
+    pub const EntityAction = enum { none, placed, cancelled };
+
     contour: Contour,
-    // spawner: Spawner,
+    spawner: Spawner,
 
-    pub fn update(self: *Entity, _: SimData) void {
+    pub fn update(self: *Entity, sim_data: SimData) !EntityAction {
         switch (self.*) {
-            .contour => |_| {},
-            // inline else => |*inner| {
-            //     if (inner.placed) return;
-
-            //     inner.prepare();
-            //     inner.pos.x = @floatFromInt(commons.roundN(@intFromFloat(commons.mousePos().x), sim_data.grid_size));
-            //     inner.pos.y = @floatFromInt(commons.roundN(@intFromFloat(commons.mousePos().y), sim_data.grid_size));
-            // },
+            inline else => |*inner| {
+                return inner.update(sim_data);
+            },
         }
     }
 
     pub fn initContour(allocator: std.mem.Allocator) !Entity {
         return .{ .contour = try Contour.init(allocator) };
+    }
+
+    pub fn initSpawner() Entity {
+        return .{ .spawner = Spawner.init() };
+    }
+
+    pub fn deinit(self: *Entity) void {
+        switch (self.*) {
+            .contour => |*c| c.deinit(),
+            inline else => |_| {},
+        }
+    }
+
+    pub fn getSnapshot(self: *Entity) EntitySnapshot {
+        return switch (self.*) {
+            .contour => |c| .{ .contour = c.getSnapshot() },
+            .spawner => |s| .{ .spawner = s.getSnapshot() },
+        };
+    }
+
+    pub fn fromSnapshot(allocator: std.mem.Allocator, snap: EntitySnapshot) !Entity {
+        return switch (snap) {
+            .contour => |cs| .{ .contour = try Contour.fromSnapshot(allocator, cs) },
+            .spawner => |ss| .{ .spawner = Spawner.fromSnapshot(ss) },
+        };
     }
 
     pub fn draw(self: Entity) void {
