@@ -30,7 +30,7 @@ This would substantially increase the scope and complexity of the project, and s
 
 # How to run
 ```
-./build.sh
+./run.sh
 ```
 or
 ```bash

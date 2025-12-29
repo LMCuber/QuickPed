@@ -32,6 +32,8 @@ var node_editor = NodeEditor.init();
 const SceneSnapshot = struct {
     version: []const u8,
     entities: []const entity.EntitySnapshot,
+    next_contour_id: usize,
+    next_spawner_id: usize,
 };
 
 // main
@@ -73,7 +75,7 @@ pub fn main() !void {
     try entities.ensureTotalCapacity(100_000);
 
     var current_entity: ?*entity.Entity = null;
-    var entity_storage: entity.Entity = undefined;
+    var entity_storage: ?entity.Entity = null;
 
     // specific entities
     var contours = std.ArrayList(*Contour).init(allocator);
@@ -145,7 +147,7 @@ pub fn main() !void {
                             .spawner => try spawners.append(&stored_entity_ptr.spawner),
                         }
 
-                        entity_storage = undefined;
+                        entity_storage = null;
                         current_entity = null;
                     } else {
                         ent.draw();
@@ -204,15 +206,21 @@ pub fn main() !void {
                     // draw environment items to render
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
                         if (z.button("Contour", .{})) {
-                            entity_storage.deinit();
+                            // free previous entities
+                            if (entity_storage) |*ent| {
+                                ent.deinit(allocator);
+                            }
                             entity_storage = try entity.Entity.initContour(allocator);
-                            current_entity = &entity_storage;
+                            current_entity = if (entity_storage) |*ent| ent else null;
                         }
                         z.sameLine(.{});
                         if (z.button("Spawner", .{})) {
-                            entity_storage.deinit();
-                            entity_storage = entity.Entity.initSpawner();
-                            current_entity = &entity_storage;
+                            // free previous entitys
+                            if (entity_storage) |*ent| {
+                                ent.deinit(allocator);
+                            }
+                            entity_storage = try entity.Entity.initSpawner(allocator);
+                            current_entity = if (entity_storage) |*ent| ent else null;
                         }
                         z.separatorText("");
                         //
@@ -244,12 +252,12 @@ pub fn main() !void {
         }
     }
 
-    // deinit all dangling entity allocations
+    // deinit all entity allocations
     if (current_entity) |ent| {
-        ent.deinit();
+        ent.deinit(allocator);
     }
     for (entities.items) |*ent| {
-        ent.deinit();
+        ent.deinit(allocator);
     }
 }
 
@@ -289,6 +297,8 @@ pub fn saveScene(
     const scene_snap: SceneSnapshot = .{
         .version = "0.1.0",
         .entities = snaps.items,
+        .next_contour_id = Contour.next_id,
+        .next_spawner_id = Spawner.next_id,
     };
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();
@@ -311,9 +321,9 @@ pub fn loadScene(
     const json = try commons.readFile(allocator, path);
     defer allocator.free(json);
 
-    // dealloc and delete existing entities
+    // dealloc and delete existing entities (environmental objects)
     for (entities.items) |*e| {
-        e.deinit();
+        e.deinit(allocator);
     }
     entities.clearRetainingCapacity();
     contours.clearRetainingCapacity();
@@ -324,6 +334,7 @@ pub fn loadScene(
         return;
     }
 
+    // get parsed scene
     const parsed = try std.json.parseFromSlice(
         SceneSnapshot,
         allocator,
@@ -331,13 +342,15 @@ pub fn loadScene(
         .{},
     );
     defer parsed.deinit();
+    const scene: SceneSnapshot = parsed.value;
 
-    const scene = parsed.value;
+    // get next ids for the EE's
+    Contour.next_id = scene.next_contour_id;
+    Spawner.next_id = scene.next_spawner_id;
 
-    // repopulate entities
+    // repopulate entities from saved snapshots
     for (scene.entities) |snap| {
-        const ent = try entity.Entity.fromSnapshot(allocator, snap);
-        try entities.append(ent);
+        try entities.append(try entity.Entity.fromSnapshot(allocator, snap));
 
         const entity_ptr = &entities.items[entities.items.len - 1];
         switch (entity_ptr.*) {

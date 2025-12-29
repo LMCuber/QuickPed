@@ -6,7 +6,8 @@ const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../sim_data.zig");
 
-id: usize = nextId(),
+id: usize,
+name: []const u8,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 points: std.ArrayList(rl.Vector2),
 placed: bool = false,
@@ -15,36 +16,47 @@ pub var next_id: usize = 0;
 
 pub const ContourSnapshot = struct {
     id: usize,
+    name: []const u8,
     points: []rl.Vector2,
 };
 
 pub fn init(allocator: std.mem.Allocator) !Self {
+    const id = nextId();
     return .{
+        .id = id,
+        .name = try std.fmt.allocPrint(
+            allocator,
+            "Contour{}",
+            .{id},
+        ),
         .points = std.ArrayList(rl.Vector2).init(allocator),
     };
 }
 
-pub fn deinit(self: *Self) void {
+pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
     self.points.deinit();
+    allocator.free(self.name);
 }
 
 pub fn getSnapshot(self: Self) ContourSnapshot {
     return .{
         .id = self.id,
+        .name = self.name,
         .points = self.points.items,
     };
 }
 
 pub fn fromSnapshot(allocator: std.mem.Allocator, snap: ContourSnapshot) !Self {
-    //
-    var ret = try Self.init(allocator);
-    //
-    ret.id = snap.id;
-    ret.placed = true;
+    var points = std.ArrayList(rl.Vector2).init(allocator);
     for (snap.points) |point| {
-        try ret.points.append(point);
+        try points.append(point);
     }
-    return ret;
+    return .{
+        .id = snap.id,
+        .name = try allocator.dupe(u8, snap.name),
+        .points = points,
+        .placed = true,
+    };
 }
 
 pub fn nextId() usize {

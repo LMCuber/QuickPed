@@ -6,7 +6,8 @@ const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../sim_data.zig");
 
-id: usize = nextId(),
+id: usize,
+name: []const u8,
 points: [2]rl.Vector2 = undefined,
 point_count: usize = 0,
 placed: bool = false,
@@ -16,27 +17,40 @@ pub var next_id: usize = 0;
 
 pub const SpawnerSnapshot = struct {
     id: usize,
+    name: []const u8,
     points: [2]rl.Vector2,
-    point_count: usize,
 };
 
-pub fn init() Self {
-    return .{};
+pub fn init(allocator: std.mem.Allocator) !Self {
+    const id = nextId();
+    return .{
+        .id = id,
+        .name = try std.fmt.allocPrint(
+            allocator,
+            "Spawner{}",
+            .{id},
+        ),
+    };
+}
+
+pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+    allocator.free(self.name);
 }
 
 pub fn getSnapshot(self: Self) SpawnerSnapshot {
     return .{
         .id = self.id,
+        .name = self.name,
         .points = self.points,
-        .point_count = 2,
     };
 }
 
-pub fn fromSnapshot(snap: SpawnerSnapshot) Self {
+pub fn fromSnapshot(allocator: std.mem.Allocator, snap: SpawnerSnapshot) !Self {
     return .{
         .id = snap.id,
+        .name = try allocator.dupe(u8, snap.name),
         .points = snap.points,
-        .point_count = 2, // because it's already placed
+        .point_count = 2,
         .placed = true,
     };
 }

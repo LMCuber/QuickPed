@@ -28,14 +28,14 @@ pub const Entity = union(enum) {
         return .{ .contour = try Contour.init(allocator) };
     }
 
-    pub fn initSpawner() Entity {
-        return .{ .spawner = Spawner.init() };
+    pub fn initSpawner(allocator: std.mem.Allocator) !Entity {
+        return .{ .spawner = try Spawner.init(allocator) };
     }
 
-    pub fn deinit(self: *Entity) void {
+    pub fn deinit(self: *Entity, allocator: std.mem.Allocator) void {
         switch (self.*) {
-            .contour => |*c| c.deinit(),
-            inline else => |_| {},
+            .contour => |*c| c.deinit(allocator),
+            .spawner => |*c| c.deinit(allocator),
         }
     }
 
@@ -49,7 +49,7 @@ pub const Entity = union(enum) {
     pub fn fromSnapshot(allocator: std.mem.Allocator, snap: EntitySnapshot) !Entity {
         return switch (snap) {
             .contour => |cs| .{ .contour = try Contour.fromSnapshot(allocator, cs) },
-            .spawner => |ss| .{ .spawner = Spawner.fromSnapshot(ss) },
+            .spawner => |ss| .{ .spawner = try Spawner.fromSnapshot(allocator, ss) },
         };
     }
 
