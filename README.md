@@ -4,12 +4,8 @@ To view the paper we have written on this subject: paper link
 Go to the [backlog](#project-backlog) to see the (not) implemented features.
 
 # Version support
-⚠️ **This project currently supports Zig up to version 0.13.0.**  
+⚠️ **This project currently supports `zig` versions up to 0.13.0.**  
 Later Zig versions are not guaranteed to build correctly.
-
-% Source - https://stackoverflow.com/a
-% Posted by Juli, modified by community. See post 'Timeline' for change history
-% Retrieved 2025-12-22, License - CC BY-SA 4.0
 
 # Project backlog
 - [x] 🟥 Social force model for pedestrians
@@ -50,4 +46,4 @@ This project uses the [zig-raylib-imgui-template](https://github.com/schmee/zig-
 - `zgui` (zig bindings for ImGui)
 - `rlImGui` (connection between raylib and ImGui pipeline)
 - `imnodes` (node editor extension for ImGui)
-I have written `zig` bindings for some `imnodes` functions, so I may make `imnodes` a submodule to a `zig` version in the future.
+I have written `zig` bindings for some `imnodes` functions, so I may make `imnodes` a submodule to a `zig` `imnodes` port in the future.
