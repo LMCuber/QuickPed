@@ -30,9 +30,16 @@ pub fn readFile(
     allocator: std.mem.Allocator,
     path: []const u8,
 ) ![]u8 {
-    const file = try std.fs.cwd().openFile(path, .{});
+    const file = std.fs.cwd().openFile(path, .{}) catch |err| {
+        if (err == error.FileNotFound) {
+            // Create empty file
+            const new_file = try std.fs.cwd().createFile(path, .{});
+            new_file.close();
+            return try allocator.dupe(u8, "");
+        }
+        return err;
+    };
     defer file.close();
-
     return try file.readToEndAlloc(
         allocator,
         std.math.maxInt(usize),
