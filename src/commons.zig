@@ -32,7 +32,7 @@ pub fn readFile(
 ) ![]u8 {
     const file = std.fs.cwd().openFile(path, .{}) catch |err| {
         if (err == error.FileNotFound) {
-            // Create empty file
+            // create empty file
             const new_file = try std.fs.cwd().createFile(path, .{});
             new_file.close();
             return try allocator.dupe(u8, "");

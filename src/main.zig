@@ -17,21 +17,22 @@ const entity = @import("environment/entity.zig");
 const Agent = @import("agent.zig");
 const Contour = @import("environment/contour.zig");
 const Spawner = @import("environment/spawner.zig");
+const Area = @import("environment/area.zig");
 
 // data objects
 const Settings = @import("settings.zig");
 const SimData = @import("sim_data.zig");
 const AgentData = @import("agent_data.zig");
-const NodeEditor = @import("node_editor.zig");
+const NodeEditor = @import("nodes/node_editor.zig");
 
 const settings = Settings.init();
 var sim_data = SimData.init();
 var agent_data = AgentData.init();
-var node_editor = NodeEditor.init();
 
 const SceneSnapshot = struct {
     version: []const u8,
     entities: []const entity.EntitySnapshot,
+    next_id: usize,
     next_contour_id: usize,
     next_spawner_id: usize,
 };
@@ -68,11 +69,11 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
-    var agents = std.ArrayList(Agent).init(allocator);
-    defer agents.deinit();
     var entities = std.ArrayList(entity.Entity).init(allocator);
     defer entities.deinit();
     try entities.ensureTotalCapacity(100_000);
+    var agents = std.ArrayList(Agent).init(allocator);
+    defer agents.deinit();
 
     var current_entity: ?*entity.Entity = null;
     var entity_storage: ?entity.Entity = null;
@@ -82,6 +83,12 @@ pub fn main() !void {
     defer contours.deinit();
     var spawners = std.ArrayList(*Spawner).init(allocator);
     defer spawners.deinit();
+    var areas = std.ArrayList(*Area).init(allocator);
+    defer areas.deinit();
+
+    // node editor
+    var node_editor = NodeEditor.init(allocator);
+    defer node_editor.deinit();
 
     try loadScene(
         allocator,
@@ -89,6 +96,7 @@ pub fn main() !void {
         &entities,
         &contours,
         &spawners,
+        &areas,
     );
 
     // camera shenanigans
@@ -125,16 +133,6 @@ pub fn main() !void {
                 rl.drawRectangleRec(sim_rect, color.arrToColor(sim_data.bg_color));
                 renderGrid();
 
-                // update and render the agents
-                if (!sim_data.paused) {
-                    for (agents.items) |*a| {
-                        a.update();
-                    }
-                }
-                for (agents.items) |*a| {
-                    a.draw();
-                }
-
                 // update selected entity
                 if (current_entity) |ent| {
                     const action = try ent.update(sim_data);
@@ -145,6 +143,7 @@ pub fn main() !void {
                         switch (stored_entity_ptr.*) {
                             .contour => try contours.append(&stored_entity_ptr.contour),
                             .spawner => try spawners.append(&stored_entity_ptr.spawner),
+                            .area => try areas.append(&stored_entity_ptr.area),
                         }
 
                         entity_storage = null;
@@ -157,6 +156,16 @@ pub fn main() !void {
                 for (entities.items) |*ent| {
                     _ = try ent.update(sim_data);
                     ent.draw();
+                }
+
+                // update and render the agents
+                if (!sim_data.paused) {
+                    for (agents.items) |*a| {
+                        a.update();
+                    }
+                }
+                for (agents.items) |*a| {
+                    a.draw();
                 }
 
                 // Make sure to check that ImGui is not capturing the mouse inputs
@@ -205,6 +214,7 @@ pub fn main() !void {
 
                     // draw environment items to render
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
+                        // pub fn tableSetupColumn(label: [:0]const u8, args: TableSetupColumn) void {
                         if (z.button("Contour", .{})) {
                             // free previous entities
                             if (entity_storage) |*ent| {
@@ -215,26 +225,37 @@ pub fn main() !void {
                         }
                         z.sameLine(.{});
                         if (z.button("Spawner", .{})) {
-                            // free previous entitys
+                            // free previous entities
                             if (entity_storage) |*ent| {
                                 ent.deinit(allocator);
                             }
                             entity_storage = try entity.Entity.initSpawner(allocator);
                             current_entity = if (entity_storage) |*ent| ent else null;
                         }
+                        if (z.button("Area", .{})) {
+                            // free previous entities
+                            if (entity_storage) |*ent| {
+                                ent.deinit(allocator);
+                            }
+                            entity_storage = try entity.Entity.initArea(allocator);
+                            current_entity = if (entity_storage) |*ent| ent else null;
+                        }
+                        // -----------------
                         z.separatorText("");
                         //
                         z.pushStyleColor4f(.{ .idx = .button, .c = .{ 0.55, 0.2, 0.32, 1 } });
                         z.pushStyleColor4f(.{ .idx = .button_hovered, .c = .{ 0.65, 0.3, 0.4, 2 } });
                         z.pushStyleColor4f(.{ .idx = .button_active, .c = .{ 0.8, 0.5, 0.7, 2 } });
                         if (z.button("Clear", .{})) {
-                            // entities.clearRetainingCapacity();
-                            // contours.clearRetainingCapacity();
+                            // dealloc and delete existing entities (environmental objects)
+                            for (entities.items) |*e| {
+                                e.deinit(allocator);
+                            }
+                            entities.clearRetainingCapacity();
+                            contours.clearRetainingCapacity();
+                            spawners.clearRetainingCapacity();
                         }
                         z.popStyleColor(.{ .count = 3 });
-                        if (z.button("Serialize", .{})) {
-                            try saveScene(allocator, entities, "scene.json");
-                        }
                     }
                 }
 
@@ -246,11 +267,14 @@ pub fn main() !void {
                         .h = @floatFromInt(settings.height),
                     });
 
-                    node_editor.render();
+                    try node_editor.render(&spawners);
                 }
             }
         }
     }
+
+    // save the scene
+    try saveScene(allocator, entities, "scene.json");
 
     // deinit all entity allocations
     if (current_entity) |ent| {
@@ -297,6 +321,7 @@ pub fn saveScene(
     const scene_snap: SceneSnapshot = .{
         .version = "0.1.0",
         .entities = snaps.items,
+        .next_id = entity.Entity.next_id,
         .next_contour_id = Contour.next_id,
         .next_spawner_id = Spawner.next_id,
     };
@@ -317,6 +342,7 @@ pub fn loadScene(
     entities: *std.ArrayList(entity.Entity),
     contours: *std.ArrayList(*Contour),
     spawners: *std.ArrayList(*Spawner),
+    areas: *std.ArrayList(*Area),
 ) !void {
     const json = try commons.readFile(allocator, path);
     defer allocator.free(json);
@@ -328,6 +354,7 @@ pub fn loadScene(
     entities.clearRetainingCapacity();
     contours.clearRetainingCapacity();
     spawners.clearRetainingCapacity();
+    areas.clearRetainingCapacity();
 
     // if there is nothing in the file, return
     if (json.len == 0) {
@@ -345,6 +372,7 @@ pub fn loadScene(
     const scene: SceneSnapshot = parsed.value;
 
     // get next ids for the EE's
+    entity.Entity.next_id = scene.next_id;
     Contour.next_id = scene.next_contour_id;
     Spawner.next_id = scene.next_spawner_id;
 
@@ -356,6 +384,7 @@ pub fn loadScene(
         switch (entity_ptr.*) {
             .contour => try contours.append(&entity_ptr.contour),
             .spawner => try spawners.append(&entity_ptr.spawner),
+            .area => try areas.append(&entity_ptr.area),
         }
     }
 }

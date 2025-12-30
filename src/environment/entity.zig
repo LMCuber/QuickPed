@@ -1,6 +1,7 @@
 const Contour = @import("contour.zig");
 const SimData = @import("../sim_data.zig");
 const Spawner = @import("spawner.zig");
+const Area = @import("area.zig");
 const commons = @import("../commons.zig");
 const std = @import("std");
 const rl = @import("raylib");
@@ -8,20 +9,26 @@ const rl = @import("raylib");
 pub const EntitySnapshot = union(enum) {
     contour: Contour.ContourSnapshot,
     spawner: Spawner.SpawnerSnapshot,
+    area: Area.AreaSnapshot,
 };
 
 pub const Entity = union(enum) {
     pub const EntityAction = enum { none, placed, cancelled };
+    pub var next_id: usize = 0;
 
     contour: Contour,
     spawner: Spawner,
+    area: Area,
 
     pub fn update(self: *Entity, sim_data: SimData) !EntityAction {
         switch (self.*) {
-            inline else => |*inner| {
-                return inner.update(sim_data);
-            },
+            inline else => |*inner| return inner.update(sim_data),
         }
+    }
+
+    pub fn nextId() usize {
+        next_id += 1;
+        return next_id - 1;
     }
 
     pub fn initContour(allocator: std.mem.Allocator) !Entity {
@@ -29,13 +36,16 @@ pub const Entity = union(enum) {
     }
 
     pub fn initSpawner(allocator: std.mem.Allocator) !Entity {
-        return .{ .spawner = try Spawner.init(allocator) };
+        return .{ .spawner = try Spawner.init(allocator, nextId()) };
+    }
+
+    pub fn initArea(allocator: std.mem.Allocator) !Entity {
+        return .{ .area = try Area.init(allocator) };
     }
 
     pub fn deinit(self: *Entity, allocator: std.mem.Allocator) void {
         switch (self.*) {
-            .contour => |*c| c.deinit(allocator),
-            .spawner => |*c| c.deinit(allocator),
+            inline else => |*inner| inner.deinit(allocator),
         }
     }
 
@@ -43,6 +53,7 @@ pub const Entity = union(enum) {
         return switch (self.*) {
             .contour => |c| .{ .contour = c.getSnapshot() },
             .spawner => |s| .{ .spawner = s.getSnapshot() },
+            .area => |a| .{ .area = a.getSnapshot() },
         };
     }
 
@@ -50,6 +61,7 @@ pub const Entity = union(enum) {
         return switch (snap) {
             .contour => |cs| .{ .contour = try Contour.fromSnapshot(allocator, cs) },
             .spawner => |ss| .{ .spawner = try Spawner.fromSnapshot(allocator, ss) },
+            .area => |as| .{ .area = try Area.fromSnapshot(allocator, as) },
         };
     }
 

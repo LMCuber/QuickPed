@@ -7,7 +7,8 @@ const Entity = @import("entity.zig").Entity;
 const SimData = @import("../sim_data.zig");
 
 id: usize,
-name: []const u8,
+spawner_id: usize,
+name: [:0]const u8,
 points: [2]rl.Vector2 = undefined,
 point_count: usize = 0,
 placed: bool = false,
@@ -17,18 +18,20 @@ pub var next_id: usize = 0;
 
 pub const SpawnerSnapshot = struct {
     id: usize,
-    name: []const u8,
+    spawner_id: usize,
+    name: [:0]const u8,
     points: [2]rl.Vector2,
 };
 
-pub fn init(allocator: std.mem.Allocator) !Self {
-    const id = nextId();
+pub fn init(allocator: std.mem.Allocator, id: usize) !Self {
+    const spawner_id = nextId();
     return .{
         .id = id,
-        .name = try std.fmt.allocPrint(
+        .spawner_id = spawner_id,
+        .name = try std.fmt.allocPrintZ(
             allocator,
             "Spawner{}",
-            .{id},
+            .{spawner_id},
         ),
     };
 }
@@ -40,6 +43,7 @@ pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
 pub fn getSnapshot(self: Self) SpawnerSnapshot {
     return .{
         .id = self.id,
+        .spawner_id = self.spawner_id,
         .name = self.name,
         .points = self.points,
     };
@@ -48,7 +52,8 @@ pub fn getSnapshot(self: Self) SpawnerSnapshot {
 pub fn fromSnapshot(allocator: std.mem.Allocator, snap: SpawnerSnapshot) !Self {
     return .{
         .id = snap.id,
-        .name = try allocator.dupe(u8, snap.name),
+        .spawner_id = snap.spawner_id,
+        .name = try allocator.dupeZ(u8, snap.name),
         .points = snap.points,
         .point_count = 2,
         .placed = true,
@@ -60,7 +65,7 @@ pub fn nextId() usize {
     return next_id - 1;
 }
 
-pub fn update(self: *Self, sim_data: SimData) !Entity.EntityAction {
+pub fn update(self: *Self, sim_data: SimData) Entity.EntityAction {
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
         // place new point
