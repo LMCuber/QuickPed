@@ -1,0 +1,25 @@
+{
+  "version": "0.1.0",
+  "entities": [
+    {
+      "spawner": {
+        "id": 0,
+        "spawner_id": 0,
+        "name": "Spawner0",
+        "points": [
+          {
+            "x": 2.88e2,
+            "y": 2.72e2
+          },
+          {
+            "x": 4.16e2,
+            "y": 4.16e2
+          }
+        ]
+      }
+    }
+  ],
+  "next_id": 1,
+  "next_contour_id": 0,
+  "next_spawner_id": 1
+}

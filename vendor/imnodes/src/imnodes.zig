@@ -22,9 +22,46 @@ extern fn imnodes_end_output_attribute() void;
 extern fn imnodes_minimap() void;
 extern fn imnodes_link(id: i32, start_id: i32, end_id: i32) void;
 
-//---------------------------------------------
+extern fn imnodes_is_editor_hovered() bool;
+
+extern fn imnodes_push_color_style(item: ImNodesCol, color: u32) void;
+extern fn imnodes_pop_color_style() void;
+
+// enums
+pub const ImNodesCol = enum(c_int) {
+    ImNodesCol_NodeBackground,
+    ImNodesCol_NodeBackgroundHovered,
+    ImNodesCol_NodeBackgroundSelected,
+    ImNodesCol_NodeOutline,
+    ImNodesCol_TitleBar,
+    ImNodesCol_TitleBarHovered,
+    ImNodesCol_TitleBarSelected,
+    ImNodesCol_Link,
+    ImNodesCol_LinkHovered,
+    ImNodesCol_LinkSelected,
+    ImNodesCol_Pin,
+    ImNodesCol_PinHovered,
+    ImNodesCol_BoxSelector,
+    ImNodesCol_BoxSelectorOutline,
+    ImNodesCol_GridBackground,
+    ImNodesCol_GridLine,
+    ImNodesCol_GridLinePrimary,
+    ImNodesCol_MiniMapBackground,
+    ImNodesCol_MiniMapBackgroundHovered,
+    ImNodesCol_MiniMapOutline,
+    ImNodesCol_MiniMapOutlineHovered,
+    ImNodesCol_MiniMapNodeBackground,
+    ImNodesCol_MiniMapNodeBackgroundHovered,
+    ImNodesCol_MiniMapNodeBackgroundSelected,
+    ImNodesCol_MiniMapNodeOutline,
+    ImNodesCol_MiniMapLink,
+    ImNodesCol_MiniMapLinkSelected,
+    ImNodesCol_MiniMapCanvas,
+    ImNodesCol_MiniMapCanvasOutline,
+    ImNodesCol_COUNT,
+};
+
 // Zig API
-//---------------------------------------------
 pub fn createContext() void {
     imnodes_create_context();
 }
@@ -79,4 +116,16 @@ pub fn minimap() void {
 
 pub fn link(id: i32, start_attribute_id: i32, end_attribute_id: i32) void {
     imnodes_link(id, start_attribute_id, end_attribute_id);
+}
+
+pub fn isEditorHovered() bool {
+    return imnodes_is_editor_hovered();
+}
+
+pub fn pushColorStyle(item: ImNodesCol, color: u32) void {
+    return imnodes_push_color_style(item, color);
+}
+
+pub fn popColorStyle() void {
+    return imnodes_pop_color_style();
 }

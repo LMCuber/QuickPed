@@ -7,7 +7,7 @@ const Entity = @import("entity.zig").Entity;
 const SimData = @import("../sim_data.zig");
 
 id: usize,
-name: []const u8,
+name: [:0]const u8,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 points: std.ArrayList(rl.Vector2),
 placed: bool = false,
@@ -16,7 +16,7 @@ pub var next_id: usize = 0;
 
 pub const ContourSnapshot = struct {
     id: usize,
-    name: []const u8,
+    name: [:0]const u8,
     points: []rl.Vector2,
 };
 
@@ -24,7 +24,7 @@ pub fn init(allocator: std.mem.Allocator) !Self {
     const id = nextId();
     return .{
         .id = id,
-        .name = try std.fmt.allocPrint(
+        .name = try std.fmt.allocPrintZ(
             allocator,
             "Contour{}",
             .{id},
@@ -53,7 +53,7 @@ pub fn fromSnapshot(allocator: std.mem.Allocator, snap: ContourSnapshot) !Self {
     }
     return .{
         .id = snap.id,
-        .name = try allocator.dupe(u8, snap.name),
+        .name = try allocator.dupeZ(u8, snap.name),
         .points = points,
         .placed = true,
     };
