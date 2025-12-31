@@ -64,7 +64,7 @@ pub fn render(
                 for (spawners.items) |spawner| {
                     if (z.menuItem(spawner.name, .{})) {
                         try self.graph.addNode(node.Node.initSpawner(
-                            spawner.spawner_id,
+                            spawner,
                             100,
                         ));
                     }
@@ -77,7 +77,7 @@ pub fn render(
                 for (areas.items) |area| {
                     if (z.menuItem(area.name, .{})) {
                         try self.graph.addNode(node.Node.initArea(
-                            area.area_id,
+                            area,
                             100,
                         ));
                     }
@@ -93,6 +93,11 @@ pub fn render(
     // render entire graph using imnodes
     for (self.graph.nodes.items) |*n| {
         n.draw();
+    }
+
+    // render existing links
+    for (self.graph.links.items) |link| {
+        imnodes.link(0, link.left_attr_id, link.right_attr_id);
     }
 
     // imnodes.minimap();

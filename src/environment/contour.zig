@@ -6,12 +6,8 @@ const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../sim_data.zig");
 
-<<<<<<< HEAD
 id: i32,
 contour_id: i32,
-=======
-id: usize,
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
 name: [:0]const u8,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 points: std.ArrayList(rl.Vector2),
@@ -20,12 +16,8 @@ placed: bool = false,
 pub var next_id: i32 = 0;
 
 pub const ContourSnapshot = struct {
-<<<<<<< HEAD
     id: i32,
     contour_id: i32,
-=======
-    id: usize,
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
     name: [:0]const u8,
     points: []rl.Vector2,
 };
@@ -34,10 +26,7 @@ pub fn init(allocator: std.mem.Allocator, id: i32) !Self {
     const contour_id = nextId();
     return .{
         .id = id,
-<<<<<<< HEAD
         .contour_id = contour_id,
-=======
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
         .name = try std.fmt.allocPrintZ(
             allocator,
             "Contour{}",
@@ -68,10 +57,7 @@ pub fn fromSnapshot(allocator: std.mem.Allocator, snap: ContourSnapshot) !Self {
     }
     return .{
         .id = snap.id,
-<<<<<<< HEAD
         .contour_id = snap.contour_id,
-=======
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
         .name = try allocator.dupeZ(u8, snap.name),
         .points = points,
         .placed = true,

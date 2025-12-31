@@ -2,15 +2,14 @@
   "version": "0.1.0",
   "entities": [
     {
-<<<<<<< HEAD
       "area": {
         "id": 0,
         "area_id": 0,
         "name": "Area0",
         "rect": {
-          "x": 2.56e2,
-          "y": 2.24e2,
-          "width": 2.56e2,
+          "x": 3.52e2,
+          "y": 1.12e2,
+          "width": 3.04e2,
           "height": 1.6e2
         }
       }
@@ -18,39 +17,89 @@
     {
       "spawner": {
         "id": 1,
-=======
-      "spawner": {
-        "id": 0,
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
         "spawner_id": 0,
         "name": "Spawner0",
         "points": [
           {
-<<<<<<< HEAD
-            "x": 1.12e2,
-            "y": 5.6e2
+            "x": 8e1,
+            "y": 4.32e2
           },
           {
-            "x": 2.88e2,
-            "y": 6.08e2
-=======
-            "x": 2.88e2,
-            "y": 2.72e2
+            "x": 1.44e2,
+            "y": 5.12e2
+          }
+        ]
+      }
+    },
+    {
+      "contour": {
+        "id": 2,
+        "contour_id": 0,
+        "name": "Contour0",
+        "points": [
+          {
+            "x": 4.8e1,
+            "y": 3.2e1
+          },
+          {
+            "x": 4.8e1,
+            "y": 5.92e2
+          },
+          {
+            "x": 6.72e2,
+            "y": 5.92e2
+          },
+          {
+            "x": 6.72e2,
+            "y": 3.2e1
+          },
+          {
+            "x": 4.8e1,
+            "y": 3.2e1
+          }
+        ]
+      }
+    },
+    {
+      "contour": {
+        "id": 3,
+        "contour_id": 1,
+        "name": "Contour1",
+        "points": [
+          {
+            "x": 1.6e2,
+            "y": 1.44e2
+          },
+          {
+            "x": 2.56e2,
+            "y": 1.28e2
+          },
+          {
+            "x": 2.4e2,
+            "y": 1.6e2
+          }
+        ]
+      }
+    },
+    {
+      "spawner": {
+        "id": 4,
+        "spawner_id": 1,
+        "name": "Spawner1",
+        "points": [
+          {
+            "x": 2.56e2,
+            "y": 4.96e2
           },
           {
             "x": 4.16e2,
-            "y": 4.16e2
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
+            "y": 5.12e2
           }
         ]
       }
     }
   ],
-<<<<<<< HEAD
-  "next_id": 2,
-=======
-  "next_id": 1,
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
-  "next_contour_id": 0,
-  "next_spawner_id": 1
+  "next_id": 5,
+  "next_contour_id": 2,
+  "next_spawner_id": 2
 }

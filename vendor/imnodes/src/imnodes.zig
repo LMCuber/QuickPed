@@ -27,11 +27,8 @@ extern fn imnodes_is_editor_hovered() bool;
 extern fn imnodes_push_color_style(item: ImNodesCol, color: u32) void;
 extern fn imnodes_pop_color_style() void;
 
-<<<<<<< HEAD
 extern fn imnodes_is_link_created(start_attr: *i32, end_attr: *i32) bool;
 
-=======
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
 // enums
 pub const ImNodesCol = enum(c_int) {
     ImNodesCol_NodeBackground,
@@ -134,10 +131,7 @@ pub fn pushColorStyle(item: ImNodesCol, color: u32) void {
 pub fn popColorStyle() void {
     return imnodes_pop_color_style();
 }
-<<<<<<< HEAD
 
 pub fn isLinkCreated(start_attr: *i32, end_attr: *i32) bool {
     return imnodes_is_link_created(start_attr, end_attr);
 }
-=======
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96

@@ -14,11 +14,7 @@ pub const EntitySnapshot = union(enum) {
 
 pub const Entity = union(enum) {
     pub const EntityAction = enum { none, placed, cancelled };
-<<<<<<< HEAD
     pub var next_id: i32 = 0;
-=======
-    pub var next_id: usize = 0;
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
 
     contour: Contour,
     spawner: Spawner,
@@ -30,11 +26,7 @@ pub const Entity = union(enum) {
         }
     }
 
-<<<<<<< HEAD
     pub fn nextId() i32 {
-=======
-    pub fn nextId() usize {
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
         next_id += 1;
         return next_id - 1;
     }
@@ -48,11 +40,7 @@ pub const Entity = union(enum) {
     }
 
     pub fn initArea(allocator: std.mem.Allocator) !Entity {
-<<<<<<< HEAD
         return .{ .area = try Area.init(allocator, nextId()) };
-=======
-        return .{ .area = try Area.init(allocator) };
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
     }
 
     pub fn deinit(self: *Entity, allocator: std.mem.Allocator) void {

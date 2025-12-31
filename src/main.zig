@@ -32,15 +32,9 @@ var agent_data = AgentData.init();
 const SceneSnapshot = struct {
     version: []const u8,
     entities: []const entity.EntitySnapshot,
-<<<<<<< HEAD
     next_id: i32,
     next_contour_id: i32,
     next_spawner_id: i32,
-=======
-    next_id: usize,
-    next_contour_id: usize,
-    next_spawner_id: usize,
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
 };
 
 // main
@@ -272,11 +266,7 @@ pub fn main() !void {
                         .h = @floatFromInt(settings.height),
                     });
 
-<<<<<<< HEAD
                     try node_editor.render(&spawners, &areas);
-=======
-                    try node_editor.render(&spawners);
->>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
                 }
             }
         }
