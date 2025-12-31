@@ -3,14 +3,21 @@ const imnodes = @import("imnodes");
 const color = @import("../color.zig");
 
 pub const SpawnerNode = struct {
+<<<<<<< HEAD
     node_id: i32,
     spawner_id: i32,
+=======
+    spawner_id: usize,
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
     wait: i32,
     target: usize = undefined,
 
     pub fn draw(self: *SpawnerNode) void {
+<<<<<<< HEAD
         const node_width: f32 = 140;
 
+=======
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
         imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff40a140);
         imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xff64CC61);
         imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xff64CC61);
@@ -18,7 +25,11 @@ pub const SpawnerNode = struct {
         defer imnodes.popColorStyle();
         defer imnodes.popColorStyle();
 
+<<<<<<< HEAD
         imnodes.beginNode(self.node_id);
+=======
+        imnodes.beginNode(0);
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
         defer imnodes.endNode();
 
         imnodes.beginNodeTitleBar();
@@ -33,6 +44,7 @@ pub const SpawnerNode = struct {
             _ = z.text("arrival interval in ms", .{});
         }
         z.sameLine(.{});
+<<<<<<< HEAD
         z.setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
         _ = z.inputInt("##", .{ .v = &self.wait });
 
@@ -115,11 +127,20 @@ pub const SinkNode = struct {
         imnodes.beginInputAttribute(self.node_id + 100);
         z.text("from", .{});
         imnodes.endInputAttribute();
+=======
+        z.setNextItemWidth(100);
+        _ = z.inputInt("##", .{ .v = &self.wait });
+
+        // target output
+        imnodes.beginOutputAttribute(0);
+        defer imnodes.endOutputAttribute();
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
     }
 };
 
 pub const Node = union(enum) {
     spawner: SpawnerNode,
+<<<<<<< HEAD
     area: AreaNode,
     sink: SinkNode,
 
@@ -133,11 +154,17 @@ pub const Node = union(enum) {
     pub fn initSpawner(spawner_id: i32, wait: i32) Node {
         return .{ .spawner = .{
             .node_id = nextNodeId(),
+=======
+
+    pub fn initSpawner(spawner_id: usize, wait: i32) Node {
+        return .{ .spawner = .{
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
             .spawner_id = spawner_id,
             .wait = wait,
         } };
     }
 
+<<<<<<< HEAD
     pub fn initArea(area_id: i32, wait: i32) Node {
         return .{ .area = .{
             .node_id = nextNodeId(),
@@ -155,12 +182,21 @@ pub const Node = union(enum) {
             .spawner => "Spawner",
             .area => "Area",
             .sink => "Sink",
+=======
+    pub fn getName(self: Node) []const u8 {
+        return switch (self) {
+            .spawner => "Spawner",
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
         };
     }
 
     pub fn draw(self: *Node) void {
         switch (self.*) {
+<<<<<<< HEAD
             inline else => |*spawner| spawner.draw(),
+=======
+            .spawner => |*spawner| spawner.draw(),
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
         }
     }
 };

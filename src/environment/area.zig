@@ -6,8 +6,12 @@ const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../sim_data.zig");
 
+<<<<<<< HEAD
 id: i32,
 area_id: i32,
+=======
+id: usize,
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
 name: [:0]const u8,
 topleft: rl.Vector2 = undefined,
 rect: rl.Rectangle = undefined,
@@ -15,15 +19,23 @@ placed: bool = false,
 anchored: bool = false,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 
+<<<<<<< HEAD
 pub var next_id: i32 = 0;
 
 pub const AreaSnapshot = struct {
     id: i32,
     area_id: i32,
+=======
+pub var next_id: usize = 0;
+
+pub const AreaSnapshot = struct {
+    id: usize,
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
     name: [:0]const u8,
     rect: rl.Rectangle,
 };
 
+<<<<<<< HEAD
 pub fn init(allocator: std.mem.Allocator, id: i32) !Self {
     const area_id = nextId();
     return .{
@@ -33,6 +45,16 @@ pub fn init(allocator: std.mem.Allocator, id: i32) !Self {
             allocator,
             "Area{}",
             .{area_id},
+=======
+pub fn init(allocator: std.mem.Allocator) !Self {
+    const id = nextId();
+    return .{
+        .id = id,
+        .name = try std.fmt.allocPrintZ(
+            allocator,
+            "Area{}",
+            .{id},
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
         ),
     };
 }
@@ -44,7 +66,10 @@ pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
 pub fn getSnapshot(self: Self) AreaSnapshot {
     return .{
         .id = self.id,
+<<<<<<< HEAD
         .area_id = self.area_id,
+=======
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
         .name = self.name,
         .rect = self.rect,
     };
@@ -53,7 +78,10 @@ pub fn getSnapshot(self: Self) AreaSnapshot {
 pub fn fromSnapshot(allocator: std.mem.Allocator, snap: AreaSnapshot) !Self {
     return .{
         .id = snap.id,
+<<<<<<< HEAD
         .area_id = snap.area_id,
+=======
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
         .name = try allocator.dupeZ(u8, snap.name),
         .rect = snap.rect,
         .anchored = true,
@@ -61,7 +89,11 @@ pub fn fromSnapshot(allocator: std.mem.Allocator, snap: AreaSnapshot) !Self {
     };
 }
 
+<<<<<<< HEAD
 pub fn nextId() i32 {
+=======
+pub fn nextId() usize {
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
     next_id += 1;
     return next_id - 1;
 }

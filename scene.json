@@ -2,6 +2,7 @@
   "version": "0.1.0",
   "entities": [
     {
+<<<<<<< HEAD
       "area": {
         "id": 0,
         "area_id": 0,
@@ -17,22 +18,39 @@
     {
       "spawner": {
         "id": 1,
+=======
+      "spawner": {
+        "id": 0,
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
         "spawner_id": 0,
         "name": "Spawner0",
         "points": [
           {
+<<<<<<< HEAD
             "x": 1.12e2,
             "y": 5.6e2
           },
           {
             "x": 2.88e2,
             "y": 6.08e2
+=======
+            "x": 2.88e2,
+            "y": 2.72e2
+          },
+          {
+            "x": 4.16e2,
+            "y": 4.16e2
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
           }
         ]
       }
     }
   ],
+<<<<<<< HEAD
   "next_id": 2,
+=======
+  "next_id": 1,
+>>>>>>> b1df9b51109d6ec82cc6091d6f95116dbebb8b96
   "next_contour_id": 0,
   "next_spawner_id": 1
 }
