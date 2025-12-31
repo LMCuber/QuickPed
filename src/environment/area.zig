@@ -6,7 +6,8 @@ const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../sim_data.zig");
 
-id: usize,
+id: i32,
+area_id: i32,
 name: [:0]const u8,
 topleft: rl.Vector2 = undefined,
 rect: rl.Rectangle = undefined,
@@ -14,22 +15,24 @@ placed: bool = false,
 anchored: bool = false,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 
-pub var next_id: usize = 0;
+pub var next_id: i32 = 0;
 
 pub const AreaSnapshot = struct {
-    id: usize,
+    id: i32,
+    area_id: i32,
     name: [:0]const u8,
     rect: rl.Rectangle,
 };
 
-pub fn init(allocator: std.mem.Allocator) !Self {
-    const id = nextId();
+pub fn init(allocator: std.mem.Allocator, id: i32) !Self {
+    const area_id = nextId();
     return .{
         .id = id,
+        .area_id = area_id,
         .name = try std.fmt.allocPrintZ(
             allocator,
             "Area{}",
-            .{id},
+            .{area_id},
         ),
     };
 }
@@ -41,6 +44,7 @@ pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
 pub fn getSnapshot(self: Self) AreaSnapshot {
     return .{
         .id = self.id,
+        .area_id = self.area_id,
         .name = self.name,
         .rect = self.rect,
     };
@@ -49,6 +53,7 @@ pub fn getSnapshot(self: Self) AreaSnapshot {
 pub fn fromSnapshot(allocator: std.mem.Allocator, snap: AreaSnapshot) !Self {
     return .{
         .id = snap.id,
+        .area_id = snap.area_id,
         .name = try allocator.dupeZ(u8, snap.name),
         .rect = snap.rect,
         .anchored = true,
@@ -56,7 +61,7 @@ pub fn fromSnapshot(allocator: std.mem.Allocator, snap: AreaSnapshot) !Self {
     };
 }
 
-pub fn nextId() usize {
+pub fn nextId() i32 {
     next_id += 1;
     return next_id - 1;
 }

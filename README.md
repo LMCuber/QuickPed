@@ -15,6 +15,7 @@ Later Zig versions are not guaranteed to build correctly.
 - [ ] 🟥 A variety of environmental objects, such as revolving queues, revolving doors, waiting areas
 - [ ] 🟧 Editing environmental objects after creation
 - [ ] 🟧 Quadtree for collisions
+- [ ] 🟨 Heatmap showing bottlenecks during simulation
 
 ## Won't haves
 - **Macroscoping modeling**

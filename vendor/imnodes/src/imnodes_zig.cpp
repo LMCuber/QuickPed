@@ -65,6 +65,10 @@ extern "C" {
         ImNodes::PopColorStyle();
     }
 
+    bool imnodes_is_link_created(int* start_attr, int* end_attr) {
+        return ImNodes::IsLinkCreated(start_attr, end_attr);
+    }
+
     // ----------------
     void imnodes_minimap() {
         ImNodes::MiniMap();

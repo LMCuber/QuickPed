@@ -32,9 +32,9 @@ var agent_data = AgentData.init();
 const SceneSnapshot = struct {
     version: []const u8,
     entities: []const entity.EntitySnapshot,
-    next_id: usize,
-    next_contour_id: usize,
-    next_spawner_id: usize,
+    next_id: i32,
+    next_contour_id: i32,
+    next_spawner_id: i32,
 };
 
 // main
@@ -194,14 +194,13 @@ pub fn main() !void {
                 c.rlImGuiBegin();
                 defer c.rlImGuiEnd();
 
-                z.setNextWindowPos(.{ .x = @floatFromInt(settings.width - settings.tab_width), .y = 0 });
-                z.setNextWindowSize(.{
-                    .w = @floatFromInt(settings.tab_width),
-                    .h = @floatFromInt(settings.height),
-                });
-
                 // draw all options (except node editor)
                 {
+                    z.setNextWindowPos(.{ .x = @floatFromInt(settings.width - settings.tab_width), .y = 0 });
+                    z.setNextWindowSize(.{
+                        .w = @floatFromInt(settings.tab_width),
+                        .h = @floatFromInt(settings.height),
+                    });
                     _ = z.begin("Settings", .{});
                     defer z.end();
 
@@ -267,7 +266,7 @@ pub fn main() !void {
                         .h = @floatFromInt(settings.height),
                     });
 
-                    try node_editor.render(&spawners);
+                    try node_editor.render(&spawners, &areas);
                 }
             }
         }

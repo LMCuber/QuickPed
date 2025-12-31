@@ -6,24 +6,24 @@ const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../sim_data.zig");
 
-id: usize,
-spawner_id: usize,
+id: i32,
+spawner_id: i32,
 name: [:0]const u8,
 points: [2]rl.Vector2 = undefined,
 point_count: usize = 0,
 placed: bool = false,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 
-pub var next_id: usize = 0;
+pub var next_id: i32 = 0;
 
 pub const SpawnerSnapshot = struct {
-    id: usize,
-    spawner_id: usize,
+    id: i32,
+    spawner_id: i32,
     name: [:0]const u8,
     points: [2]rl.Vector2,
 };
 
-pub fn init(allocator: std.mem.Allocator, id: usize) !Self {
+pub fn init(allocator: std.mem.Allocator, id: i32) !Self {
     const spawner_id = nextId();
     return .{
         .id = id,
@@ -60,7 +60,7 @@ pub fn fromSnapshot(allocator: std.mem.Allocator, snap: SpawnerSnapshot) !Self {
     };
 }
 
-pub fn nextId() usize {
+pub fn nextId() i32 {
     next_id += 1;
     return next_id - 1;
 }

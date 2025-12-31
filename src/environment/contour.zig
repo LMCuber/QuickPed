@@ -6,28 +6,31 @@ const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../sim_data.zig");
 
-id: usize,
+id: i32,
+contour_id: i32,
 name: [:0]const u8,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 points: std.ArrayList(rl.Vector2),
 placed: bool = false,
 
-pub var next_id: usize = 0;
+pub var next_id: i32 = 0;
 
 pub const ContourSnapshot = struct {
-    id: usize,
+    id: i32,
+    contour_id: i32,
     name: [:0]const u8,
     points: []rl.Vector2,
 };
 
-pub fn init(allocator: std.mem.Allocator) !Self {
-    const id = nextId();
+pub fn init(allocator: std.mem.Allocator, id: i32) !Self {
+    const contour_id = nextId();
     return .{
         .id = id,
+        .contour_id = contour_id,
         .name = try std.fmt.allocPrintZ(
             allocator,
             "Contour{}",
-            .{id},
+            .{contour_id},
         ),
         .points = std.ArrayList(rl.Vector2).init(allocator),
     };
@@ -41,6 +44,7 @@ pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
 pub fn getSnapshot(self: Self) ContourSnapshot {
     return .{
         .id = self.id,
+        .contour_id = self.contour_id,
         .name = self.name,
         .points = self.points.items,
     };
@@ -53,13 +57,14 @@ pub fn fromSnapshot(allocator: std.mem.Allocator, snap: ContourSnapshot) !Self {
     }
     return .{
         .id = snap.id,
+        .contour_id = snap.contour_id,
         .name = try allocator.dupeZ(u8, snap.name),
         .points = points,
         .placed = true,
     };
 }
 
-pub fn nextId() usize {
+pub fn nextId() i32 {
     next_id += 1;
     return next_id - 1;
 }
