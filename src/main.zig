@@ -87,8 +87,8 @@ pub fn main() !void {
     defer areas.deinit();
 
     // node editor
-    var node_editor = NodeEditor.init(allocator);
-    defer node_editor.deinit();
+    // var node_editor = NodeEditor.init(allocator);
+    // defer node_editor.deinit();
 
     try loadScene(
         allocator,
@@ -140,10 +140,10 @@ pub fn main() !void {
                         try entities.append(ent.*);
                         const stored_entity_ptr = &entities.items[entities.items.len - 1];
 
-                        switch (stored_entity_ptr.*) {
-                            .contour => try contours.append(&stored_entity_ptr.contour),
-                            .spawner => try spawners.append(&stored_entity_ptr.spawner),
-                            .area => try areas.append(&stored_entity_ptr.area),
+                        switch (stored_entity_ptr.kind) {
+                            .contour => try contours.append(&stored_entity_ptr.kind.contour),
+                            .spawner => try spawners.append(&stored_entity_ptr.kind.spawner),
+                            .area => try areas.append(&stored_entity_ptr.kind.area),
                         }
 
                         entity_storage = null;
@@ -266,7 +266,9 @@ pub fn main() !void {
                         .h = @floatFromInt(settings.height),
                     });
 
-                    try node_editor.render(&spawners, &areas);
+                    // try node_editor.render(
+                    //     &spawners,
+                    // );
                 }
             }
         }
@@ -380,10 +382,10 @@ pub fn loadScene(
         try entities.append(try entity.Entity.fromSnapshot(allocator, snap));
 
         const entity_ptr = &entities.items[entities.items.len - 1];
-        switch (entity_ptr.*) {
-            .contour => try contours.append(&entity_ptr.contour),
-            .spawner => try spawners.append(&entity_ptr.spawner),
-            .area => try areas.append(&entity_ptr.area),
+        switch (entity_ptr.kind) {
+            .contour => try contours.append(&entity_ptr.kind.contour),
+            .spawner => try spawners.append(&entity_ptr.kind.spawner),
+            .area => try areas.append(&entity_ptr.kind.area),
         }
     }
 }

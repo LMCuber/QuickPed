@@ -6,9 +6,7 @@ const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../sim_data.zig");
 
-id: i32,
 spawner_id: i32,
-name: [:0]const u8,
 points: [2]rl.Vector2 = undefined,
 point_count: usize = 0,
 placed: bool = false,
@@ -17,43 +15,26 @@ pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 pub var next_id: i32 = 0;
 
 pub const SpawnerSnapshot = struct {
-    id: i32,
     spawner_id: i32,
-    name: [:0]const u8,
     points: [2]rl.Vector2,
 };
 
-pub fn init(allocator: std.mem.Allocator, id: i32) !Self {
-    const spawner_id = nextId();
+pub fn init() Self {
     return .{
-        .id = id,
-        .spawner_id = spawner_id,
-        .name = try std.fmt.allocPrintZ(
-            allocator,
-            "Spawner{}",
-            .{spawner_id},
-        ),
+        .spawner_id = nextId(),
     };
-}
-
-pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
-    allocator.free(self.name);
 }
 
 pub fn getSnapshot(self: Self) SpawnerSnapshot {
     return .{
-        .id = self.id,
         .spawner_id = self.spawner_id,
-        .name = self.name,
         .points = self.points,
     };
 }
 
-pub fn fromSnapshot(allocator: std.mem.Allocator, snap: SpawnerSnapshot) !Self {
+pub fn fromSnapshot(snap: SpawnerSnapshot) Self {
     return .{
-        .id = snap.id,
         .spawner_id = snap.spawner_id,
-        .name = try allocator.dupeZ(u8, snap.name),
         .points = snap.points,
         .point_count = 2,
         .placed = true,
