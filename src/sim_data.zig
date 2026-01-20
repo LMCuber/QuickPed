@@ -13,7 +13,7 @@ pub fn init() Self {
 pub fn render(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) void {
     if (z.collapsingHeader("Simulation", .{ .default_open = false })) {
         _ = z.colorEdit3("bg", .{ .col = @ptrCast(&self.bg_color) });
-        if (z.button("Recenter", .{})) {
+        if (z.button("recenter", .{})) {
             camera.target = camera_default.target;
             camera.offset = camera_default.offset;
             camera.rotation = camera_default.rotation;
@@ -21,7 +21,7 @@ pub fn render(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) vo
         }
         z.sameLine(.{});
         _ = z.checkbox("paused", .{ .v = &self.paused });
-        _ = z.sliderInt("grid size", .{ .v = &self.grid_size, .min = 10, .max = 100 });
+        // _ = z.sliderInt("grid size", .{ .v = &self.grid_size, .min = 10, .max = 100 });
         z.newLine();
     }
 }

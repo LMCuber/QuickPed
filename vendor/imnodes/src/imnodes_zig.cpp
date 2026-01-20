@@ -69,6 +69,10 @@ extern "C" {
         return ImNodes::IsLinkCreated(start_attr, end_attr);
     }
 
+    bool imnodes_is_link_destroyed(int* link_id) {
+        return ImNodes::IsLinkDestroyed(link_id);
+    }
+
     void imnodes_minimap() {
         ImNodes::MiniMap();
     }

@@ -1,180 +1,225 @@
+//
+//  IMNODES COLORS IN 0x[A G B R] !!!
+//
+
 // const z = @import("zgui");
 // const imnodes = @import("imnodes");
 // const color = @import("../color.zig");
 // const Spawner = @import("../environment/spawner.zig");
 // const Area = @import("../environment/area.zig");
+const std = @import("std");
+const imnodes = @import("imnodes");
+const z = @import("zgui");
+const Spawner = @import("../environment/spawner.zig");
+const Area = @import("../environment/area.zig");
 
-// pub const SpawnerNode = struct {
-//     node_id: i32,
-//     spawner: *Spawner,
-//     wait: i32,
-//     target: usize = undefined,
+pub const Node = struct {
+    pub var next_id: i32 = 0;
 
-//     pub fn draw(self: *SpawnerNode) void {
-//         const node_width: f32 = 140;
+    id: i32,
+    name: [:0]const u8,
+    kind: union(enum) {
+        spawner: SpawnerNode,
+        sink: SinkNode,
+        area: AreaNode,
+    },
 
-//         imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff40a140);
-//         imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xff64CC61);
-//         imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xff64CC61);
-//         defer imnodes.popColorStyle();
-//         defer imnodes.popColorStyle();
-//         defer imnodes.popColorStyle();
+    pub fn nextId() i32 {
+        next_id += 1;
+        return next_id - 1;
+    }
 
-//         imnodes.beginNode(self.node_id);
-//         defer imnodes.endNode();
+    pub fn draw(self: *Node) void {
+        switch (self.kind) {
+            inline else => |*node| node.draw(self.id, self.name),
+        }
+    }
 
-//         imnodes.beginNodeTitleBar();
-//         z.text("{s}", .{self.spawner.name});
-//         imnodes.endNodeTitleBar();
+    pub fn initSpawner(spawner: *Spawner, wait: i32) Node {
+        return .{
+            .id = Node.nextId(),
+            .name = "SpawnerNode",
+            .kind = .{
+                .spawner = .{
+                    .spawner = spawner,
+                    .wait = wait,
+                    .target = .{
+                        .id = Port.nextId(),
+                    },
+                },
+            },
+        };
+    }
 
-//         // wait input
-//         z.text("wait", .{});
-//         if (z.isItemHovered(.{})) {
-//             _ = z.beginTooltip();
-//             defer z.endTooltip();
-//             _ = z.text("arrival interval in ms", .{});
-//         }
-//         z.sameLine(.{});
-//         z.setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
-//         _ = z.inputInt("##", .{ .v = &self.wait });
+    pub fn initSink() Node {
+        return .{
+            .id = Node.nextId(),
+            .name = "SinkNode",
+            .kind = .{
+                .sink = .{
+                    .from = .{
+                        .id = Port.nextId(),
+                    },
+                },
+            },
+        };
+    }
 
-//         // target output
-//         imnodes.beginOutputAttribute(self.node_id);
-//         z.indent(.{ .indent_w = node_width - z.calcTextSize("target", .{})[0] });
-//         z.text("target", .{});
-//         imnodes.endOutputAttribute();
-//     }
-// };
+    pub fn initArea(area: *Area, wait: i32) Node {
+        return .{
+            .id = Node.nextId(),
+            .name = "AreaNode",
+            .kind = .{
+                .area = .{
+                    .area = area,
+                    .wait = wait,
+                    .from = .{
+                        .id = Port.nextId(),
+                    },
+                    .target = .{
+                        .id = Port.nextId(),
+                    },
+                },
+            },
+        };
+    }
+};
 
-// pub const AreaNode = struct {
-//     node_id: i32,
-//     area: *Area,
-//     wait: i32,
-//     target: usize = undefined,
+pub const Port = struct {
+    pub var next_id: i32 = 0;
 
-//     pub fn draw(self: *AreaNode) void {
-//         const node_width: f32 = 140;
+    id: i32,
 
-//         imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff66543a);
-//         imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xff8a7557);
-//         imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xff8a7557);
-//         defer imnodes.popColorStyle();
-//         defer imnodes.popColorStyle();
-//         defer imnodes.popColorStyle();
+    pub fn nextId() i32 {
+        next_id += 1;
+        return next_id - 1;
+    }
+};
 
-//         imnodes.beginNode(self.node_id);
-//         defer imnodes.endNode();
+pub const Link = struct {
+    pub var next_id: i32 = 0;
 
-//         imnodes.beginNodeTitleBar();
-//         z.text("{s}", .{self.area.name});
-//         imnodes.endNodeTitleBar();
+    id: i32,
+    left_attr_id: i32,
+    right_attr_id: i32,
 
-//         // wait input
-//         z.text("wait", .{});
-//         if (z.isItemHovered(.{})) {
-//             _ = z.beginTooltip();
-//             defer z.endTooltip();
-//             _ = z.text("wait time in ms", .{});
-//         }
-//         z.sameLine(.{});
-//         z.setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
-//         _ = z.inputInt("##", .{ .v = &self.wait });
+    pub fn nextId() i32 {
+        next_id += 1;
+        return next_id - 1;
+    }
+};
 
-//         // input and output
-//         imnodes.beginInputAttribute(self.node_id + 100);
-//         z.text("from", .{});
-//         imnodes.endInputAttribute();
-//         z.sameLine(.{});
-//         //
-//         imnodes.beginOutputAttribute(self.node_id);
-//         z.indent(.{ .indent_w = node_width - z.calcTextSize("fromtarget", .{})[0] });
-//         z.text("target", .{});
-//         imnodes.endOutputAttribute();
-//     }
-// };
+pub const SinkNode = struct {
+    from: Port,
 
-// pub const SinkNode = struct {
-//     node_id: i32,
+    pub fn draw(self: *SinkNode, id: i32, name: [:0]const u8) void {
+        // const node_width: f32 = 140;
+        imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff53367d);
+        imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xff7656a3);
+        imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xff7656a3);
+        defer imnodes.popColorStyle();
+        defer imnodes.popColorStyle();
+        defer imnodes.popColorStyle();
 
-//     pub fn draw(self: *SinkNode) void {
-//         // const node_width: f32 = 140;
+        imnodes.beginNode(id);
+        defer imnodes.endNode();
 
-//         imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff53367d);
-//         imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xff7656a3);
-//         imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xff7656a3);
-//         defer imnodes.popColorStyle();
-//         defer imnodes.popColorStyle();
-//         defer imnodes.popColorStyle();
+        imnodes.beginNodeTitleBar();
+        z.text("{s}", .{name});
+        imnodes.endNodeTitleBar();
 
-//         imnodes.beginNode(self.node_id);
-//         defer imnodes.endNode();
+        // input
+        imnodes.beginInputAttribute(self.from.id);
+        z.text("from", .{});
+        imnodes.endInputAttribute();
+    }
+};
 
-//         imnodes.beginNodeTitleBar();
-//         z.text("Sink", .{});
-//         imnodes.endNodeTitleBar();
+pub const SpawnerNode = struct {
+    spawner: *Spawner,
+    wait: i32,
+    target: Port,
 
-//         // input
-//         imnodes.beginInputAttribute(self.node_id + 100);
-//         z.text("from", .{});
-//         imnodes.endInputAttribute();
-//     }
-// };
+    pub fn draw(self: *SpawnerNode, id: i32, name: [:0]const u8) void {
+        const node_width: f32 = 140;
 
-// pub const Link = struct {
-//     left_attr_id: i32,
-//     right_attr_id: i32,
+        imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff40a140);
+        imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xff64CC61);
+        imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xff64CC61);
+        defer imnodes.popColorStyle();
+        defer imnodes.popColorStyle();
+        defer imnodes.popColorStyle();
 
-//     pub var next_link_id: i32 = 0;
+        imnodes.beginNode(id);
+        defer imnodes.endNode();
 
-//     pub fn nextLinkId() i32 {
-//         next_link_id += 1;
-//         return next_link_id - 1;
-//     }
-// };
+        imnodes.beginNodeTitleBar();
+        z.text("{s}", .{name});
+        imnodes.endNodeTitleBar();
 
-// pub const Node = union(enum) {
-//     // spawner: SpawnerNode,
-//     // area: AreaNode,
-//     // sink: SinkNode,
+        // wait input
+        z.text("wait", .{});
+        if (z.isItemHovered(.{})) {
+            _ = z.beginTooltip();
+            defer z.endTooltip();
+            _ = z.text("arrival interval in ms", .{});
+        }
+        z.sameLine(.{});
+        z.setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
+        _ = z.inputInt("##", .{ .v = &self.wait });
 
-//     pub var next_node_id: i32 = 0;
+        // target output
+        imnodes.beginOutputAttribute(self.target.id);
+        z.indent(.{ .indent_w = node_width - z.calcTextSize("target", .{})[0] });
+        z.text("target", .{});
+        imnodes.endOutputAttribute();
+    }
+};
 
-//     pub fn nextNodeId() i32 {
-//         next_node_id += 1;
-//         return next_node_id - 1;
-//     }
+pub const AreaNode = struct {
+    area: *Area,
+    wait: i32,
+    from: Port,
+    target: Port,
 
-//     pub fn initSpawner(spawner: *Spawner, wait: i32) Node {
-//         return .{ .spawner = .{
-//             .node_id = nextNodeId(),
-//             .spawner = spawner,
-//             .wait = wait,
-//         } };
-//     }
+    pub fn draw(self: *AreaNode, id: i32, name: [:0]const u8) void {
+        const node_width: f32 = 140;
 
-//     pub fn initArea(area: *Area, wait: i32) Node {
-//         return .{ .area = .{
-//             .node_id = nextNodeId(),
-//             .area = area,
-//             .wait = wait,
-//         } };
-//     }
+        imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff2978c2);
+        imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xff379bde);
+        imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xff379bde);
+        defer imnodes.popColorStyle();
+        defer imnodes.popColorStyle();
+        defer imnodes.popColorStyle();
 
-//     pub fn initSink() Node {
-//         return .{ .sink = .{ .node_id = nextNodeId() } };
-//     }
+        imnodes.beginNode(id);
+        defer imnodes.endNode();
 
-//     pub fn getName(self: Node) []const u8 {
-//         return switch (self) {
-//             .spawner => "Spawner",
-//             .area => "Area",
-//             .sink => "Sink",
-//         };
-//     }
+        imnodes.beginNodeTitleBar();
+        z.text("{s}", .{name});
+        imnodes.endNodeTitleBar();
 
-//     pub fn draw(self: *Node) void {
-//         switch (self.*) {
-//             inline else => |*spawner| spawner.draw(),
-//         }
-//     }
-// };
+        // wait input
+        z.text("wait", .{});
+        if (z.isItemHovered(.{})) {
+            _ = z.beginTooltip();
+            defer z.endTooltip();
+            _ = z.text("arrival interval in ms", .{});
+        }
+        z.sameLine(.{});
+        z.setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
+        _ = z.inputInt("##", .{ .v = &self.wait });
+
+        // input
+        // input
+        imnodes.beginInputAttribute(self.from.id);
+        z.text("from", .{});
+        imnodes.endInputAttribute();
+
+        // target output
+        imnodes.beginOutputAttribute(self.target.id);
+        z.indent(.{ .indent_w = node_width - z.calcTextSize("target", .{})[0] });
+        z.text("target", .{});
+        imnodes.endOutputAttribute();
+    }
+};

@@ -28,6 +28,7 @@ extern fn imnodes_push_color_style(item: ImNodesCol, color: u32) void;
 extern fn imnodes_pop_color_style() void;
 
 extern fn imnodes_is_link_created(start_attr: *i32, end_attr: *i32) bool;
+extern fn imnodes_is_link_destroyed(link_id: *i32) bool;
 
 // enums
 pub const ImNodesCol = enum(c_int) {
@@ -134,4 +135,8 @@ pub fn popColorStyle() void {
 
 pub fn isLinkCreated(start_attr: *i32, end_attr: *i32) bool {
     return imnodes_is_link_created(start_attr, end_attr);
+}
+
+pub fn isLinkDestroyed(link_id: *i32) bool {
+    return imnodes_is_link_destroyed(link_id);
 }

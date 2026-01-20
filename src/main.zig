@@ -87,8 +87,8 @@ pub fn main() !void {
     defer areas.deinit();
 
     // node editor
-    // var node_editor = NodeEditor.init(allocator);
-    // defer node_editor.deinit();
+    var node_editor = NodeEditor.init(allocator);
+    defer node_editor.deinit();
 
     try loadScene(
         allocator,
@@ -138,6 +138,10 @@ pub fn main() !void {
                     const action = try ent.update(sim_data);
                     if (action == .placed) {
                         try entities.append(ent.*);
+
+                        // stored entity ptr is the pointer to the latest entity we just
+                        // added because entity_storage and current_entity are both
+                        // on the stack
                         const stored_entity_ptr = &entities.items[entities.items.len - 1];
 
                         switch (stored_entity_ptr.kind) {
@@ -220,7 +224,7 @@ pub fn main() !void {
                                 ent.deinit(allocator);
                             }
                             entity_storage = try entity.Entity.initContour(allocator);
-                            current_entity = if (entity_storage) |*ent| ent else null;
+                            current_entity = if (entity_storage) |*ent| ent else unreachable;
                         }
                         z.sameLine(.{});
                         if (z.button("Spawner", .{})) {
@@ -266,9 +270,10 @@ pub fn main() !void {
                         .h = @floatFromInt(settings.height),
                     });
 
-                    // try node_editor.render(
-                    //     &spawners,
-                    // );
+                    try node_editor.render(
+                        &entities,
+                    );
+                    try node_editor.traverse();
                 }
             }
         }

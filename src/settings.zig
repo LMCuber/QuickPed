@@ -12,7 +12,7 @@ tab_height: i32 = 0,
 
 pub fn init() Self {
     var ret: Self = .{
-        .sim_width = 800,
+        .sim_width = 1080,
         .sim_height = 800,
     };
     ret.tab_width = @intFromFloat(@as(f32, @floatFromInt(ret.sim_width)) * 0.3);
