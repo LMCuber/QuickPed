@@ -45,3 +45,11 @@ pub fn readFile(
         std.math.maxInt(usize),
     );
 }
+
+pub fn rand01() f32 {
+    return @as(f32, @floatFromInt(rl.getRandomValue(0, 1000000))) / 1_000_000.0;
+}
+
+pub fn getTimeMillis() f64 {
+    return rl.getTime() * 1000;
+}

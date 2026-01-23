@@ -1,3 +1,6 @@
+///
+///  rl.getTime() is in SECONDS
+///
 const std = @import("std");
 const rl = @import("raylib");
 //
@@ -5,34 +8,97 @@ const commons = @import("commons.zig");
 const color = @import("color.zig");
 const AgentData = @import("agent_data.zig");
 const Contour = @import("environment/contour.zig");
+const node = @import("nodes/node.zig");
+const Graph = @import("nodes/graph.zig");
 
 const Self = @This();
 
 pos: rl.Vector2,
 target: rl.Vector2,
 col: rl.Color,
-agent_data: *AgentData,
-agents: *std.ArrayList(Self),
-contours: *std.ArrayList(*Contour),
 vel: rl.Vector2 = .{ .x = 0, .y = 0 },
 acc: rl.Vector2 = .{ .x = 0, .y = 0 },
 
-pub fn init(pos: rl.Vector2, target: rl.Vector2, agent_data: *AgentData, agents: *std.ArrayList(Self), contours: *std.ArrayList(*Contour)) Self {
+graph: *Graph,
+current_node: ?*node.Node = null,
+last_wait: f64 = 0,
+waiting: bool = false,
+
+marked: bool = false, // marked to delete later
+
+pub fn init(
+    pos: rl.Vector2,
+    spawner_node: *node.Node,
+    graph: *Graph,
+) Self {
     const col: rl.Color = color.getAgentColor();
-    return Self{
+    var obj = Self{
         .pos = pos,
-        .target = target,
+        .target = .{ .x = 100, .y = 100 },
         .col = col,
-        .agent_data = agent_data,
-        .agents = agents,
-        .contours = contours,
+        .graph = graph,
     };
+    obj.traverse(spawner_node);
+    return obj;
 }
 
-fn calculateObstacleForce(self: *Self) rl.Vector2 {
+pub fn traverse(self: *Self, spawner_node: *node.Node) void {
+    if (self.graph.getNextNode(spawner_node)) |next| {
+        // check if the spawner is connected to another node
+        switch (next.kind) {
+            .spawner => unreachable,
+            .area => |area_node| {
+                self.target = area_node.getCenter();
+            },
+            .sink => {
+                // next is sink, so destroy outselves
+                self.marked = true;
+            },
+        }
+        self.current_node = next;
+    } else {
+        // the spawner is standalone, so just kill the agent
+        self.marked = true;
+    }
+}
+
+/// every frame, processCurrentNode checks what node we are on currently, and then
+/// checks if we need to start waiting for example
+pub fn processCurrentNode(self: *Self) void {
+    if (self.current_node) |n| {
+        switch (n.kind) {
+            .area => |area_node| {
+                // check should start waiting
+                if (!self.waiting) {
+                    // start waiting if in bounds
+                    if (rl.checkCollisionPointRec(self.pos, area_node.area.rect)) {
+                        self.waiting = true;
+                        self.last_wait = commons.getTimeMillis();
+                    }
+                } else {
+                    // is already waiting; check if waited long enough in the area
+                    const time: f64 = commons.getTimeMillis();
+                    if (time - self.last_wait >= @as(f64, @floatFromInt(area_node.wait))) {
+                        // waited long enough. continue
+                        if (self.current_node) |current_node| {
+                            self.traverse(current_node);
+                        }
+                    }
+                }
+            },
+            inline else => {},
+        }
+    }
+}
+
+fn calculateObstacleForce(
+    self: *Self,
+    contours: *std.ArrayList(*Contour),
+    agent_data: AgentData,
+) rl.Vector2 {
     var force: rl.Vector2 = .{ .x = 0, .y = 0 };
     // iterate over all contour objects
-    for (self.contours.items) |contour| {
+    for (contours.items) |contour| {
         // iterate over all line segements in that contour
         for (0..contour.points.items.len) |i| {
             if (i == contour.points.items.len - 1) continue;
@@ -49,45 +115,47 @@ fn calculateObstacleForce(self: *Self) rl.Vector2 {
             const dist = D.length();
             const n = D.normalize();
 
-            const radius_float: f32 = @floatFromInt(self.agent_data.radius);
-            const exp_term: f32 = std.math.exp((radius_float - dist) / self.agent_data.b_ob);
-            const f_ob = n.scale(self.agent_data.a_ob * exp_term);
+            const radius_float: f32 = @floatFromInt(agent_data.radius);
+            const exp_term: f32 = std.math.exp((radius_float - dist) / agent_data.b_ob);
+            const f_ob = n.scale(agent_data.a_ob * exp_term);
             force = force.add(f_ob);
         }
     }
     return force;
 }
 
-fn calculateInteractiveForce(self: *Self) rl.Vector2 {
+fn calculateInteractiveForce(self: *Self, agents: *std.ArrayList(Self), agent_data: AgentData) rl.Vector2 {
     var force: rl.Vector2 = .{ .x = 0, .y = 0 };
-    for (self.agents.items) |*other| {
+    for (agents.items) |*other| {
         if (self == other) continue;
         const n = self.pos.subtract(other.pos);
-        const sum_radii: f32 = @floatFromInt(self.agent_data.radius * 2);
+        const sum_radii: f32 = @floatFromInt(agent_data.radius * 2);
         const dist: f32 = other.pos.subtract(self.pos).length();
-        const exp_term: f32 = std.math.exp((sum_radii - dist) / self.agent_data.b_ped);
-        const f_ped = n.scale(self.agent_data.a_ped * exp_term);
+        const exp_term: f32 = std.math.exp((sum_radii - dist) / agent_data.b_ped);
+        const f_ped = n.scale(agent_data.a_ped * exp_term);
         force = force.add(f_ped);
     }
     return force;
 }
 
-fn calculateDriveForce(self: *Self) rl.Vector2 {
+fn calculateDriveForce(self: *Self, agent_data: AgentData) rl.Vector2 {
     const e = self.target.subtract(self.pos).normalize();
-    const v0_vec = e.scale(self.agent_data.speed);
+    const v0_vec = e.scale(agent_data.speed);
     const f = v0_vec.subtract(self.vel)
-        .scale(1 / self.agent_data.relaxation);
+        .scale(1 / agent_data.relaxation);
     return f;
 }
 
-pub fn update(self: *Self) void {
-    // debug
-    self.target = commons.mousePos();
-
+pub fn update(
+    self: *Self,
+    agents: *std.ArrayList(Self),
+    contours: *std.ArrayList(*Contour),
+    agent_data: AgentData,
+) void {
     // get force components
-    const drive_force = self.calculateDriveForce();
-    const interactive_force = self.calculateInteractiveForce();
-    const obstacle_force = self.calculateObstacleForce();
+    const drive_force = self.calculateDriveForce(agent_data);
+    const interactive_force = self.calculateInteractiveForce(agents, agent_data);
+    const obstacle_force = self.calculateObstacleForce(contours, agent_data);
     self.acc = drive_force
         .add(interactive_force)
         .add(obstacle_force);
@@ -95,15 +163,23 @@ pub fn update(self: *Self) void {
     // newton
     self.vel = self.vel.add(self.acc);
     self.pos = self.pos.add(self.vel);
+
+    // process node
+    self.processCurrentNode();
 }
 
-pub fn draw(self: *const Self) void {
+pub fn draw(self: *const Self, agent_data: AgentData) void {
     // render sphere
-    const f_radius: f32 = @floatFromInt(self.agent_data.radius);
-    rl.drawCircleV(self.pos, f_radius, self.col);
+    const f_radius: f32 = @floatFromInt(agent_data.radius);
+    if (self.waiting) {
+        // waiting pedestrians have reddish color
+        rl.drawCircleV(self.pos, f_radius, color.hexToColor(color.fromPalette(.clay)));
+    } else {
+        rl.drawCircleV(self.pos, f_radius, self.col);
+    }
     rl.drawCircleLinesV(self.pos, f_radius, color.white);
 
-    if (self.agent_data.show_vectors) {
+    if (agent_data.show_vectors) {
         const m: u32 = 12;
         // render velocity vector
         const norm_vel = self.vel.normalize().scale(m);
@@ -112,24 +188,6 @@ pub fn draw(self: *const Self) void {
         // render acceleration vector
         const norm_acc = self.acc.normalize().scale(m);
         rl.drawLineEx(self.pos, self.pos.add(norm_acc), 2, color.orange);
-    }
-}
-
-pub fn create(agents: *std.ArrayList(Self), contours: *std.ArrayList(*Contour), agent_data: *AgentData, num: i32) !void {
-    for (0..@as(usize, @intCast(num))) |_| {
-        try agents.append(Self.init(
-            .{
-                .x = @floatFromInt(rl.getRandomValue(200, 300)),
-                .y = @floatFromInt(rl.getRandomValue(200, 300)),
-            },
-            .{
-                .x = 500,
-                .y = 500,
-            },
-            agent_data,
-            agents,
-            contours,
-        ));
     }
 }
 

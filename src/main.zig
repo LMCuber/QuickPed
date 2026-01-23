@@ -162,14 +162,24 @@ pub fn main() !void {
                     ent.draw();
                 }
 
-                // update and render the agents
+                // AGENTS
+                // update
                 if (!sim_data.paused) {
-                    for (agents.items) |*a| {
-                        a.update();
+                    for (agents.items) |*agent| {
+                        agent.update(&agents, &contours, agent_data);
+                    }
+                    // cleanup to be deleted agents
+                    var i: usize = agents.items.len;
+                    while (i > 0) {
+                        i -= 1;
+                        if (agents.items[i].marked) {
+                            _ = agents.swapRemove(i);
+                        }
                     }
                 }
-                for (agents.items) |*a| {
-                    a.draw();
+                // render
+                for (agents.items) |*agent| {
+                    agent.draw(agent_data);
                 }
 
                 // Make sure to check that ImGui is not capturing the mouse inputs
@@ -213,7 +223,7 @@ pub fn main() !void {
                     z.text("FPS: {d:.1} | {d:.3} ms frame", .{ fps, frametime });
                     sim_data.render(&camera, camera_default);
 
-                    try agent_data.render(&agents, &contours);
+                    try agent_data.render(&agents);
 
                     // draw environment items to render
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
@@ -270,10 +280,8 @@ pub fn main() !void {
                         .h = @floatFromInt(settings.height),
                     });
 
-                    try node_editor.render(
-                        &entities,
-                    );
-                    try node_editor.traverse();
+                    try node_editor.render(&entities);
+                    try node_editor.graph.processSpawners(&agents);
                 }
             }
         }

@@ -34,7 +34,7 @@ pub const Entity = struct {
 
     pub fn update(self: *Entity, sim_data: SimData) !EntityAction {
         switch (self.kind) {
-            inline else => |*inner| return inner.update(sim_data),
+            inline else => |*kind| return kind.update(sim_data),
         }
     }
 
@@ -116,7 +116,7 @@ pub const Entity = struct {
 
     pub fn draw(self: Entity) void {
         switch (self.kind) {
-            inline else => |inner| inner.draw(),
+            inline else => |kind| kind.draw(),
         }
     }
 };

@@ -5,6 +5,7 @@ const color = @import("../color.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../sim_data.zig");
+const Agent = @import("../agent.zig");
 
 spawner_id: i32,
 points: [2]rl.Vector2 = undefined,
@@ -79,4 +80,10 @@ pub fn draw(self: Self) void {
     } else {
         unreachable;
     }
+}
+
+pub fn randomSpawnPos(self: Self) rl.Vector2 {
+    const diff: rl.Vector2 = self.points[1].subtract(self.points[0]);
+    const p: f32 = commons.rand01();
+    return self.points[0].add(diff.scale(p));
 }

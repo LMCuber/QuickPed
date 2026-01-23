@@ -1,6 +1,7 @@
 const Self = @This();
 const node = @import("node.zig");
 const std = @import("std");
+const Agent = @import("../agent.zig");
 
 allocator: std.mem.Allocator,
 nodes: std.ArrayList(node.Node),
@@ -31,71 +32,43 @@ pub fn addLink(self: *Self, left_attr_id: i32, right_attr_id: i32) !void {
     });
 }
 
-pub fn traverse(self: Self) !void {
-    var arena = std.heap.ArenaAllocator.init(self.allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-
-    // construct output_port_id -> []input_port_id
-    var adjacency = std.AutoHashMap(i32, std.ArrayList(i32)).init(allocator);
-
-    for (self.links.items) |link| {
-        const entry = try adjacency.getOrPut(link.left_attr_id);
-        // if left attr doesn't exist, make an empty arraylist
-        if (!entry.found_existing) {
-            entry.value_ptr.* = std.ArrayList(i32).init(allocator);
-        }
-        try entry.value_ptr.append(link.right_attr_id);
-    }
-
-    // construct port_id -> node pointer
-    var port_to_node = std.AutoHashMap(i32, *node.Node).init(allocator);
-
+pub fn processSpawners(self: *Self, agents: *std.ArrayList(Agent)) !void {
     for (self.nodes.items) |*n| {
         switch (n.kind) {
-            .spawner => |*s| try port_to_node.put(s.target.id, n),
-            .sink => |*s| try port_to_node.put(s.from.id, n),
-            .area => |*a| {
-                try port_to_node.put(a.from.id, n);
-                try port_to_node.put(a.target.id, n);
+            .spawner => |*spawner| {
+                try spawner.update(agents, self, n);
             },
-        }
-    }
-
-    // Traverse from each spawner
-    var visited = std.AutoHashMap(i32, void).init(allocator);
-
-    for (self.nodes.items) |*n| {
-        if (n.kind == .spawner) {
-            std.debug.print("\n=== Starting from {s} ===\n", .{n.name});
-            try self.traverseFrom(n.kind.spawner.target.id, &adjacency, &port_to_node, &visited);
+            inline else => {},
         }
     }
 }
 
-fn traverseFrom(
-    self: Self,
-    port_id: i32,
-    adjacency: *std.AutoHashMap(i32, std.ArrayList(i32)),
-    port_to_node: *std.AutoHashMap(i32, *node.Node),
-    visited: *std.AutoHashMap(i32, void),
-) !void {
-    if (visited.contains(port_id)) return;
-    visited.put(port_id, {}) catch unreachable;
+// NEW: Get the next node given current node
+pub fn getNextNode(self: Self, current_node: *const node.Node) ?*node.Node {
+    // Get output port ID from current node
+    const output_port_id = switch (current_node.kind) {
+        .spawner => |*s| s.target.id,
+        .area => |*a| a.target.id,
+        .sink => return null, // Sink has no output
+    };
 
-    // Get connected ports
-    if (adjacency.get(port_id)) |connected_ports| {
-        for (connected_ports.items) |next_port_id| {
-            if (port_to_node.get(next_port_id)) |next_node| {
-                std.debug.print("  -> Connected to node {s} (id={})\n", .{ next_node.name, next_node.id });
+    // Find link where left_attr_id matches our output port
+    for (self.links.items) |link| {
+        if (link.left_attr_id == output_port_id) {
+            // Found a connection, now find the node with this input port
+            const next_port_id = link.right_attr_id;
 
-                // Continue traversal from output ports of this node
-                switch (next_node.kind) {
-                    .area => |*a| try self.traverseFrom(a.target.id, adjacency, port_to_node, visited),
-                    .spawner => |*s| try self.traverseFrom(s.target.id, adjacency, port_to_node, visited),
-                    .sink => {}, // Terminal node
-                }
+            for (self.nodes.items) |*n| {
+                const has_port = switch (n.kind) {
+                    .spawner => |*s| s.target.id == next_port_id,
+                    .sink => |*s| s.from.id == next_port_id,
+                    .area => |*a| a.from.id == next_port_id or a.target.id == next_port_id,
+                };
+
+                if (has_port) return n;
             }
         }
     }
+
+    return null; // No connection found
 }

@@ -1,17 +1,16 @@
-//
-//  IMNODES COLORS IN 0x[A G B R] !!!
-//
-
-// const z = @import("zgui");
-// const imnodes = @import("imnodes");
-// const color = @import("../color.zig");
-// const Spawner = @import("../environment/spawner.zig");
-// const Area = @import("../environment/area.zig");
+///
+///  IMNODES COLORS IN 0x[A G B R] !!!
+///
+const rl = @import("raylib");
 const std = @import("std");
 const imnodes = @import("imnodes");
 const z = @import("zgui");
 const Spawner = @import("../environment/spawner.zig");
 const Area = @import("../environment/area.zig");
+const Agent = @import("../agent.zig");
+const Graph = @import("graph.zig");
+const node = @import("node.zig");
+const commons = @import("../commons.zig");
 
 pub const Node = struct {
     pub var next_id: i32 = 0;
@@ -31,7 +30,7 @@ pub const Node = struct {
 
     pub fn draw(self: *Node) void {
         switch (self.kind) {
-            inline else => |*node| node.draw(self.id, self.name),
+            inline else => |*n| n.draw(self.id, self.name),
         }
     }
 
@@ -133,12 +132,16 @@ pub const SinkNode = struct {
         z.text("from", .{});
         imnodes.endInputAttribute();
     }
+
+    pub fn update(_: SinkNode, _: *std.ArrayList(Agent)) !void {}
 };
 
 pub const SpawnerNode = struct {
     spawner: *Spawner,
     wait: i32,
     target: Port,
+
+    last_spawn: f64 = 0,
 
     pub fn draw(self: *SpawnerNode, id: i32, name: [:0]const u8) void {
         const node_width: f32 = 140;
@@ -173,6 +176,24 @@ pub const SpawnerNode = struct {
         z.indent(.{ .indent_w = node_width - z.calcTextSize("target", .{})[0] });
         z.text("target", .{});
         imnodes.endOutputAttribute();
+    }
+
+    pub fn update(
+        self: *SpawnerNode,
+        agents: *std.ArrayList(Agent),
+        graph: *Graph,
+        parent: *node.Node,
+    ) !void {
+        const time: f64 = commons.getTimeMillis();
+        if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {
+            // spawn new agent
+            const pos: rl.Vector2 = self.spawner.randomSpawnPos();
+            const a = Agent.init(pos, parent, graph);
+            try agents.append(a);
+
+            // reset last spawn
+            self.last_spawn = commons.getTimeMillis();
+        }
     }
 };
 
@@ -222,4 +243,10 @@ pub const AreaNode = struct {
         z.text("target", .{});
         imnodes.endOutputAttribute();
     }
+
+    pub fn getCenter(self: AreaNode) rl.Vector2 {
+        return self.area.getCenter();
+    }
+
+    pub fn update(_: AreaNode, _: *std.ArrayList(Agent)) !void {}
 };

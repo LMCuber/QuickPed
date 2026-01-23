@@ -57,7 +57,12 @@ pub fn update(self: *Self, sim_data: SimData) Entity.EntityAction {
                 self.topleft = self.pos;
                 self.anchored = true;
             } else {
-                // already anchored, finish
+                // check if the width or height is negative
+                if (self.rect.width < 0 or self.rect.height < 0) {
+                    self.anchored = false;
+                    return .cancelled;
+                }
+                // no issues; already anchored; finish the entity
                 self.placed = true;
                 return .placed;
             }
@@ -72,6 +77,13 @@ pub fn update(self: *Self, sim_data: SimData) Entity.EntityAction {
         }
     }
     return .none;
+}
+
+pub fn getCenter(self: Self) rl.Vector2 {
+    return .{
+        .x = self.rect.x + self.rect.width / 2,
+        .y = self.rect.y + self.rect.height / 2,
+    };
 }
 
 pub fn draw(self: Self) void {

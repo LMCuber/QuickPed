@@ -11,8 +11,9 @@ Later Zig versions are not guaranteed to build correctly.
 - [x] 🟥 Social force model for pedestrians
 - [x] 🟥 Basic UI for changing parameters
 - [x] 🟥 Placing environmental objects + persistence across runs
-- [ ] 🟥 Node system
+- [ ] 🟥 Node system (*doing*)
 - [ ] 🟥 A variety of environmental objects, such as revolving queues, revolving doors, waiting areas
+- [ ] 🟥 A* pathfinding for the pedestrians
 - [ ] 🟧 Editing environmental objects after creation
 - [ ] 🟧 Quadtree for collisions
 - [ ] 🟨 Heatmap showing bottlenecks during simulation
@@ -47,4 +48,4 @@ This project uses the [zig-raylib-imgui-template](https://github.com/schmee/zig-
 - `zgui` (zig bindings for ImGui)
 - `rlImGui` (connection between raylib and ImGui pipeline)
 - `imnodes` (node editor extension for ImGui)
-I have written `zig` bindings for some `imnodes` functions, so I may make `imnodes` a submodule to a `zig` `imnodes` port in the future.
+I have written `zig` bindings for some `imnodes` functions, so I may make `imnodes` a submodule to my `zig` `imnodes` port in the future.

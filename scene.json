@@ -2,19 +2,34 @@
   "version": "0.1.0",
   "entities": [
     {
+      "id": 0,
+      "name": "Area0",
+      "kind": {
+        "area": {
+          "area_id": 0,
+          "rect": {
+            "x": 6.08e2,
+            "y": 1.44e2,
+            "width": 3.36e2,
+            "height": 1.28e2
+          }
+        }
+      }
+    },
+    {
       "id": 1,
       "name": "Spawner1",
       "kind": {
         "spawner": {
-          "spawner_id": 1,
+          "spawner_id": 0,
           "points": [
             {
-              "x": 1.28e2,
-              "y": 2.08e2
+              "x": 1.44e2,
+              "y": 1.92e2
             },
             {
               "x": 1.6e2,
-              "y": 2.4e2
+              "y": 3.36e2
             }
           ]
         }
@@ -27,100 +42,31 @@
         "area": {
           "area_id": 0,
           "rect": {
-            "x": 4.64e2,
-            "y": 2.24e2,
-            "width": 1.6e2,
-            "height": 9.6e1
+            "x": 7.52e2,
+            "y": 3.68e2,
+            "width": 1.76e2,
+            "height": 8e1
           }
         }
       }
     },
     {
       "id": 3,
-      "name": "Spawner3",
-      "kind": {
-        "spawner": {
-          "spawner_id": 2,
-          "points": [
-            {
-              "x": 3.2e2,
-              "y": 1.76e2
-            },
-            {
-              "x": 2.56e2,
-              "y": 4.96e2
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": 4,
-      "name": "Contour4",
-      "kind": {
-        "contour": {
-          "contour_id": 0,
-          "points": [
-            {
-              "x": 4.96e2,
-              "y": 4.8e1
-            },
-            {
-              "x": 3.36e2,
-              "y": 1.28e2
-            },
-            {
-              "x": 4.16e2,
-              "y": 1.76e2
-            },
-            {
-              "x": 4.96e2,
-              "y": 9.6e1
-            },
-            {
-              "x": 4.96e2,
-              "y": 1.76e2
-            },
-            {
-              "x": 5.92e2,
-              "y": 9.6e1
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": 5,
-      "name": "Area5",
+      "name": "Area3",
       "kind": {
         "area": {
           "area_id": 0,
           "rect": {
-            "x": 6.88e2,
-            "y": 5.44e2,
-            "width": -1.28e2,
-            "height": 1.28e2
-          }
-        }
-      }
-    },
-    {
-      "id": 6,
-      "name": "Area6",
-      "kind": {
-        "area": {
-          "area_id": 1,
-          "rect": {
-            "x": 6.88e2,
-            "y": 4.8e2,
-            "width": -1.6e2,
+            "x": 4.64e2,
+            "y": 4.32e2,
+            "width": 2.56e2,
             "height": 1.92e2
           }
         }
       }
     }
   ],
-  "next_id": 7,
-  "next_contour_id": 1,
-  "next_spawner_id": 3
+  "next_id": 6,
+  "next_contour_id": 0,
+  "next_spawner_id": 1
 }

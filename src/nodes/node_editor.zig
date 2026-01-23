@@ -9,6 +9,7 @@ const Graph = @import("graph.zig");
 const Spawner = @import("../environment/spawner.zig");
 const entity = @import("../environment/entity.zig");
 const Area = @import("../environment/area.zig");
+const Agent = @import("../agent.zig");
 
 active: bool = false,
 graph: Graph,
@@ -62,7 +63,7 @@ pub fn render(
                             if (z.menuItem(ent.name, .{})) {
                                 try self.graph.addNode(node.Node.initSpawner(
                                     &ent.kind.spawner,
-                                    1000,
+                                    1_000,
                                 ));
                             }
                         },
@@ -123,8 +124,4 @@ pub fn render(
     var link_id: i32 = 0;
     _ = imnodes.isLinkDestroyed(&link_id);
     // std.debug.print("{}\n", .{link_id});
-}
-
-pub fn traverse(self: Self) !void {
-    try self.graph.traverse();
 }
