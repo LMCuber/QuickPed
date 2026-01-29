@@ -3,71 +3,41 @@
   "entities": [
     {
       "id": 0,
+      "name": "Area0",
+      "kind": {
+        "area": {
+          "area_id": 0,
+          "rect": {
+            "x": 5.28e2,
+            "y": 2.56e2,
+            "width": 2.08e2,
+            "height": 1.44e2
+          }
+        }
+      }
+    },
+    {
+      "id": 1,
       "name": "Spawner0",
       "kind": {
         "spawner": {
           "spawner_id": 0,
           "points": [
             {
-              "x": 9.6e1,
-              "y": 5.44e2
+              "x": 1.28e2,
+              "y": 1.12e2
             },
             {
-              "x": 1.76e2,
-              "y": 6.08e2
+              "x": 6.72e2,
+              "y": 7.36e2
             }
           ]
         }
       }
-    },
-    {
-      "id": 1,
-      "name": "Area0",
-      "kind": {
-        "area": {
-          "area_id": 0,
-          "rect": {
-            "x": 2.4e2,
-            "y": 1.12e2,
-            "width": 8e1,
-            "height": 6.4e1
-          }
-        }
-      }
-    },
-    {
-      "id": 2,
-      "name": "Area1",
-      "kind": {
-        "area": {
-          "area_id": 1,
-          "rect": {
-            "x": 6.24e2,
-            "y": 1.6e2,
-            "width": 3.2e2,
-            "height": 2.4e2
-          }
-        }
-      }
-    },
-    {
-      "id": 3,
-      "name": "Area2",
-      "kind": {
-        "area": {
-          "area_id": 2,
-          "rect": {
-            "x": 3.68e2,
-            "y": 6.24e2,
-            "width": 4.32e2,
-            "height": 8e1
-          }
-        }
-      }
     }
   ],
-  "next_id": 4,
+  "next_id": 2,
   "next_contour_id": 0,
   "next_spawner_id": 1,
-  "next_area_id": 0
+  "next_area_id": 1
 }

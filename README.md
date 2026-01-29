@@ -2,7 +2,7 @@
 
 To view the paper we have written on this subject: [overleaf link](https://www.overleaf.com/project/66f667ffb591f8ff65cffdd8) (might be restricted; working on statically hosting on GitHub)
 
-Go to the [backlog](#project-backlog) to see the (not) implemented features.
+* Go to the [backlog](#project-backlog) to see the planned features.
 
 # Preview
 ![main](previews/main.png "main")
@@ -27,7 +27,7 @@ Later Zig versions are not guaranteed to build correctly.
 - [ ] 🟡 Heatmap showing bottlenecks during simulation
 
 ## Won't haves
-- **Macroscoping modeling**
+- **Macroscoping modeling**<br>
 The scope of this project is microscopic agent-based modeling.
 - **Any type of scripting support**
 The project should maximize development time and ease of use. Scripting is a fast turn-off for non-coders and overcomplicates things.

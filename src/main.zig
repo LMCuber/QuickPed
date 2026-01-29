@@ -393,6 +393,7 @@ pub fn loadScene(
     entity.Entity.next_id = scene.next_id;
     Contour.next_id = scene.next_contour_id;
     Spawner.next_id = scene.next_spawner_id;
+    Area.next_id = scene.next_area_id;
 
     // repopulate entities from saved snapshots
     for (scene.entities) |snap| {

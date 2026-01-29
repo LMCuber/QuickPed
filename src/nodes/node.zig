@@ -53,7 +53,7 @@ pub const Node = struct {
 
     pub fn draw(self: *Node) void {
         switch (self.kind) {
-            inline else => |*n| n.draw(self.id, self.name),
+            inline else => |*n| n.draw(self.id),
         }
     }
 
@@ -137,7 +137,6 @@ pub const SinkNode = struct {
     pub fn draw(
         self: *SinkNode,
         id: i32,
-        name: [:0]const u8,
     ) void {
         // const node_width: f32 = 140;
         imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff53367d);
@@ -151,7 +150,7 @@ pub const SinkNode = struct {
         defer imnodes.endNode();
 
         imnodes.beginNodeTitleBar();
-        z.text("{s}", .{name});
+        z.text("Sink", .{});
         imnodes.endNodeTitleBar();
 
         // input
@@ -178,7 +177,6 @@ pub const SpawnerNode = struct {
     pub fn draw(
         self: *SpawnerNode,
         id: i32,
-        _: [:0]const u8,
     ) void {
         // style setup
         const node_width: f32 = 140;
@@ -307,7 +305,6 @@ pub const AreaNode = struct {
     pub fn draw(
         self: *AreaNode,
         id: i32,
-        _: [:0]const u8,
     ) void {
         const node_width: f32 = 140;
 
