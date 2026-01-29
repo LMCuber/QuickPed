@@ -4,7 +4,7 @@ const rl = @import("raylib");
 const color = @import("../color.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
-const SimData = @import("../sim_data.zig");
+const SimData = @import("../SimData.zig");
 
 area_id: i32,
 topleft: rl.Vector2 = undefined,
@@ -58,7 +58,7 @@ pub fn update(self: *Self, sim_data: SimData) Entity.EntityAction {
                 self.anchored = true;
             } else {
                 // check if the width or height is negative
-                if (self.rect.width < 0 or self.rect.height < 0) {
+                if (self.rect.width <= 0 or self.rect.height <= 0) {
                     self.anchored = false;
                     return .cancelled;
                 }

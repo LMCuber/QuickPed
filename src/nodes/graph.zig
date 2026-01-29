@@ -43,7 +43,9 @@ pub fn processSpawners(self: *Self, agents: *std.ArrayList(Agent)) !void {
     }
 }
 
-// NEW: Get the next node given current node
+///
+/// AI CODE
+///
 pub fn getNextNode(self: Self, current_node: *const node.Node) ?*node.Node {
     // Get output port ID from current node
     const output_port_id = switch (current_node.kind) {

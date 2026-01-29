@@ -1,7 +1,7 @@
-const Contour = @import("contour.zig");
-const SimData = @import("../sim_data.zig");
-const Spawner = @import("spawner.zig");
-const Area = @import("area.zig");
+const Contour = @import("Contour.zig");
+const SimData = @import("../SimData.zig");
+const Spawner = @import("Spawner.zig");
+const Area = @import("Area.zig");
 const commons = @import("../commons.zig");
 const std = @import("std");
 const rl = @import("raylib");
@@ -32,6 +32,29 @@ pub const Entity = struct {
     pub const EntityAction = enum { none, placed, cancelled };
     pub var next_id: i32 = 0;
 
+    ///
+    /// AI CODE
+    ///
+    pub fn buildNameComboString(
+        comptime kind_tag: std.meta.Tag(Entity.Kind),
+        entities: *std.ArrayList(Entity),
+        buf: []u8,
+    ) [:0]u8 {
+        var pos: usize = 0;
+
+        for (entities.items) |entity| {
+            if (entity.kind == kind_tag) {
+                @memcpy(buf[pos..][0..entity.name.len], entity.name);
+                pos += entity.name.len;
+                buf[pos] = 0;
+                pos += 1;
+            }
+        }
+
+        buf[pos] = 0; // Final sentinel
+        return buf[0..pos :0];
+    }
+
     pub fn update(self: *Entity, sim_data: SimData) !EntityAction {
         switch (self.kind) {
             inline else => |*kind| return kind.update(sim_data),
@@ -45,36 +68,39 @@ pub const Entity = struct {
 
     pub fn initContour(allocator: std.mem.Allocator) !Entity {
         const id = nextId();
-        const name = try std.fmt.allocPrintZ(allocator, "Contour{}", .{id});
+        const contour = try Contour.init(allocator);
+        const name = try std.fmt.allocPrintZ(allocator, "Contour{}", .{contour.contour_id});
         return .{
             .id = id,
             .name = name,
             .kind = .{
-                .contour = try Contour.init(allocator),
+                .contour = contour,
             },
         };
     }
 
     pub fn initSpawner(allocator: std.mem.Allocator) !Entity {
         const id = nextId();
-        const name = try std.fmt.allocPrintZ(allocator, "Spawner{}", .{id});
+        const spawner = Spawner.init();
+        const name = try std.fmt.allocPrintZ(allocator, "Spawner{}", .{spawner.spawner_id});
         return .{
             .id = id,
             .name = name,
             .kind = .{
-                .spawner = Spawner.init(),
+                .spawner = spawner,
             },
         };
     }
 
     pub fn initArea(allocator: std.mem.Allocator) !Entity {
         const id = nextId();
-        const name = try std.fmt.allocPrintZ(allocator, "Area{}", .{id});
+        const area = Area.init();
+        const name = try std.fmt.allocPrintZ(allocator, "Area{}", .{area.area_id});
         return .{
             .id = id,
             .name = name,
             .kind = .{
-                .area = Area.init(),
+                .area = area,
             },
         };
     }

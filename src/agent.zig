@@ -6,10 +6,11 @@ const rl = @import("raylib");
 //
 const commons = @import("commons.zig");
 const color = @import("color.zig");
-const AgentData = @import("agent_data.zig");
-const Contour = @import("environment/contour.zig");
+const AgentData = @import("AgentData.zig");
+const Contour = @import("environment/Contour.zig");
+const Area = @import("environment/Area.zig");
 const node = @import("nodes/node.zig");
-const Graph = @import("nodes/graph.zig");
+const Graph = @import("nodes/Graph.zig");
 
 const Self = @This();
 
@@ -21,6 +22,7 @@ acc: rl.Vector2 = .{ .x = 0, .y = 0 },
 
 graph: *Graph,
 current_node: ?*node.Node = null,
+wait: i32 = 0,
 last_wait: f64 = 0,
 waiting: bool = false,
 
@@ -47,8 +49,9 @@ pub fn traverse(self: *Self, spawner_node: *node.Node) void {
         // check if the spawner is connected to another node
         switch (next.kind) {
             .spawner => unreachable,
-            .area => |area_node| {
+            .area => |*area_node| {
                 self.target = area_node.getCenter();
+                self.wait = area_node.getWaitTime();
             },
             .sink => {
                 // next is sink, so destroy outselves
@@ -63,22 +66,22 @@ pub fn traverse(self: *Self, spawner_node: *node.Node) void {
 }
 
 /// every frame, processCurrentNode checks what node we are on currently, and then
-/// checks if we need to start waiting for example
+/// checks (for example) if we need to start waiting
 pub fn processCurrentNode(self: *Self) void {
     if (self.current_node) |n| {
         switch (n.kind) {
-            .area => |area_node| {
+            .area => |*area_node| {
                 // check should start waiting
                 if (!self.waiting) {
                     // start waiting if in bounds
-                    if (rl.checkCollisionPointRec(self.pos, area_node.area.rect)) {
+                    if (rl.checkCollisionPointRec(self.pos, area_node.getArea().rect)) {
                         self.waiting = true;
                         self.last_wait = commons.getTimeMillis();
                     }
                 } else {
                     // is already waiting; check if waited long enough in the area
                     const time: f64 = commons.getTimeMillis();
-                    if (time - self.last_wait >= @as(f64, @floatFromInt(area_node.wait))) {
+                    if (time - self.last_wait >= @as(f64, @floatFromInt(self.wait))) {
                         // waited long enough. continue
                         if (self.current_node) |current_node| {
                             self.traverse(current_node);

@@ -4,7 +4,7 @@ const rl = @import("raylib");
 const color = @import("../color.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
-const SimData = @import("../sim_data.zig");
+const SimData = @import("../SimData.zig");
 const Agent = @import("../agent.zig");
 
 spawner_id: i32,

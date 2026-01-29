@@ -3596,7 +3596,7 @@ pub fn beginDragDropSource(flags: DragDropFlags) bool {
 
 /// Note: `payload_type` can be at most 32 characters long
 pub fn setDragDropPayload(payload_type: [*:0]const u8, data: []const u8, cond: Condition) bool {
-    return zguiSetDragDropPayload(payload_type, @alignCast(@ptrCast(data.ptr)), data.len, cond);
+    return zguiSetDragDropPayload(payload_type, @ptrCast(@alignCast(data.ptr)), data.len, cond);
 }
 pub fn endDragDropSource() void {
     zguiEndDragDropSource();

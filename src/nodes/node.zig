@@ -5,12 +5,13 @@ const rl = @import("raylib");
 const std = @import("std");
 const imnodes = @import("imnodes");
 const z = @import("zgui");
-const Spawner = @import("../environment/spawner.zig");
-const Area = @import("../environment/area.zig");
+const Spawner = @import("../environment/Spawner.zig");
+const Area = @import("../environment/Area.zig");
 const Agent = @import("../agent.zig");
-const Graph = @import("graph.zig");
+const Graph = @import("Graph.zig");
 const node = @import("node.zig");
 const commons = @import("../commons.zig");
+const entity = @import("../environment/entity.zig");
 
 pub const Node = struct {
     pub var next_id: i32 = 0;
@@ -23,6 +24,28 @@ pub const Node = struct {
         area: AreaNode,
     },
 
+    ///
+    /// AI CODE
+    ///
+    pub fn getEnvironmentalObject(n: anytype, comptime T: type, index: i32) *T {
+        // n is *SpawnerNode, *AreaNode, etc.
+        const uindex: u32 = @intCast(index);
+        var i: usize = 0;
+        for (n.entities.items) |*ent| {
+            switch (ent.kind) {
+                inline else => |*payload| {
+                    if (T == @TypeOf(payload.*)) {
+                        if (i == uindex) {
+                            return payload;
+                        }
+                        i += 1;
+                    }
+                },
+            }
+        }
+        unreachable;
+    }
+
     pub fn nextId() i32 {
         next_id += 1;
         return next_id - 1;
@@ -34,13 +57,13 @@ pub const Node = struct {
         }
     }
 
-    pub fn initSpawner(spawner: *Spawner, wait: i32) Node {
+    pub fn initSpawner(entities: *std.ArrayList(entity.Entity), wait: i32) Node {
         return .{
             .id = Node.nextId(),
-            .name = "SpawnerNode",
+            .name = "Spawner",
             .kind = .{
                 .spawner = .{
-                    .spawner = spawner,
+                    .entities = entities,
                     .wait = wait,
                     .target = .{
                         .id = Port.nextId(),
@@ -53,7 +76,7 @@ pub const Node = struct {
     pub fn initSink() Node {
         return .{
             .id = Node.nextId(),
-            .name = "SinkNode",
+            .name = "Sink",
             .kind = .{
                 .sink = .{
                     .from = .{
@@ -64,13 +87,13 @@ pub const Node = struct {
         };
     }
 
-    pub fn initArea(area: *Area, wait: i32) Node {
+    pub fn initArea(entities: *std.ArrayList(entity.Entity), wait: AreaNode.Wait) Node {
         return .{
             .id = Node.nextId(),
-            .name = "AreaNode",
+            .name = "Area",
             .kind = .{
                 .area = .{
-                    .area = area,
+                    .entities = entities,
                     .wait = wait,
                     .from = .{
                         .id = Port.nextId(),
@@ -111,7 +134,11 @@ pub const Link = struct {
 pub const SinkNode = struct {
     from: Port,
 
-    pub fn draw(self: *SinkNode, id: i32, name: [:0]const u8) void {
+    pub fn draw(
+        self: *SinkNode,
+        id: i32,
+        name: [:0]const u8,
+    ) void {
         // const node_width: f32 = 140;
         imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff53367d);
         imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xff7656a3);
@@ -137,15 +164,24 @@ pub const SinkNode = struct {
 };
 
 pub const SpawnerNode = struct {
-    spawner: *Spawner,
+    entities: *std.ArrayList(entity.Entity),
+    spawner_index: i32 = 0,
     wait: i32,
     target: Port,
 
     last_spawn: f64 = 0,
 
-    pub fn draw(self: *SpawnerNode, id: i32, name: [:0]const u8) void {
-        const node_width: f32 = 140;
+    pub fn getSpawner(self: *SpawnerNode) *Spawner {
+        return Node.getEnvironmentalObject(self, Spawner, self.spawner_index);
+    }
 
+    pub fn draw(
+        self: *SpawnerNode,
+        id: i32,
+        _: [:0]const u8,
+    ) void {
+        // style setup
+        const node_width: f32 = 140;
         imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff40a140);
         imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xff64CC61);
         imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xff64CC61);
@@ -153,12 +189,31 @@ pub const SpawnerNode = struct {
         defer imnodes.popColorStyle();
         defer imnodes.popColorStyle();
 
+        // start the node
         imnodes.beginNode(id);
         defer imnodes.endNode();
 
-        imnodes.beginNodeTitleBar();
-        z.text("{s}", .{name});
-        imnodes.endNodeTitleBar();
+        // title bar + spawner node selector
+        {
+            imnodes.beginNodeTitleBar();
+            defer imnodes.endNodeTitleBar();
+
+            var buf: [2048]u8 = undefined;
+            const names = entity.Entity.buildNameComboString(
+                .spawner,
+                self.entities,
+                &buf,
+            );
+            z.setNextItemWidth(node_width);
+            const changed = z.combo("##spawner", .{
+                .current_item = &self.spawner_index,
+                .items_separated_by_zeros = names,
+            });
+            if (changed) {
+                // clicked on a different spawner instance
+                std.debug.print("{}", .{self.spawner_index});
+            }
+        }
 
         // wait input
         z.text("wait", .{});
@@ -169,7 +224,7 @@ pub const SpawnerNode = struct {
         }
         z.sameLine(.{});
         z.setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
-        _ = z.inputInt("##", .{ .v = &self.wait });
+        _ = z.inputInt("##wait", .{ .v = &self.wait });
 
         // target output
         imnodes.beginOutputAttribute(self.target.id);
@@ -186,8 +241,8 @@ pub const SpawnerNode = struct {
     ) !void {
         const time: f64 = commons.getTimeMillis();
         if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {
-            // spawn new agent
-            const pos: rl.Vector2 = self.spawner.randomSpawnPos();
+            const pos: rl.Vector2 = self.getSpawner().randomSpawnPos();
+            // const pos: rl.Vector2 = .{ .x = 0, .y = 0 };
             const a = Agent.init(pos, parent, graph);
             try agents.append(a);
 
@@ -198,17 +253,68 @@ pub const SpawnerNode = struct {
 };
 
 pub const AreaNode = struct {
-    area: *Area,
-    wait: i32,
+    entities: *std.ArrayList(entity.Entity),
+    area_index: i32 = 0,
+    wait: Wait,
     from: Port,
     target: Port,
+    wait_type: i32 = 0,
 
-    pub fn draw(self: *AreaNode, id: i32, name: [:0]const u8) void {
+    pub const Wait = union(enum) {
+        constant: Constant,
+        uniform: Uniform,
+        normal: Normal,
+    };
+    pub const Constant = struct {
+        wait: i32 = 1000,
+
+        pub fn get(self: Constant) i32 {
+            return self.wait;
+        }
+    };
+    pub const Uniform = struct {
+        min: i32 = 500,
+        max: i32 = 1500,
+
+        pub fn get(self: Uniform) i32 {
+            return rl.getRandomValue(self.min, self.max);
+        }
+    };
+    pub const Normal = struct {
+        mu: i32 = 1000,
+        sigma: i32 = 500,
+
+        pub fn get(self: Normal) i32 {
+            // TODO: gauss
+            return self.mu;
+        }
+    };
+
+    pub fn getArea(self: *AreaNode) *Area {
+        return Node.getEnvironmentalObject(self, Area, self.area_index);
+    }
+
+    pub fn getCenter(self: *AreaNode) rl.Vector2 {
+        return self.getArea().getCenter();
+    }
+
+    pub fn getWaitTime(self: AreaNode) i32 {
+        return switch (self.wait) {
+            inline else => |kind| kind.get(),
+        };
+    }
+
+    pub fn draw(
+        self: *AreaNode,
+        id: i32,
+        _: [:0]const u8,
+    ) void {
         const node_width: f32 = 140;
 
         imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff2978c2);
         imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xff379bde);
         imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xff379bde);
+
         defer imnodes.popColorStyle();
         defer imnodes.popColorStyle();
         defer imnodes.popColorStyle();
@@ -216,22 +322,66 @@ pub const AreaNode = struct {
         imnodes.beginNode(id);
         defer imnodes.endNode();
 
-        imnodes.beginNodeTitleBar();
-        z.text("{s}", .{name});
-        imnodes.endNodeTitleBar();
+        // title bar + area selector
+        {
+            imnodes.beginNodeTitleBar();
+            defer imnodes.endNodeTitleBar();
 
-        // wait input
-        z.text("wait", .{});
-        if (z.isItemHovered(.{})) {
-            _ = z.beginTooltip();
-            defer z.endTooltip();
-            _ = z.text("arrival interval in ms", .{});
+            // select area
+            var buf: [2048]u8 = undefined;
+            const names = entity.Entity.buildNameComboString(
+                .area,
+                self.entities,
+                &buf,
+            );
+            z.setNextItemWidth(node_width);
+            z.setNextItemWidth(node_width);
+            const changed = z.combo("##area", .{
+                .current_item = &self.area_index,
+                .items_separated_by_zeros = names,
+            });
+            if (changed) {
+                // clicked on a different spawner instance
+                std.debug.print("{}", .{self.area_index});
+            }
         }
-        z.sameLine(.{});
-        z.setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
-        _ = z.inputInt("##", .{ .v = &self.wait });
 
-        // input
+        // wait type
+        z.setNextItemWidth(node_width);
+        const changed = z.combo("##type", .{
+            .current_item = &self.wait_type,
+            .items_separated_by_zeros = "constant\x00uniform\x00normal\x00",
+        });
+        // if the combo box changes, change the base wait struct we operate on
+        if (changed) {
+            self.wait = switch (self.wait_type) {
+                0 => .{ .constant = .{} },
+                1 => .{ .uniform = .{} },
+                2 => .{ .normal = .{} },
+                else => unreachable,
+            };
+        }
+
+        // now render the corresponding input boxes
+        switch (self.wait) {
+            .constant => |*constant| {
+                z.setNextItemWidth(node_width);
+                _ = z.inputInt("wait", .{ .v = &constant.wait });
+            },
+            .uniform => |*uniform| {
+                z.setNextItemWidth(node_width);
+                _ = z.inputInt("min", .{ .v = &uniform.min });
+                z.setNextItemWidth(node_width);
+                _ = z.inputInt("max", .{ .v = &uniform.max });
+            },
+            .normal => |*normal| {
+                z.setNextItemWidth(node_width);
+                _ = z.inputInt("mu", .{ .v = &normal.mu });
+                z.setNextItemWidth(node_width);
+                _ = z.inputInt("sigma", .{ .v = &normal.sigma });
+            },
+        }
+
         // input
         imnodes.beginInputAttribute(self.from.id);
         z.text("from", .{});
@@ -242,10 +392,6 @@ pub const AreaNode = struct {
         z.indent(.{ .indent_w = node_width - z.calcTextSize("target", .{})[0] });
         z.text("target", .{});
         imnodes.endOutputAttribute();
-    }
-
-    pub fn getCenter(self: AreaNode) rl.Vector2 {
-        return self.area.getCenter();
     }
 
     pub fn update(_: AreaNode, _: *std.ArrayList(Agent)) !void {}

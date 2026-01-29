@@ -1,6 +1,7 @@
 # Agent based pedestrian simulation using a social force model
 
-To view the paper we have written on this subject: paper link
+To view the paper we have written on this subject: [overleaf link](https://www.overleaf.com/project/66f667ffb591f8ff65cffdd8) (might be restricted; working on statically hosting on GitHub)
+
 Go to the [backlog](#project-backlog) to see the (not) implemented features.
 
 # Version support
@@ -8,15 +9,18 @@ Go to the [backlog](#project-backlog) to see the (not) implemented features.
 Later Zig versions are not guaranteed to build correctly.
 
 # Project backlog
-- [x] 🟥 Social force model for pedestrians
-- [x] 🟥 Basic UI for changing parameters
-- [x] 🟥 Placing environmental objects + persistence across runs
-- [ ] 🟥 Node system (*doing*)
-- [ ] 🟥 A variety of environmental objects, such as revolving queues, revolving doors, waiting areas
-- [ ] 🟥 A* pathfinding for the pedestrians
-- [ ] 🟧 Editing environmental objects after creation
-- [ ] 🟧 Quadtree for collisions
-- [ ] 🟨 Heatmap showing bottlenecks during simulation
+- [x] 🔴 Social force model for pedestrians
+- [x] 🔴 Basic UI for changing parameters
+- [x] 🔴 Placing environmental objects + persistence across runs
+- [ ] 🔴 Node system (*WIP*)
+- [ ] 🔴 Advanced environmental objects:
+    - [ ] queues
+    - [ ] revolving doors
+- [ ] 🔴 *A\** pathfinding for the pedestrians
+- [ ] 🟠 Statistics
+- [ ] 🟠 Editing environmental objects after creation
+- [ ] 🟠 Quadtree for collisions
+- [ ] 🟡 Heatmap showing bottlenecks during simulation
 
 ## Won't haves
 - **Macroscoping modeling**

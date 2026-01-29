@@ -15,15 +15,15 @@ const color = @import("color.zig");
 // environment
 const entity = @import("environment/entity.zig");
 const Agent = @import("agent.zig");
-const Contour = @import("environment/contour.zig");
-const Spawner = @import("environment/spawner.zig");
-const Area = @import("environment/area.zig");
+const Contour = @import("environment/Contour.zig");
+const Spawner = @import("environment/Spawner.zig");
+const Area = @import("environment/Area.zig");
 
 // data objects
 const Settings = @import("settings.zig");
-const SimData = @import("sim_data.zig");
-const AgentData = @import("agent_data.zig");
-const NodeEditor = @import("nodes/node_editor.zig");
+const SimData = @import("SimData.zig");
+const AgentData = @import("AgentData.zig");
+const NodeEditor = @import("nodes/NodeEditor.zig");
 
 const settings = Settings.init();
 var sim_data = SimData.init();
@@ -159,11 +159,9 @@ pub fn main() !void {
                 // update all placed entities
                 for (entities.items) |*ent| {
                     _ = try ent.update(sim_data);
-                    ent.draw();
                 }
 
-                // AGENTS
-                // update
+                // update the agents
                 if (!sim_data.paused) {
                     for (agents.items) |*agent| {
                         agent.update(&agents, &contours, agent_data);
@@ -177,7 +175,11 @@ pub fn main() !void {
                         }
                     }
                 }
-                // render
+
+                // render all the entities
+                for (entities.items) |*ent| {
+                    ent.draw();
+                }
                 for (agents.items) |*agent| {
                     agent.draw(agent_data);
                 }
@@ -220,7 +222,7 @@ pub fn main() !void {
 
                     const fps: f32 = @floatFromInt(rl.getFPS());
                     const frametime: f32 = if (fps > 0) 1000.0 / fps else 0.0;
-                    z.text("FPS: {d:.1} | {d:.3} ms frame", .{ fps, frametime });
+                    z.text("FPS: {d:.1} | {d:.2} ms frame | peds: {}", .{ fps, frametime, agents.items.len });
                     sim_data.render(&camera, camera_default);
 
                     try agent_data.render(&agents);
@@ -396,9 +398,9 @@ pub fn loadScene(
 
         const entity_ptr = &entities.items[entities.items.len - 1];
         switch (entity_ptr.kind) {
-            .contour => try contours.append(&entity_ptr.kind.contour),
-            .spawner => try spawners.append(&entity_ptr.kind.spawner),
-            .area => try areas.append(&entity_ptr.kind.area),
+            .contour => |*contour| try contours.append(contour),
+            .spawner => |*spawner| try spawners.append(spawner),
+            .area => |*area| try areas.append(area),
         }
     }
 }

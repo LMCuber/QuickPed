@@ -1,6 +1,6 @@
 const std = @import("std");
 const rl = @import("raylib");
-const SimData = @import("sim_data.zig");
+const SimData = @import("SimData.zig");
 
 pub var camera: *rl.Camera2D = undefined;
 
@@ -26,6 +26,9 @@ pub fn roundMousePos(sim_data: SimData) rl.Vector2 {
     };
 }
 
+///
+/// AI CODE
+///
 pub fn readFile(
     allocator: std.mem.Allocator,
     path: []const u8,
