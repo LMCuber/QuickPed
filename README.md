@@ -13,26 +13,26 @@ To view the paper we have written on this subject: [overleaf link](https://www.o
 Later Zig versions are not guaranteed to build correctly.
 
 # Project backlog
-- [x] 🔴 Social force model for pedestrians
+- [x] 🔴 <span style="width:10px;height:10px;border-radius:50%;background:red"></span> Social force model for pedestrians
 - [x] 🔴 Basic UI for changing parameters
 - [x] 🔴 Placing environmental objects + persistence across runs
-- [ ] 🔴 Node system (*WIP*)
-- [ ] 🔴 Advanced environmental objects:
+- [ ] 🔴 Statistics
+- [ ] 🔴 (_WIP_) Node system
+- [ ] 🔴 Some advanced environmental objects:
     - [ ] queues
     - [ ] revolving doors
 - [ ] 🔴 *A\** pathfinding for the pedestrians
-- [ ] 🟠 Statistics
 - [ ] 🟠 Editing environmental objects after creation
 - [ ] 🟠 Quadtree for collisions
 - [ ] 🟡 Heatmap showing bottlenecks during simulation
 
+
+
 ## Won't haves
-- **Macroscoping modeling**<br>
-The scope of this project is microscopic agent-based modeling.
-- **Any type of scripting support**
-The project should maximize development time and ease of use. Scripting is a fast turn-off for non-coders and overcomplicates things.
-- **Others means of agent simulation, such as vehicles or industrial processes**
-This would substantially increase the scope and complexity of the project, and should either be an add-on or a separate application altogether.
+- _**Any type of scripting support**_<br>
+The project should maximize development time and ease of use. I might implement it later when I see that the base nodes in the editor aren't enough to express complex interactions that are complex enough.
+- _**Others means of agent simulation, such as vehicles or industrial processes**_<br>
+This refers to other businesses, such as transport systems and factory pipelines. Those are currently way beyond the scope of the project.
 
 # How to run
 ```
