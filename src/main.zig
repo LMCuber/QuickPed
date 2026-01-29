@@ -35,6 +35,7 @@ const SceneSnapshot = struct {
     next_id: i32,
     next_contour_id: i32,
     next_spawner_id: i32,
+    next_area_id: i32,
 };
 
 // main
@@ -340,6 +341,7 @@ pub fn saveScene(
         .next_id = entity.Entity.next_id,
         .next_contour_id = Contour.next_id,
         .next_spawner_id = Spawner.next_id,
+        .next_area_id = Area.next_id,
     };
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();

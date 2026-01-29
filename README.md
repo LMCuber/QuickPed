@@ -4,6 +4,10 @@ To view the paper we have written on this subject: [overleaf link](https://www.o
 
 Go to the [backlog](#project-backlog) to see the (not) implemented features.
 
+# Preview
+![main](previews/main.png "main")
+![node editor](previews/node_editor.png "node editor")
+
 # Version support
 ⚠️ **This project currently supports `zig` versions up to 0.13.0.**  
 Later Zig versions are not guaranteed to build correctly.

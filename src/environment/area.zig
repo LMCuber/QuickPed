@@ -93,7 +93,7 @@ pub fn draw(self: Self) void {
     } else if (self.anchored) {
         col = color.navy_t;
     } else {
-        col = color.green;
+        col = color.light_blue;
     }
     const size = 10;
     if (!self.anchored) {

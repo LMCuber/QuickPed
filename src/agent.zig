@@ -52,6 +52,7 @@ pub fn traverse(self: *Self, spawner_node: *node.Node) void {
             .area => |*area_node| {
                 self.target = area_node.getCenter();
                 self.wait = area_node.getWaitTime();
+                self.waiting = false;
             },
             .sink => {
                 // next is sink, so destroy outselves
