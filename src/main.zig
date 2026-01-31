@@ -7,6 +7,7 @@ const c = @cImport({
 const rl = @import("raylib");
 const z = @import("zgui");
 const imnodes = @import("imnodes");
+const implot = @import("implot");
 
 // namespaces
 const commons = @import("commons.zig");
@@ -14,15 +15,16 @@ const color = @import("color.zig");
 
 // environment
 const entity = @import("environment/entity.zig");
-const Agent = @import("agent.zig");
+const Agent = @import("Agent.zig");
 const Contour = @import("environment/Contour.zig");
 const Spawner = @import("environment/Spawner.zig");
 const Area = @import("environment/Area.zig");
 
 // data objects
 const Settings = @import("settings.zig");
-const SimData = @import("SimData.zig");
-const AgentData = @import("AgentData.zig");
+const SimData = @import("editor/SimData.zig");
+const AgentData = @import("editor/AgentData.zig");
+const Stats = @import("editor/Stats.zig");
 const NodeEditor = @import("nodes/NodeEditor.zig");
 
 const settings = Settings.init();
@@ -52,8 +54,12 @@ pub fn main() !void {
     c.rlImGuiSetup(true);
     defer c.rlImGuiShutdown();
 
+    // initialize contexts for the imgui libraries
     z.initNoContext(std.heap.c_allocator);
     defer z.deinitNoContext();
+
+    implot.createContext();
+    defer implot.destroyContext();
 
     imnodes.createContext();
     defer imnodes.destroyContext();
@@ -86,6 +92,10 @@ pub fn main() !void {
     defer spawners.deinit();
     var areas = std.ArrayList(*Area).init(allocator);
     defer areas.deinit();
+
+    // allocated editor objects
+    var stats = Stats.init(allocator);
+    defer stats.deinit();
 
     // node editor
     var node_editor = NodeEditor.init(allocator);
@@ -224,11 +234,14 @@ pub fn main() !void {
                     const fps: f32 = @floatFromInt(rl.getFPS());
                     const frametime: f32 = if (fps > 0) 1000.0 / fps else 0.0;
                     z.text("FPS: {d:.1} | {d:.2} ms frame | peds: {}", .{ fps, frametime, agents.items.len });
+
+                    // sim data header
                     sim_data.render(&camera, camera_default);
 
+                    // agent data header
                     try agent_data.render(&agents);
 
-                    // draw environment items to render
+                    // environmental objects buttons header
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
                         // pub fn tableSetupColumn(label: [:0]const u8, args: TableSetupColumn) void {
                         if (z.button("Contour", .{})) {
@@ -273,6 +286,10 @@ pub fn main() !void {
                         }
                         z.popStyleColor(.{ .count = 3 });
                     }
+                    z.newLine();
+
+                    // statistics header
+                    try stats.render(&agents);
                 }
 
                 // draw node editor

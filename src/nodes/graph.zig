@@ -1,7 +1,7 @@
 const Self = @This();
 const node = @import("node.zig");
 const std = @import("std");
-const Agent = @import("../agent.zig");
+const Agent = @import("../Agent.zig");
 
 allocator: std.mem.Allocator,
 nodes: std.ArrayList(node.Node),
@@ -47,16 +47,20 @@ pub fn processSpawners(self: *Self, agents: *std.ArrayList(Agent)) !void {
 /// AI CODE
 ///
 pub fn getNextNode(self: Self, current_node: *const node.Node) ?*node.Node {
-    // Get output port ID from current node
-    const output_port_id = switch (current_node.kind) {
-        .spawner => |*s| s.target.id,
-        .area => |*a| a.target.id,
-        .sink => return null, // Sink has no output
+    // get correct port ID from current node
+    const output_port_id: ?i32 = switch (current_node.kind) {
+        .spawner => |s| s.target.id,
+        .area => |a| a.target.id,
+        .fork => |f| f.getOutputPort().id, // gets random output node
+        .sink => null, // Sink has no output
     };
 
-    // Find link where left_attr_id matches our output port
+    // find link where the left_attr_id of it matches our output port (right_attr_id)
     for (self.links.items) |link| {
+
+        // check if the this.outgoing is equal to the other.ingoing
         if (link.left_attr_id == output_port_id) {
+
             // Found a connection, now find the node with this input port
             const next_port_id = link.right_attr_id;
 
@@ -65,12 +69,22 @@ pub fn getNextNode(self: Self, current_node: *const node.Node) ?*node.Node {
                     .spawner => |*s| s.target.id == next_port_id,
                     .sink => |*s| s.from.id == next_port_id,
                     .area => |*a| a.from.id == next_port_id or a.target.id == next_port_id,
+                    .fork => |*f| blk: {
+                        if (f.from.id == next_port_id) break :blk true;
+                        for (f.targets) |target| {
+                            if (target.id == next_port_id) break :blk true;
+                        }
+                        break :blk false;
+                    },
                 };
 
-                if (has_port) return n;
+                if (has_port) {
+                    return n;
+                }
             }
         }
     }
 
-    return null; // No connection found
+    // no connection found
+    return null;
 }

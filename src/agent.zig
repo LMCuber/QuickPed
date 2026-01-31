@@ -6,7 +6,7 @@ const rl = @import("raylib");
 //
 const commons = @import("commons.zig");
 const color = @import("color.zig");
-const AgentData = @import("AgentData.zig");
+const AgentData = @import("editor/AgentData.zig");
 const Contour = @import("environment/Contour.zig");
 const Area = @import("environment/Area.zig");
 const node = @import("nodes/node.zig");
@@ -40,26 +40,36 @@ pub fn init(
         .col = col,
         .graph = graph,
     };
-    obj.traverse(spawner_node);
+    obj.current_node = spawner_node;
+    obj.traverseFromCurrent();
     return obj;
 }
 
-pub fn traverse(self: *Self, spawner_node: *node.Node) void {
-    if (self.graph.getNextNode(spawner_node)) |next| {
-        // check if the spawner is connected to another node
+pub fn traverseFromCurrent(self: *Self) void {
+    // check if current node exists at all to traverse from
+    const from_node: *node.Node = self.current_node orelse unreachable;
+
+    // get the next node from graph and then process it
+    if (self.graph.getNextNode(from_node)) |next| {
+        // set current node to next by default (might be changed by e.g. fork)
+        self.current_node = next;
+
+        // check what type of node the next found node is
         switch (next.kind) {
             .spawner => unreachable,
             .area => |*area_node| {
                 self.target = area_node.getCenter();
-                self.wait = area_node.getWaitTime();
                 self.waiting = false;
             },
             .sink => {
                 // next is sink, so destroy outselves
                 self.marked = true;
             },
+            .fork => {
+                self.current_node = next;
+                self.traverseFromCurrent();
+            },
         }
-        self.current_node = next;
     } else {
         // the spawner is standalone, so just kill the agent
         self.marked = true;
@@ -76,6 +86,7 @@ pub fn processCurrentNode(self: *Self) void {
                 if (!self.waiting) {
                     // start waiting if in bounds
                     if (rl.checkCollisionPointRec(self.pos, area_node.getArea().rect)) {
+                        self.wait = area_node.getWaitTime();
                         self.waiting = true;
                         self.last_wait = commons.getTimeMillis();
                     }
@@ -84,9 +95,7 @@ pub fn processCurrentNode(self: *Self) void {
                     const time: f64 = commons.getTimeMillis();
                     if (time - self.last_wait >= @as(f64, @floatFromInt(self.wait))) {
                         // waited long enough. continue
-                        if (self.current_node) |current_node| {
-                            self.traverse(current_node);
-                        }
+                        self.traverseFromCurrent();
                     }
                 }
             },

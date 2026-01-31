@@ -4,7 +4,7 @@ const rl = @import("raylib");
 const color = @import("../color.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
-const SimData = @import("../SimData.zig");
+const SimData = @import("../editor/SimData.zig");
 
 area_id: i32,
 topleft: rl.Vector2 = undefined,

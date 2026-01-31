@@ -1,9 +1,9 @@
 const Self = @This();
 const std = @import("std");
 const z = @import("zgui");
-const Agent = @import("agent.zig");
-const AgentData = @import("AgentData.zig");
-const Contour = @import("environment/Contour.zig");
+const Agent = @import("../Agent.zig");
+const AgentData = @import("../editor/AgentData.zig");
+const Contour = @import("../environment/Contour.zig");
 
 // lifetime
 num_to_place: i32 = 10,

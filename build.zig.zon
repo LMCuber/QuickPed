@@ -13,5 +13,6 @@
         },
         .zgui = .{ .path = "vendor/zgui" },
         .imnodes = .{ .path = "vendor/imnodes" },
+        .implot = .{ .path = "vendor/implot" },
     },
 }

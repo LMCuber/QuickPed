@@ -4,8 +4,8 @@ const rl = @import("raylib");
 const color = @import("../color.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
-const SimData = @import("../SimData.zig");
-const Agent = @import("../agent.zig");
+const SimData = @import("../editor/SimData.zig");
+const Agent = @import("../Agent.zig");
 
 spawner_id: i32,
 points: [2]rl.Vector2 = undefined,

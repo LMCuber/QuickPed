@@ -9,7 +9,7 @@ const Graph = @import("Graph.zig");
 const Spawner = @import("../environment/Spawner.zig");
 const entity = @import("../environment/entity.zig");
 const Area = @import("../environment/Area.zig");
-const Agent = @import("../agent.zig");
+const Agent = @import("../Agent.zig");
 
 active: bool = false,
 graph: Graph,
@@ -96,25 +96,10 @@ pub fn render(
                 }
             }
 
-            //     // query all area objects
-            //     for (entities.items) |*ent| {
-            //         switch (ent.kind) {
-            //             .area => {
-            //                 if (z.menuItem(ent.name, .{})) {
-            //                     try self.graph.addNode(node.Node.initArea(
-            //                         &ent.kind.area,
-            //                         .{
-            //                             .constant = .{
-            //                                 .wait = 1000,
-            //                             }
-            //                         },
-            //                     ));
-            //                 }
-            //             },
-            //             inline else => {},
-            //         }
-            //     }
-            // }
+            // fork node
+            if (z.menuItem("Fork", .{})) {
+                try self.graph.addNode(node.Node.initFork());
+            }
             // sink node
             if (z.menuItem("Sink", .{})) {
                 try self.graph.addNode(node.Node.initSink());
@@ -133,7 +118,7 @@ pub fn render(
         imnodes.link(link.id, link.left_attr_id, link.right_attr_id);
     }
 
-    // imnodes.minimap();
+    imnodes.minimap();
     imnodes.endNodeEditor();
 
     // check for new connections

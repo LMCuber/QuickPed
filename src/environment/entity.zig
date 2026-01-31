@@ -1,5 +1,5 @@
 const Contour = @import("Contour.zig");
-const SimData = @import("../SimData.zig");
+const SimData = @import("../editor/SimData.zig");
 const Spawner = @import("Spawner.zig");
 const Area = @import("Area.zig");
 const commons = @import("../commons.zig");

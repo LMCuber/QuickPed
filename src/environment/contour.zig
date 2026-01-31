@@ -4,7 +4,7 @@ const rl = @import("raylib");
 const color = @import("../color.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
-const SimData = @import("../SimData.zig");
+const SimData = @import("../editor/SimData.zig");
 
 contour_id: i32,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },

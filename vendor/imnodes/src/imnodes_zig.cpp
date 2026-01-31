@@ -1,4 +1,3 @@
-// imnodes_zig.cpp
 #include "imnodes.h"
 
 extern "C" {

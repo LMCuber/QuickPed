@@ -1,12 +1,8 @@
 const std = @import("std");
 const rl = @import("raylib");
-const SimData = @import("SimData.zig");
+const SimData = @import("editor/SimData.zig");
 
 pub var camera: *rl.Camera2D = undefined;
-
-pub fn intToStr() []u8 {
-    return "";
-}
 
 pub fn roundN(value: i32, n: i32) i32 {
     return @divTrunc(value + @divTrunc(n, 2), n) * n;
@@ -24,6 +20,17 @@ pub fn roundMousePos(sim_data: SimData) rl.Vector2 {
         .x = @floatFromInt(roundN(@intFromFloat(mousePos().x), sim_data.grid_size)),
         .y = @floatFromInt(roundN(@intFromFloat(mousePos().y), sim_data.grid_size)),
     };
+}
+
+///
+/// AI CODE
+///
+fn arrSum(comptime T: type, comptime arr: []const T) T {
+    var s: T = 0;
+    comptime for (arr) |x| {
+        s += x;
+    };
+    return s;
 }
 
 ///
@@ -49,8 +56,11 @@ pub fn readFile(
     );
 }
 
+///
+/// AI CODE
+///
 pub fn rand01() f32 {
-    return @as(f32, @floatFromInt(rl.getRandomValue(0, 1000000))) / 1_000_000.0;
+    return @as(f32, @floatFromInt(rl.getRandomValue(0, 1_000_000))) / 1_000_000.0;
 }
 
 pub fn getTimeMillis() f64 {

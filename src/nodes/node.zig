@@ -7,7 +7,7 @@ const imnodes = @import("imnodes");
 const z = @import("zgui");
 const Spawner = @import("../environment/Spawner.zig");
 const Area = @import("../environment/Area.zig");
-const Agent = @import("../agent.zig");
+const Agent = @import("../Agent.zig");
 const Graph = @import("Graph.zig");
 const node = @import("node.zig");
 const commons = @import("../commons.zig");
@@ -22,6 +22,7 @@ pub const Node = struct {
         spawner: SpawnerNode,
         sink: SinkNode,
         area: AreaNode,
+        fork: ForkNode,
     },
 
     ///
@@ -65,8 +66,26 @@ pub const Node = struct {
                 .spawner = .{
                     .entities = entities,
                     .wait = wait,
-                    .target = .{
+                    .target = .{ .id = Port.nextId() },
+                },
+            },
+        };
+    }
+
+    pub fn initFork() Node {
+        return .{
+            .id = Node.nextId(),
+            .name = "Fork",
+            .kind = .{
+                .fork = .{
+                    .from = .{
                         .id = Port.nextId(),
+                    },
+                    .targets = .{
+                        .{ .id = Port.nextId() },
+                        .{ .id = Port.nextId() },
+                        .{ .id = Port.nextId() },
+                        .{ .id = Port.nextId() },
                     },
                 },
             },
@@ -79,9 +98,7 @@ pub const Node = struct {
             .name = "Sink",
             .kind = .{
                 .sink = .{
-                    .from = .{
-                        .id = Port.nextId(),
-                    },
+                    .from = .{ .id = Port.nextId() },
                 },
             },
         };
@@ -95,12 +112,8 @@ pub const Node = struct {
                 .area = .{
                     .entities = entities,
                     .wait = wait,
-                    .from = .{
-                        .id = Port.nextId(),
-                    },
-                    .target = .{
-                        .id = Port.nextId(),
-                    },
+                    .from = .{ .id = Port.nextId() },
+                    .target = .{ .id = Port.nextId() },
                 },
             },
         };
@@ -146,14 +159,16 @@ pub const SinkNode = struct {
         defer imnodes.popColorStyle();
         defer imnodes.popColorStyle();
 
+        // init node
         imnodes.beginNode(id);
         defer imnodes.endNode();
 
+        // title bar
         imnodes.beginNodeTitleBar();
         z.text("Sink", .{});
         imnodes.endNodeTitleBar();
 
-        // input
+        // input port
         imnodes.beginInputAttribute(self.from.id);
         z.text("from", .{});
         imnodes.endInputAttribute();
@@ -392,4 +407,72 @@ pub const AreaNode = struct {
     }
 
     pub fn update(_: AreaNode, _: *std.ArrayList(Agent)) !void {}
+};
+
+pub const ForkNode = struct {
+    from: Port,
+    targets: [4]Port,
+    values: [4]f32 = .{ 0.25, 0.25, 0.25, 0.25 },
+
+    pub fn getOutputPort(self: ForkNode) Port {
+        var sum: f32 = 0;
+        for (self.values) |prob| {
+            sum += prob;
+        }
+
+        // add up until larger than cumulative
+        const r: f32 = commons.rand01() * sum;
+        var cum: f64 = 0;
+        var i: usize = 0;
+        for (self.values) |value| {
+            cum += value;
+            if (r < cum) {
+                return self.targets[i];
+            }
+            i += 1;
+        }
+        std.debug.print("{}|{}|{}\n", .{ sum, cum, r });
+        unreachable;
+    }
+
+    pub fn draw(
+        self: *ForkNode,
+        id: i32,
+    ) void {
+        // style setup
+        const node_width: f32 = 70;
+        imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xFF636363);
+        imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xFFA9A9A9);
+        imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xFFA9A9A9);
+        defer imnodes.popColorStyle();
+        defer imnodes.popColorStyle();
+        defer imnodes.popColorStyle();
+
+        // start the node
+        imnodes.beginNode(id);
+        defer imnodes.endNode();
+
+        // title bar
+        imnodes.beginNodeTitleBar();
+        z.text("Fork", .{});
+        imnodes.endNodeTitleBar();
+
+        // input port
+        imnodes.beginInputAttribute(self.from.id);
+        z.text("from", .{});
+        imnodes.endInputAttribute();
+
+        // output ports
+        for (0..self.targets.len) |i| {
+            imnodes.beginOutputAttribute(self.targets[i].id);
+            defer imnodes.endOutputAttribute();
+
+            // float input
+            z.setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
+            if (z.inputFloat("##asd", .{ .v = &self.values[i], .cfmt = "%.2f" })) {
+                // input changed
+
+            }
+        }
+    }
 };
