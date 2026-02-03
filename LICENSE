@@ -1,4 +1,4 @@
 This project contains code under multiple licenses:
 
-1. Original boilerplate code (from [https://github.com/schmee/zig-raylib-imgui-template]): MIT License (see LICENSE-MIT file)
-2. My additions: CC BY-NC 4.0]
+1. Original boilerplate code (from https://github.com/schmee/zig-raylib-imgui-template): MIT License (see LICENSE_MIT file)
+2. My additions: CC BY-NC 4.0 (see LICENSE_CC_BY_NC)
