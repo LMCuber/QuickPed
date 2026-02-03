@@ -13,21 +13,17 @@ To view the paper we have written on this subject: [overleaf link](https://www.o
 ⚠️ **This project currently supports `zig` versions up to 0.13.0.**  
 Later Zig versions are not guaranteed to build correctly.
 
-# Project backlog
-- [x] 🔴 Social force model for pedestrians
-- [x] 🔴 Basic UI for changing parameters
-- [x] 🔴 Placing environmental objects + persistence across runs
-- [x] 🔴 A functioning Node system
-- [ ] 🔴 Statistics
-- [ ] 🔴 Some advanced environmental objects:
+# Planned features
+- [x] Social force model for pedestrians
+- [x] A functioning Node system
+- [ ] Statistics
+    - [x] Showing number of (waiting) pedestrians
+    - [ ] Heatmap showing bottlenecks during simulation
+- [ ] Advanced environmental objects
     - [ ] queues
     - [ ] revolving doors
-- [ ] 🔴 *A\** pathfinding for the pedestrians
-- [ ] 🟠 Editing environmental objects after creation
-- [ ] 🟠 Quadtree for collisions
-- [ ] 🟡 Heatmap showing bottlenecks during simulation
-
-
+- [ ] *A\** pathfinding for the pedestrians
+- [ ] Quadtree for collisions
 
 ## Won't haves
 - _**Any type of scripting support**_<br>

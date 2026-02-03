@@ -26,12 +26,6 @@ pub fn init() Self {
 
 pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
     if (z.collapsingHeader("Agent", .{ .default_open = false })) {
-        z.separatorText("Creation");
-        // place N agents
-        _ = z.sliderInt("count", .{ .v = &self.num_to_place, .min = 1, .max = 50 });
-        if (z.button("place", .{})) {
-            // try Agent.create(.{ .x = 100, .y = 100 }, agents, self.num_to_place);
-        }
         z.sameLine(.{});
         if (z.button("delete", .{})) {
             Agent.delete(

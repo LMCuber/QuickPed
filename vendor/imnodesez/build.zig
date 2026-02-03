@@ -5,12 +5,12 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     _ = b.addModule("root", .{
-        .root_source_file = b.path("src/imnodes.zig"),
+        .root_source_file = b.path("src/imnodesez.zig"),
     });
 
     // Create static library for imnodes
     const lib = b.addStaticLibrary(.{
-        .name = "imnodes",
+        .name = "imnodesez",
         .target = target,
         .optimize = optimize,
     });
@@ -19,15 +19,18 @@ pub fn build(b: *std.Build) void {
     lib.addIncludePath(b.path(".")); // imnodes headers
     lib.addIncludePath(b.path("../zgui/libs/imgui")); // ImGui headers from zgui
 
-    // Compile the main ImNodes implementation
     lib.addCSourceFile(.{
-        .file = b.path("imnodes.cpp"),
-        .flags = &[_][]const u8{"-std=c++17"},
+        .file = b.path("ImNodes.cpp"),
+        .flags = &[_][]const u8{"-std=c++11"},
+    });
+    lib.addCSourceFile(.{
+        .file = b.path("ImNodesEz.cpp"),
+        .flags = &[_][]const u8{"-std=c++11"},
     });
 
     // Compile C ABI wrapper for Zig
     lib.addCSourceFile(.{
-        .file = b.path("src/imnodes_zig.cpp"),
+        .file = b.path("src/imnodesez_zig.cpp"),
         .flags = &[_][]const u8{"-std=c++17"},
     });
 

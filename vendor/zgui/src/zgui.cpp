@@ -1409,6 +1409,10 @@ ZGUI_API bool zguiIsMouseClicked(ImGuiMouseButton button) {
     return ImGui::IsMouseClicked(button);
 }
 
+ZGUI_API bool zguiIsMouseReleased(ImGuiMouseButton button) {
+    return ImGui::IsMouseReleased(button);
+}
+
 ZGUI_API bool zguiIsMouseDoubleClicked(ImGuiMouseButton button) {
     return ImGui::IsMouseDoubleClicked(button);
 }

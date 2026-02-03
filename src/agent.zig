@@ -65,13 +65,15 @@ pub fn traverseFromCurrent(self: *Self) void {
                 // next is sink, so destroy outselves
                 self.marked = true;
             },
-            .fork => {
-                self.current_node = next;
-                self.traverseFromCurrent();
-            },
+            // .fork => {
+            //     self.current_node = next;
+            //     self.traverseFromCurrent();
+            // },
         }
     } else {
         // the spawner is standalone, so just kill the agent
+        // this works for both a dangling Spawner & Area
+        // but have different effects
         self.marked = true;
     }
 }

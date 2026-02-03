@@ -6,8 +6,9 @@ const c = @cImport({
 });
 const rl = @import("raylib");
 const z = @import("zgui");
-const imnodes = @import("imnodes");
+// const imnodes = @import("imnodes");
 const implot = @import("implot");
+const imnodes = @import("imnodesez");
 
 // namespaces
 const commons = @import("commons.zig");
@@ -30,6 +31,8 @@ const NodeEditor = @import("nodes/NodeEditor.zig");
 const settings = Settings.init();
 var sim_data = SimData.init();
 var agent_data = AgentData.init();
+
+var ctx: ?*imnodes.ez.Context = null;
 
 const SceneSnapshot = struct {
     version: []const u8,
@@ -61,8 +64,9 @@ pub fn main() !void {
     implot.createContext();
     defer implot.destroyContext();
 
-    imnodes.createContext();
-    defer imnodes.destroyContext();
+    ctx = imnodes.ez.createContext().?;
+    imnodes.ez.setContext(ctx.?);
+    defer imnodes.ez.freeContext(ctx.?);
 
     // custom font
     const font = z.io.addFontFromFile("fonts/DroidSans.ttf", 20);
@@ -223,7 +227,10 @@ pub fn main() !void {
 
                 // draw all options (except node editor)
                 {
-                    z.setNextWindowPos(.{ .x = @floatFromInt(settings.width - settings.tab_width), .y = 0 });
+                    z.setNextWindowPos(.{
+                        .x = @floatFromInt(settings.width - settings.tab_width),
+                        .y = 25,
+                    });
                     z.setNextWindowSize(.{
                         .w = @floatFromInt(settings.tab_width),
                         .h = @floatFromInt(settings.height),

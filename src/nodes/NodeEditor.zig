@@ -1,7 +1,7 @@
 const Self = @This();
 
 const z = @import("zgui");
-const imnodes = @import("imnodes");
+// const imnodes = @import("imnodes");
 const rl = @import("raylib");
 const std = @import("std");
 const node = @import("node.zig");
@@ -10,6 +10,7 @@ const Spawner = @import("../environment/Spawner.zig");
 const entity = @import("../environment/entity.zig");
 const Area = @import("../environment/Area.zig");
 const Agent = @import("../Agent.zig");
+const imnodes = @import("imnodesez");
 
 active: bool = false,
 graph: Graph,
@@ -31,108 +32,121 @@ pub fn render(
     if (rl.isKeyPressed(.key_space)) {
         self.active = !self.active;
     }
-    if (!self.active) {
-        return;
-    }
+    // if (!self.active) {
+    //     return;
+    // }
 
-    z.setNextWindowCollapsed(.{
-        .collapsed = false,
-    });
+    // z.setNextWindowCollapsed(.{
+    //     .collapsed = false,
+    // });
 
-    _ = z.begin("Node Editor", .{});
-    defer z.end();
+    if (z.begin("Node editor", .{ .flags = .{ .no_scrollbar = true, .no_scroll_with_mouse = true } })) {
+        imnodes.ez.beginCanvas();
+        defer imnodes.ez.endCanvas();
 
-    imnodes.beginNodeEditor();
+        // user adds new nodes
+        const open_popup: bool = (rl.isKeyReleased(.key_a));
+        if (!z.isAnyItemHovered() and open_popup) {
+            z.openPopup("edit", .{});
+        }
+        if (z.beginPopup("edit", .{})) {
+            defer z.endPopup();
+            if (z.beginMenu("Add node", true)) {
+                defer z.endMenu();
 
-    // user adds new nodes
-    const open_popup: bool = (imnodes.isEditorHovered() and rl.isKeyReleased(.key_a));
-    if (!z.isAnyItemHovered() and open_popup) {
-        z.openPopup("edit", .{});
-    }
-    if (z.beginPopup("edit", .{})) {
-        defer z.endPopup();
-        if (z.beginMenu("Add node", true)) {
-            defer z.endMenu();
-
-            // check if there are any spawners
-            var first_spawner: ?*Spawner = null;
-            for (entities.items) |*ent| {
-                switch (ent.kind) {
-                    .spawner => |*spawner| {
-                        first_spawner = spawner;
-                        break;
-                    },
-                    inline else => {},
+                // check if there are any spawners
+                var first_spawner: ?*Spawner = null;
+                for (entities.items) |*ent| {
+                    switch (ent.kind) {
+                        .spawner => |*spawner| {
+                            first_spawner = spawner;
+                            break;
+                        },
+                        inline else => {},
+                    }
                 }
-            }
-            if (z.menuItem("Spawner", .{ .enabled = first_spawner != null })) {
-                if (first_spawner) |_| {
-                    try self.graph.addNode(node.Node.initSpawner(
-                        entities,
-                        1_000,
-                    ));
+                if (z.menuItem("Spawner", .{ .enabled = first_spawner != null })) {
+                    if (first_spawner) |_| {
+                        try self.graph.addNode(node.Node.initSpawner(
+                            entities,
+                            1_000,
+                        ));
+                    }
                 }
-            }
 
-            // check if there are any areas
-            var first_area: ?*Area = null;
-            for (entities.items) |*ent| {
-                switch (ent.kind) {
-                    .area => |*area| {
-                        first_area = area;
-                        break;
-                    },
-                    inline else => {},
+                // check if there are any areas
+                var first_area: ?*Area = null;
+                for (entities.items) |*ent| {
+                    switch (ent.kind) {
+                        .area => |*area| {
+                            first_area = area;
+                            break;
+                        },
+                        inline else => {},
+                    }
                 }
-            }
-            if (z.menuItem("Area", .{ .enabled = first_area != null })) {
-                if (first_area != null) {
-                    try self.graph.addNode(node.Node.initArea(
-                        entities,
-                        .{ .constant = .{
-                            .wait = 1000,
-                        } },
-                    ));
+                if (z.menuItem("Area", .{ .enabled = first_area != null })) {
+                    if (first_area != null) {
+                        try self.graph.addNode(node.Node.initArea(
+                            entities,
+                            .{ .constant = .{
+                                .wait = 1000,
+                            } },
+                        ));
+                    }
                 }
-            }
 
-            // fork node
-            if (z.menuItem("Fork", .{})) {
-                try self.graph.addNode(node.Node.initFork());
-            }
-            // sink node
-            if (z.menuItem("Sink", .{})) {
-                try self.graph.addNode(node.Node.initSink());
+                // // fork node
+                // if (z.menuItem("Fork", .{})) {
+                //     try self.graph.addNode(node.Node.initFork());
+                // }
+                // sink node
+                if (z.menuItem("Sink", .{})) {
+                    try self.graph.addNode(node.Node.initSink());
+                }
             }
         }
+
+        // render entire graph using imnodes
+        for (self.graph.nodes.items) |*n| {
+            n.draw();
+        }
+
+        // create new connections
+        var new_conn: node.NewConnection = .{};
+        const input_node_ptr_ptr: *?*anyopaque = @ptrCast(&new_conn.input_node);
+        const output_node_ptr_ptr: *?*anyopaque = @ptrCast(&new_conn.output_node);
+        if (imnodes.getNewConnection(
+            input_node_ptr_ptr,
+            &new_conn.input_slot_title,
+            output_node_ptr_ptr,
+            &new_conn.output_slot_title,
+        )) {
+            // construct the in- and output the slots involved
+            const input_slot: node.Slot = .{
+                .node = new_conn.input_node.?,
+                .title = new_conn.input_slot_title,
+            };
+            const output_slot: node.Slot = .{
+                .node = new_conn.output_node.?,
+                .title = new_conn.output_slot_title,
+            };
+
+            // create new connection
+            try self.graph.addConnection(output_slot, input_slot);
+        }
+
+        // render existing connections
+        for (self.graph.connections.items) |conn| {
+            const input_node_ptr: *anyopaque = @ptrCast(conn.input_slot.node);
+            const output_node_ptr: *anyopaque = @ptrCast(conn.output_slot.node);
+            _ = imnodes.ez.connection(
+                input_node_ptr,
+                conn.input_slot.title,
+                output_node_ptr,
+                conn.output_slot.title,
+            );
+        }
     }
-
-    // render entire graph using imnodes
-    for (self.graph.nodes.items) |*n| {
-        n.draw();
-    }
-
-    // render existing links
-    for (self.graph.links.items) |link| {
-        // std.debug.print("{}|{}\n", .{ link.left_attr_id, link.right_attr_id });
-        imnodes.link(link.id, link.left_attr_id, link.right_attr_id);
-    }
-
-    imnodes.minimap();
-    imnodes.endNodeEditor();
-
-    // check for new connections
-    var start_attr_id: i32 = 0;
-    var end_attr_id: i32 = 0;
-
-    _ = imnodes.isLinkCreated(&start_attr_id, &end_attr_id);
-    if (start_attr_id | end_attr_id != 0) {
-        // std.debug.print("{}|{}\n", .{ start_attr_id, end_attr_id });
-        try self.graph.addLink(start_attr_id, end_attr_id);
-    }
-
-    // check for destroyed connections
-    var link_id: i32 = 0;
-    _ = imnodes.isLinkDestroyed(&link_id);
-    // std.debug.print("{}\n", .{link_id});
+    z.end();
 }

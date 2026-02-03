@@ -3,7 +3,7 @@
 ///
 const rl = @import("raylib");
 const std = @import("std");
-const imnodes = @import("imnodes");
+const imnodes = @import("imnodesez");
 const z = @import("zgui");
 const Spawner = @import("../environment/Spawner.zig");
 const Area = @import("../environment/Area.zig");
@@ -13,16 +13,24 @@ const node = @import("node.zig");
 const commons = @import("../commons.zig");
 const entity = @import("../environment/entity.zig");
 
+fn setNextItemWidth(width: f32) void {
+    const zoom: f32 = imnodes.getZoom(imnodes.ez.getState());
+    z.setNextItemWidth(width * zoom);
+}
+
 pub const Node = struct {
     pub var next_id: i32 = 0;
 
     id: i32,
     name: [:0]const u8,
+    pos: imnodes.Vec2 = .{ .x = 230, .y = 230 },
+    selected: bool = false,
+
     kind: union(enum) {
         spawner: SpawnerNode,
         sink: SinkNode,
         area: AreaNode,
-        fork: ForkNode,
+        // fork: ForkNode,
     },
 
     ///
@@ -54,7 +62,7 @@ pub const Node = struct {
 
     pub fn draw(self: *Node) void {
         switch (self.kind) {
-            inline else => |*n| n.draw(self.id),
+            inline else => |*n| n.draw(self),
         }
     }
 
@@ -66,40 +74,37 @@ pub const Node = struct {
                 .spawner = .{
                     .entities = entities,
                     .wait = wait,
-                    .target = .{ .id = Port.nextId() },
                 },
             },
         };
     }
 
-    pub fn initFork() Node {
-        return .{
-            .id = Node.nextId(),
-            .name = "Fork",
-            .kind = .{
-                .fork = .{
-                    .from = .{
-                        .id = Port.nextId(),
-                    },
-                    .targets = .{
-                        .{ .id = Port.nextId() },
-                        .{ .id = Port.nextId() },
-                        .{ .id = Port.nextId() },
-                        .{ .id = Port.nextId() },
-                    },
-                },
-            },
-        };
-    }
+    // pub fn initFork() Node {
+    //     return .{
+    //         .id = Node.nextId(),
+    //         .name = "Fork",
+    //         .kind = .{
+    //             .fork = .{
+    //                 .from = .{
+    //                     .id = Port.nextId(),
+    //                 },
+    //                 .targets = .{
+    //                     .{ .id = Port.nextId() },
+    //                     .{ .id = Port.nextId() },
+    //                     .{ .id = Port.nextId() },
+    //                     .{ .id = Port.nextId() },
+    //                 },
+    //             },
+    //         },
+    //     };
+    // }
 
     pub fn initSink() Node {
         return .{
             .id = Node.nextId(),
             .name = "Sink",
             .kind = .{
-                .sink = .{
-                    .from = .{ .id = Port.nextId() },
-                },
+                .sink = .{},
             },
         };
     }
@@ -112,76 +117,75 @@ pub const Node = struct {
                 .area = .{
                     .entities = entities,
                     .wait = wait,
-                    .from = .{ .id = Port.nextId() },
-                    .target = .{ .id = Port.nextId() },
                 },
             },
         };
     }
 };
 
-pub const Port = struct {
-    pub var next_id: i32 = 0;
+pub const Slot = struct {
+    node: *Node,
+    title: [*c]const u8,
 
-    id: i32,
-
-    pub fn nextId() i32 {
-        next_id += 1;
-        return next_id - 1;
+    pub fn equals(self: Slot, other: Slot) bool {
+        return self.node == other.node and
+            self.title == other.title;
     }
 };
 
-pub const Link = struct {
-    pub var next_id: i32 = 0;
+pub const NewConnection = struct {
+    input_node: ?*node.Node = null,
+    input_slot_title: [*c]const u8 = "",
+    output_node: ?*node.Node = null,
+    output_slot_title: [*c]const u8 = "",
+};
 
-    id: i32,
-    left_attr_id: i32,
-    right_attr_id: i32,
+pub const Connection = struct {
+    output_slot: Slot,
+    input_slot: Slot,
 
-    pub fn nextId() i32 {
-        next_id += 1;
-        return next_id - 1;
+    pub fn equals(self: Connection, other: Connection) bool {
+        return self.output_slot.equals(other.output_slot) and
+            self.input_slot.equals(other.input_slot);
     }
 };
 
 pub const SinkNode = struct {
-    from: Port,
+    input_slots: [1]imnodes.ez.SlotInfo = .{
+        .{ .title = "in", .kind = 1 },
+    },
+    output_slots: [0]imnodes.ez.SlotInfo = .{},
 
     pub fn draw(
         self: *SinkNode,
-        id: i32,
+        parent: *Node,
     ) void {
         // const node_width: f32 = 140;
-        imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff53367d);
-        imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xff7656a3);
-        imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xff7656a3);
-        defer imnodes.popColorStyle();
-        defer imnodes.popColorStyle();
-        defer imnodes.popColorStyle();
+        imnodes.ez.pushStyleColor(.node_title_bar_bg, 0xff53367d);
+        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, 0xff7656a3);
+        defer imnodes.ez.popStyleColor(2);
 
         // init node
-        imnodes.beginNode(id);
-        defer imnodes.endNode();
+        _ = imnodes.ez.beginNode(parent, parent.name, &parent.pos, &parent.selected);
+        defer imnodes.ez.endNode();
 
-        // title bar
-        imnodes.beginNodeTitleBar();
-        z.text("Sink", .{});
-        imnodes.endNodeTitleBar();
+        // input slots
+        imnodes.ez.inputSlots(&self.input_slots);
 
-        // input port
-        imnodes.beginInputAttribute(self.from.id);
-        z.text("from", .{});
-        imnodes.endInputAttribute();
+        // output slots
+        imnodes.ez.outputSlots(&self.output_slots);
     }
-
-    pub fn update(_: SinkNode, _: *std.ArrayList(Agent)) !void {}
 };
 
 pub const SpawnerNode = struct {
     entities: *std.ArrayList(entity.Entity),
     spawner_index: i32 = 0,
     wait: i32,
-    target: Port,
+
+    input_slots: [0]imnodes.ez.SlotInfo = .{},
+    output_slots: [1]imnodes.ez.SlotInfo = .{
+        .{ .title = "out", .kind = 1 },
+    },
 
     last_spawn: f64 = 0,
 
@@ -191,41 +195,36 @@ pub const SpawnerNode = struct {
 
     pub fn draw(
         self: *SpawnerNode,
-        id: i32,
+        parent: *Node,
     ) void {
         // style setup
         const node_width: f32 = 140;
-        imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff40a140);
-        imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xff64CC61);
-        imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xff64CC61);
-        defer imnodes.popColorStyle();
-        defer imnodes.popColorStyle();
-        defer imnodes.popColorStyle();
+        imnodes.ez.pushStyleColor(.node_title_bar_bg, 0xFF3d913c);
+        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, 0xFF52b851);
+        defer imnodes.ez.popStyleColor(2);
 
         // start the node
-        imnodes.beginNode(id);
-        defer imnodes.endNode();
+        _ = imnodes.ez.beginNode(parent, parent.name, &parent.pos, &parent.selected);
+        defer imnodes.ez.endNode();
 
-        // title bar + spawner node selector
-        {
-            imnodes.beginNodeTitleBar();
-            defer imnodes.endNodeTitleBar();
+        // input slots
+        imnodes.ez.inputSlots(&self.input_slots);
 
-            var buf: [2048]u8 = undefined;
-            const names = entity.Entity.buildNameComboString(
-                .spawner,
-                self.entities,
-                &buf,
-            );
-            z.setNextItemWidth(node_width);
-            const changed = z.combo("##spawner", .{
-                .current_item = &self.spawner_index,
-                .items_separated_by_zeros = names,
-            });
-            if (changed) {
-                // clicked on a different spawner instance
-                std.debug.print("{}", .{self.spawner_index});
-            }
+        // spawner selector
+        var buf: [2048]u8 = undefined;
+        const names = entity.Entity.buildNameComboString(
+            .spawner,
+            self.entities,
+            &buf,
+        );
+        setNextItemWidth(node_width);
+        const changed = z.combo("##spawner", .{
+            .current_item = &self.spawner_index,
+            .items_separated_by_zeros = names,
+        });
+        if (changed) {
+            // clicked on a different spawner instance
+            std.debug.print("{}", .{self.spawner_index});
         }
 
         // wait input
@@ -236,14 +235,11 @@ pub const SpawnerNode = struct {
             _ = z.text("arrival interval in ms", .{});
         }
         z.sameLine(.{});
-        z.setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
+        setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
         _ = z.inputInt("##wait", .{ .v = &self.wait });
 
-        // target output
-        imnodes.beginOutputAttribute(self.target.id);
-        z.indent(.{ .indent_w = node_width - z.calcTextSize("target", .{})[0] });
-        z.text("target", .{});
-        imnodes.endOutputAttribute();
+        // output slots
+        imnodes.ez.outputSlots(&self.output_slots);
     }
 
     pub fn update(
@@ -269,9 +265,14 @@ pub const AreaNode = struct {
     entities: *std.ArrayList(entity.Entity),
     area_index: i32 = 0,
     wait: Wait,
-    from: Port,
-    target: Port,
     wait_type: i32 = 0,
+
+    input_slots: [1]imnodes.ez.SlotInfo = .{
+        .{ .title = "in", .kind = -1 },
+    },
+    output_slots: [1]imnodes.ez.SlotInfo = .{
+        .{ .title = "out", .kind = 1 },
+    },
 
     pub const Wait = union(enum) {
         constant: Constant,
@@ -319,35 +320,30 @@ pub const AreaNode = struct {
 
     pub fn draw(
         self: *AreaNode,
-        id: i32,
+        parent: *Node,
     ) void {
-        const node_width: f32 = 140;
+        const node_width: f32 = 120;
 
-        imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xff2978c2);
-        imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xff379bde);
-        imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xff379bde);
+        imnodes.ez.pushStyleColor(.node_title_bar_bg, 0xff2978c2);
+        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, 0xff379bde);
+        defer imnodes.ez.popStyleColor(2);
 
-        defer imnodes.popColorStyle();
-        defer imnodes.popColorStyle();
-        defer imnodes.popColorStyle();
+        // start the node
+        _ = imnodes.ez.beginNode(parent, parent.name, &parent.pos, &parent.selected);
+        defer imnodes.ez.endNode();
 
-        imnodes.beginNode(id);
-        defer imnodes.endNode();
+        // input slots
+        imnodes.ez.inputSlots(&self.input_slots);
 
-        // title bar + area selector
+        // area selector
         {
-            imnodes.beginNodeTitleBar();
-            defer imnodes.endNodeTitleBar();
-
-            // select area
             var buf: [2048]u8 = undefined;
             const names = entity.Entity.buildNameComboString(
                 .area,
                 self.entities,
                 &buf,
             );
-            z.setNextItemWidth(node_width);
-            z.setNextItemWidth(node_width);
+            setNextItemWidth(node_width);
             const changed = z.combo("##area", .{
                 .current_item = &self.area_index,
                 .items_separated_by_zeros = names,
@@ -358,121 +354,115 @@ pub const AreaNode = struct {
             }
         }
 
-        // wait type
-        z.setNextItemWidth(node_width);
-        const changed = z.combo("##type", .{
-            .current_item = &self.wait_type,
-            .items_separated_by_zeros = "constant\x00uniform\x00normal\x00",
-        });
-        // if the combo box changes, change the base wait struct we operate on
-        if (changed) {
-            self.wait = switch (self.wait_type) {
-                0 => .{ .constant = .{} },
-                1 => .{ .uniform = .{} },
-                2 => .{ .normal = .{} },
-                else => unreachable,
-            };
+        // wait time options
+        {
+            setNextItemWidth(node_width);
+            const changed = z.combo("##type", .{
+                .current_item = &self.wait_type,
+                .items_separated_by_zeros = "constant\x00uniform\x00normal\x00",
+            });
+            // if the combo box changes, change the base wait struct we operate on
+            if (changed) {
+                self.wait = switch (self.wait_type) {
+                    0 => .{ .constant = .{} },
+                    1 => .{ .uniform = .{} },
+                    2 => .{ .normal = .{} },
+                    else => unreachable,
+                };
+            }
         }
 
-        // now render the corresponding input boxes
+        // wait time inputs
         switch (self.wait) {
             .constant => |*constant| {
-                z.setNextItemWidth(node_width);
+                setNextItemWidth(node_width);
                 _ = z.inputInt("wait", .{ .v = &constant.wait });
             },
             .uniform => |*uniform| {
-                z.setNextItemWidth(node_width);
+                setNextItemWidth(node_width);
                 _ = z.inputInt("min", .{ .v = &uniform.min });
-                z.setNextItemWidth(node_width);
+                setNextItemWidth(node_width);
                 _ = z.inputInt("max", .{ .v = &uniform.max });
             },
             .normal => |*normal| {
-                z.setNextItemWidth(node_width);
+                setNextItemWidth(node_width);
                 _ = z.inputInt("mu", .{ .v = &normal.mu });
-                z.setNextItemWidth(node_width);
+                setNextItemWidth(node_width);
                 _ = z.inputInt("sigma", .{ .v = &normal.sigma });
             },
         }
 
-        // input
-        imnodes.beginInputAttribute(self.from.id);
-        z.text("from", .{});
-        imnodes.endInputAttribute();
-
-        // target output
-        imnodes.beginOutputAttribute(self.target.id);
-        z.indent(.{ .indent_w = node_width - z.calcTextSize("target", .{})[0] });
-        z.text("target", .{});
-        imnodes.endOutputAttribute();
+        // output slots
+        imnodes.ez.outputSlots(&self.output_slots);
     }
 
     pub fn update(_: AreaNode, _: *std.ArrayList(Agent)) !void {}
 };
 
-pub const ForkNode = struct {
-    from: Port,
-    targets: [4]Port,
-    values: [4]f32 = .{ 0.25, 0.25, 0.25, 0.25 },
+// pub const ForkNode = struct {
+//     from: Port,
+//     targets: [4]Port,
+//     values: [4]f32 = .{ 0.25, 0.25, 0.25, 0.25 },
 
-    pub fn getOutputPort(self: ForkNode) Port {
-        var sum: f32 = 0;
-        for (self.values) |prob| {
-            sum += prob;
-        }
+//     pub fn getOutputPort(self: ForkNode) Port {
+//         var sum: f32 = 0;
+//         for (self.values) |prob| {
+//             sum += prob;
+//         }
 
-        // add up until larger than cumulative
-        const r: f32 = commons.rand01() * sum;
-        var cum: f64 = 0;
-        var i: usize = 0;
-        for (self.values) |value| {
-            cum += value;
-            if (r < cum) {
-                return self.targets[i];
-            }
-            i += 1;
-        }
-        std.debug.print("{}|{}|{}\n", .{ sum, cum, r });
-        unreachable;
-    }
+//         // add up until larger than cumulative
+//         const r: f32 = commons.rand01() * sum;
+//         var cum: f64 = 0;
+//         var i: usize = 0;
+//         for (self.values) |value| {
+//             cum += value;
+//             if (r < cum) {
+//                 return self.targets[i];
+//             }
+//             i += 1;
+//         }
+//         std.debug.print("{}|{}|{}\n", .{ sum, cum, r });
+//         unreachable;
+//     }
 
-    pub fn draw(
-        self: *ForkNode,
-        id: i32,
-    ) void {
-        // style setup
-        const node_width: f32 = 70;
-        imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xFF636363);
-        imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xFFA9A9A9);
-        imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xFFA9A9A9);
-        defer imnodes.popColorStyle();
-        defer imnodes.popColorStyle();
-        defer imnodes.popColorStyle();
+//     pub fn draw(
+//         self: *ForkNode,
+//         id: i32,
+//     ) void {
+//         // style setup
+//         const node_width: f32 = 70;
+//         imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xFF636363);
+//         imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xFFA9A9A9);
+//         imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xFFA9A9A9);
+//         defer imnodes.popColorStyle();
+//         defer imnodes.popColorStyle();
+//         defer imnodes.popColorStyle();
 
-        // start the node
-        imnodes.beginNode(id);
-        defer imnodes.endNode();
+//         // start the node
+//         imnodes.beginNode(id);
+//         defer imnodes.endNode();
 
-        // title bar
-        imnodes.beginNodeTitleBar();
-        z.text("Fork", .{});
-        imnodes.endNodeTitleBar();
+//         // title bar
+//         imnodes.beginNodeTitleBar();
+//         z.text("Fork", .{});
+//         imnodes.endNodeTitleBar();
 
-        // input port
-        imnodes.beginInputAttribute(self.from.id);
-        z.text("from", .{});
-        imnodes.endInputAttribute();
+//         // input port
+//         imnodes.beginInputAttribute(self.from.id);
+//         z.text("from", .{});
+//         imnodes.endInputAttribute();
 
-        // output ports
-        for (0..self.targets.len) |i| {
-            imnodes.beginOutputAttribute(self.targets[i].id);
-            defer imnodes.endOutputAttribute();
+//         // output ports
+//         for (0..self.targets.len) |i| {
+//             imnodes.beginOutputAttribute(self.targets[i].id);
+//             defer imnodes.endOutputAttribute();
 
-            // float input
-            z.setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
-            if (z.inputFloat("##asd", .{ .v = &self.values[i], .cfmt = "%.2f" })) {
-                // input changed
+//             // float input
+//             setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
+//             if (z.inputFloat("##asd", .{ .v = &self.values[i], .cfmt = "%.2f" })) {
+//                 // input changed
 
-            }
-        }
-    }
-};
+//             }
+//         }
+//     }
+// };

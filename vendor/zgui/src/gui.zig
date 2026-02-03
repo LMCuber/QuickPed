@@ -3184,6 +3184,7 @@ pub const MouseButton = enum(u32) {
 pub const isMouseDown = zguiIsMouseDown;
 /// `pub fn isMouseClicked(mouse_button: MouseButton) bool`
 pub const isMouseClicked = zguiIsMouseClicked;
+pub const isMouseReleased = zguiIsMouseReleased;
 /// `pub fn isMouseDoubleClicked(mouse_button: MouseButton) bool`
 pub const isMouseDoubleClicked = zguiIsMouseDoubleClicked;
 /// `pub fn isItemClicked(mouse_button: MouseButton) bool`
@@ -3208,6 +3209,7 @@ pub const isAnyItemActive = zguiIsAnyItemActive;
 pub const isAnyItemFocused = zguiIsAnyItemFocused;
 extern fn zguiIsMouseDown(mouse_button: MouseButton) bool;
 extern fn zguiIsMouseClicked(mouse_button: MouseButton) bool;
+extern fn zguiIsMouseReleased(mouse_button: MouseButton) bool;
 extern fn zguiIsMouseDoubleClicked(mouse_button: MouseButton) bool;
 extern fn zguiIsItemHovered(flags: HoveredFlags) bool;
 extern fn zguiIsItemActive() bool;
