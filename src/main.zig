@@ -25,6 +25,7 @@ const Area = @import("environment/Area.zig");
 const Settings = @import("settings.zig");
 const SimData = @import("editor/SimData.zig");
 const AgentData = @import("editor/AgentData.zig");
+const EB = @import("editor/EnvironmentButtons.zig");
 const Stats = @import("editor/Stats.zig");
 const NodeEditor = @import("nodes/NodeEditor.zig");
 
@@ -248,10 +249,12 @@ pub fn main() !void {
                     // agent data header
                     try agent_data.render(&agents);
 
-                    // environmental objects buttons header
+                    // ENVIRONMENTAL BUTTONS --------------------------------------------
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
-                        // pub fn tableSetupColumn(label: [:0]const u8, args: TableSetupColumn) void {
-                        if (z.button("Contour", .{})) {
+                        const bs: i32 = 50;
+
+                        // contour
+                        if (EB.contourButton(bs)) {
                             // free previous entities
                             if (entity_storage) |*ent| {
                                 ent.deinit(allocator);
@@ -259,8 +262,10 @@ pub fn main() !void {
                             entity_storage = try entity.Entity.initContour(allocator);
                             current_entity = if (entity_storage) |*ent| ent else unreachable;
                         }
+
+                        // spawner
                         z.sameLine(.{});
-                        if (z.button("Spawner", .{})) {
+                        if (EB.spawnerButton(bs)) {
                             // free previous entities
                             if (entity_storage) |*ent| {
                                 ent.deinit(allocator);
@@ -268,7 +273,10 @@ pub fn main() !void {
                             entity_storage = try entity.Entity.initSpawner(allocator);
                             current_entity = if (entity_storage) |*ent| ent else null;
                         }
-                        if (z.button("Area", .{})) {
+
+                        // area
+                        z.sameLine(.{});
+                        if (EB.areaButton(bs)) {
                             // free previous entities
                             if (entity_storage) |*ent| {
                                 ent.deinit(allocator);
@@ -276,7 +284,8 @@ pub fn main() !void {
                             entity_storage = try entity.Entity.initArea(allocator);
                             current_entity = if (entity_storage) |*ent| ent else null;
                         }
-                        // -----------------
+
+                        // reset
                         z.separatorText("");
                         //
                         z.pushStyleColor4f(.{ .idx = .button, .c = .{ 0.55, 0.2, 0.32, 1 } });
@@ -294,6 +303,7 @@ pub fn main() !void {
                         z.popStyleColor(.{ .count = 3 });
                     }
                     z.newLine();
+                    // ------------------------------------------------------------------
 
                     // statistics header
                     try stats.render(&agents);
@@ -327,8 +337,20 @@ pub fn main() !void {
 }
 
 pub fn renderGrid() void {
-    const num_blocks = @divTrunc(settings.sim_width, sim_data.grid_size);
-    for (0..@as(usize, @intCast(num_blocks))) |i| {
+    const num_hor_blocks = @divTrunc(settings.sim_width, sim_data.grid_size);
+    for (0..@as(usize, @intCast(num_hor_blocks))) |i| {
+        const i_i32: i32 = @intCast(i);
+        const grid_pos = i_i32 * sim_data.grid_size;
+        rl.drawLine(
+            grid_pos,
+            0,
+            grid_pos,
+            settings.sim_height,
+            color.navy,
+        );
+    }
+    const num_ver_blocks = @divExact(settings.sim_height, sim_data.grid_size);
+    for (0..@as(usize, @intCast(num_ver_blocks))) |i| {
         const i_i32: i32 = @intCast(i);
         const grid_pos = i_i32 * sim_data.grid_size;
         rl.drawLine(
@@ -336,13 +358,6 @@ pub fn renderGrid() void {
             grid_pos,
             settings.sim_width,
             grid_pos,
-            color.navy,
-        );
-        rl.drawLine(
-            grid_pos,
-            0,
-            grid_pos,
-            settings.sim_height,
             color.navy,
         );
     }

@@ -39,9 +39,6 @@ fn maxItemBetweenInterval(
     if (slice.len == 0) {
         return @as(T, 1);
     }
-
-    std.debug.print("{}|{}\n", .{ min_index, max_index });
-
     var max: T = slice[0];
     for (min_index..max_index) |index| {
         if (slice[index] > max) {
@@ -93,13 +90,26 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
                 self.num_agents.items.len,
             ) * 2;
 
-            // plot the graph
+            // setup graph axes
             implot.setupAxisLimits(.Y1, 0.0, y_max, .Always);
             implot.setupAxisLimits(.X1, x_min, x_max, .Always);
+
             // all agents
             implot.plotLine(f64, "Agents", self.x_data.items, self.num_agents.items, .{});
+
             // all waiting agents
             implot.plotLine(f64, "Waiting agents", self.x_data.items, self.num_waiting_agents.items, .{});
+
+            // TEXTUAL INFO
+            z.text("X = ", .{});
+            if (z.isItemHovered(.{})) {
+                _ = z.beginTooltip();
+                defer z.endTooltip();
+                z.text("waiting/total ratio", .{});
+            }
+            z.sameLine(.{});
+            const ratio: f64 = self.num_waiting_agents.getLast() / self.num_agents.getLast() * 100;
+            z.text("{d:.0}%", .{ratio});
         }
     }
 }

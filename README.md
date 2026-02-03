@@ -14,8 +14,10 @@ To view the paper we have written on this subject: [overleaf link](https://www.o
 Later Zig versions are not guaranteed to build correctly.
 
 # Planned features
-- [x] Social force model for pedestrians
-- [x] A functioning Node system
+- [x] Social force model for pedestrians based on [the works](https://www.researchgate.net/publication/1947096_Social_Force_Model_for_Pedestrian_Dynamics) of Helbing et al.
+- [ ] A blueprint system
+    - [x] Working nodes
+    - [ ] Persistence across runs
 - [ ] Statistics
     - [x] Showing number of (waiting) pedestrians
     - [ ] Heatmap showing bottlenecks during simulation
@@ -35,7 +37,7 @@ This refers to other businesses, such as transport systems and factory pipelines
 ```
 ./run.sh
 ```
-or
+for Unix (figure out yourself how to run that on Windows) or
 ```bash
 zig build run
 ```
@@ -54,5 +56,5 @@ This project uses the [zig-raylib-imgui-template](https://github.com/schmee/zig-
 - `raylib-zig`
 - `zgui`
 - `rlImGui`
-- `imnodes`
-- `implot`
+- `imnodesez` (AI-generated zig bindings)
+- `implot` (AI-generated zig bindings)

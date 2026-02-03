@@ -33,9 +33,9 @@ pub const Node = struct {
         // fork: ForkNode,
     },
 
-    ///
-    /// AI CODE
-    ///
+    //
+    // AI CODE
+    //
     pub fn getEnvironmentalObject(n: anytype, comptime T: type, index: i32) *T {
         // n is *SpawnerNode, *AreaNode, etc.
         const uindex: u32 = @intCast(index);
@@ -229,11 +229,6 @@ pub const SpawnerNode = struct {
 
         // wait input
         z.text("wait", .{});
-        if (z.isItemHovered(.{})) {
-            _ = z.beginTooltip();
-            defer z.endTooltip();
-            _ = z.text("arrival interval in ms", .{});
-        }
         z.sameLine(.{});
         setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
         _ = z.inputInt("##wait", .{ .v = &self.wait });

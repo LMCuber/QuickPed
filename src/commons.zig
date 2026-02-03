@@ -22,9 +22,9 @@ pub fn roundMousePos(sim_data: SimData) rl.Vector2 {
     };
 }
 
-///
-/// AI CODE
-///
+//
+// AI CODE
+//
 fn arrSum(comptime T: type, comptime arr: []const T) T {
     var s: T = 0;
     comptime for (arr) |x| {
@@ -33,9 +33,9 @@ fn arrSum(comptime T: type, comptime arr: []const T) T {
     return s;
 }
 
-///
-/// AI CODE
-///
+//
+// AI CODE
+//
 pub fn readFile(
     allocator: std.mem.Allocator,
     path: []const u8,
@@ -56,9 +56,9 @@ pub fn readFile(
     );
 }
 
-///
-/// AI CODE
-///
+//
+// AI CODE
+//
 pub fn rand01() f32 {
     return @as(f32, @floatFromInt(rl.getRandomValue(0, 1_000_000))) / 1_000_000.0;
 }

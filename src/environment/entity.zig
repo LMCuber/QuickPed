@@ -32,9 +32,9 @@ pub const Entity = struct {
     pub const EntityAction = enum { none, placed, cancelled };
     pub var next_id: i32 = 0;
 
-    ///
-    /// AI CODE
-    ///
+    //
+    // AI CODE
+    //
     pub fn buildNameComboString(
         comptime kind_tag: std.meta.Tag(Entity.Kind),
         entities: *std.ArrayList(Entity),
