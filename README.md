@@ -3,7 +3,7 @@
 To view the paper we have written on this subject: [overleaf link](https://www.overleaf.com/project/66f667ffb591f8ff65cffdd8) (broken)
 
 * Go to the [backlog](#project-backlog) to see the planned features.
-* Go to [my previous Python implementation](github.com/lmcuber/agentbasedmodel) without a node editor for some spaghetti code
+* Go to [my previous Python implementation](https://www.github.com/lmcuber/agentbasedmodel) without a node editor for some spaghetti code
 
 # Preview
 ![main](previews/main.png "main")
