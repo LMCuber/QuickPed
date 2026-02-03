@@ -101,6 +101,7 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
             implot.plotLine(f64, "Waiting agents", self.x_data.items, self.num_waiting_agents.items, .{});
 
             // TEXTUAL INFO
+            // X
             z.text("X = ", .{});
             if (z.isItemHovered(.{})) {
                 _ = z.beginTooltip();
@@ -108,7 +109,8 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
                 z.text("waiting/total ratio", .{});
             }
             z.sameLine(.{});
-            const ratio: f64 = self.num_waiting_agents.getLast() / self.num_agents.getLast() * 100;
+            if (self.num_waiting_agents.getLast() > self.num_agents.getLast()) unreachable;
+            const ratio = if (self.num_agents.getLast() == 0) 0 else self.num_waiting_agents.getLast() / self.num_agents.getLast() * 100;
             z.text("{d:.0}%", .{ratio});
         }
     }

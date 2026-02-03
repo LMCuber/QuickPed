@@ -1,8 +1,134 @@
 {
   "version": "0.1.0",
-  "entities": [],
-  "next_id": 8,
-  "next_contour_id": 2,
-  "next_spawner_id": 2,
-  "next_area_id": 4
+  "entities": [
+    {
+      "id": 8,
+      "name": "Spawner2",
+      "kind": {
+        "spawner": {
+          "spawner_id": 2,
+          "points": [
+            {
+              "x": 4.96e2,
+              "y": 3.36e2
+            },
+            {
+              "x": 6.24e2,
+              "y": 4e2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 9,
+      "name": "Area4",
+      "kind": {
+        "area": {
+          "area_id": 4,
+          "rect": {
+            "x": 7.52e2,
+            "y": 1.12e2,
+            "width": 3.04e2,
+            "height": 1.92e2
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "name": "Area5",
+      "kind": {
+        "area": {
+          "area_id": 5,
+          "rect": {
+            "x": 7.84e2,
+            "y": 6.08e2,
+            "width": 2.24e2,
+            "height": 1.6e2
+          }
+        }
+      }
+    },
+    {
+      "id": 11,
+      "name": "Contour2",
+      "kind": {
+        "contour": {
+          "contour_id": 2,
+          "points": [
+            {
+              "x": 7.84e2,
+              "y": 4.48e2
+            },
+            {
+              "x": 8.8e2,
+              "y": 5.28e2
+            },
+            {
+              "x": 9.12e2,
+              "y": 4.8e2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 12,
+      "name": "Contour3",
+      "kind": {
+        "contour": {
+          "contour_id": 3,
+          "points": [
+            {
+              "x": 6.56e2,
+              "y": 3.68e2
+            },
+            {
+              "x": 7.36e2,
+              "y": 2.08e2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 13,
+      "name": "Contour4",
+      "kind": {
+        "contour": {
+          "contour_id": 4,
+          "points": [
+            {
+              "x": 6.56e2,
+              "y": 3.68e2
+            },
+            {
+              "x": 6.24e2,
+              "y": 5.6e2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 14,
+      "name": "Area6",
+      "kind": {
+        "area": {
+          "area_id": 6,
+          "rect": {
+            "x": 1.92e2,
+            "y": 4.96e2,
+            "width": 2.4e2,
+            "height": 4.8e1
+          }
+        }
+      }
+    }
+  ],
+  "next_id": 15,
+  "next_contour_id": 5,
+  "next_spawner_id": 3,
+  "next_area_id": 7
 }

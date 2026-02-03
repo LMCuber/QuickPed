@@ -26,7 +26,6 @@ pub fn init() Self {
 
 pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
     if (z.collapsingHeader("Agent", .{ .default_open = false })) {
-        z.sameLine(.{});
         if (z.button("delete", .{})) {
             Agent.delete(
                 agents,
