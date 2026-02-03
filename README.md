@@ -5,7 +5,7 @@ To view the paper we have written on this subject: [overleaf link](https://www.o
 * Go to the [backlog](#project-backlog) to see the planned features.
 * Go to [my previous Python implementation](https://www.github.com/lmcuber/agentbasedmodel) without a node editor for some spaghetti code
 
-# Preview
+# Previews
 ![main](previews/main.png "main")
 ![node editor](previews/node_editor.png "node editor")
 
@@ -30,7 +30,7 @@ Later Zig versions are not guaranteed to build correctly.
 ## Won't haves
 - _**Any type of scripting support**_<br>
 The project should maximize development time and ease of use. I might implement it later when I see that the base nodes in the editor aren't enough to express complex interactions that are complex enough.
-- _**Others means of agent simulation, such as vehicles or industrial processes**_<br>
+- _**Others means of agent based simulation**_<br>
 This refers to other businesses, such as transport systems and factory pipelines. Those are currently way beyond the scope of the project.
 
 # How to run
@@ -50,11 +50,8 @@ if you have [zigup](https://github.com/marler8997/zigup) installed.
 ## Disclaimer
 
 This project uses the [zig-raylib-imgui-template](https://github.com/schmee/zig-raylib-imgui-template), and uses:
-- `zig`
-- `raylib`
-- `ImGui`
-- `raylib-zig`
-- `zgui`
-- `rlImGui`
-- `imnodesez` (AI-generated zig bindings)
-- `implot` (AI-generated zig bindings)
+- `raylib-zig` (https://github.com/raylib-zig/raylib-zig)
+- `zgui` (https://github.com/zig-gamedev/zgui)
+- `rlImGui` (https://github.com/raylib-extras/rlImGui)
+- `imnodesez` (https://github.com/rokups/ImNodes) (I wrote AI-generated zig bindings)
+- `implot` (https://github.com/epezent/implot) (I wrote AI-generated zig bindings)
