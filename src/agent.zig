@@ -15,6 +15,7 @@ const Graph = @import("nodes/Graph.zig");
 const Self = @This();
 
 pos: rl.Vector2,
+target_area: ?*Area = null,
 target: rl.Vector2,
 col: rl.Color,
 vel: rl.Vector2 = .{ .x = 0, .y = 0 },
@@ -58,17 +59,18 @@ pub fn traverseFromCurrent(self: *Self) void {
         switch (next.kind) {
             .spawner => unreachable,
             .area => |*area_node| {
-                self.target = area_node.getCenter();
+                self.target_area = area_node.getArea();
+                self.target = self.target_area.?.getPos();
                 self.waiting = false;
             },
             .sink => {
                 // next is sink, so destroy outselves
                 self.marked = true;
             },
-            // .fork => {
-            //     self.current_node = next;
-            //     self.traverseFromCurrent();
-            // },
+            .fork => {
+                self.current_node = next;
+                self.traverseFromCurrent();
+            },
         }
     } else {
         // the spawner is standalone, so just kill the agent
@@ -79,7 +81,7 @@ pub fn traverseFromCurrent(self: *Self) void {
 }
 
 /// every frame, processCurrentNode checks what node we are on currently, and then
-/// checks (for example) if we need to start waiting
+/// checks (for example) if we need to start waiting because we entered radius of waiting area
 pub fn processCurrentNode(self: *Self) void {
     if (self.current_node) |n| {
         switch (n.kind) {
@@ -87,7 +89,7 @@ pub fn processCurrentNode(self: *Self) void {
                 // check should start waiting
                 if (!self.waiting) {
                     // start waiting if in bounds
-                    if (rl.checkCollisionPointRec(self.pos, area_node.getArea().rect)) {
+                    if (rl.checkCollisionPointRec(self.pos, self.target_area.?.rect)) {
                         self.wait = area_node.getWaitTime();
                         self.waiting = true;
                         self.last_wait = commons.getTimeMillis();

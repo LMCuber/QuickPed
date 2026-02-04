@@ -1,3 +1,8 @@
+//
+// THIS ENTIRE FILE SKELETON IS BASICALLY AI SINCE I
+// REFUSE TO MANUALLY WRITE CSS IN IMGUI
+//
+
 const Self = @This();
 const z = @import("zgui");
 
@@ -7,9 +12,6 @@ const palette = struct {
     const active: u32 = 0xFF613d1b;
 };
 
-//
-// AI CODE
-//
 pub fn contourButton(bs: f32) bool {
     const clicked = z.invisibleButton("##contour", .{ .w = bs, .h = bs });
 
@@ -61,9 +63,6 @@ pub fn contourButton(bs: f32) bool {
     return clicked;
 }
 
-//
-// AI CODE
-//
 pub fn spawnerButton(bs: f32) bool {
     const clicked = z.invisibleButton("##spawner", .{ .w = bs, .h = bs });
 
@@ -105,9 +104,6 @@ pub fn spawnerButton(bs: f32) bool {
     return clicked;
 }
 
-//
-// AI CODE
-//
 pub fn areaButton(bs: f32) bool {
     const clicked = z.invisibleButton("##area", .{ .w = bs, .h = bs });
 
@@ -149,6 +145,41 @@ pub fn areaButton(bs: f32) bool {
     //     (min[1] + max[1] - text_size[1]) * 0.5,
     // };
     // dl.addText(pos, 0xff_ff_ff_ff, "{s}", .{"Area"});
+
+    return clicked;
+}
+
+pub fn revolverButton(bs: f32) bool {
+    const clicked = z.invisibleButton("##cross", .{ .w = bs, .h = bs });
+
+    const min = z.getItemRectMin();
+    const max = z.getItemRectMax();
+    const dl = z.getWindowDrawList();
+
+    // Hover / active detection
+    const hovered = z.isItemHovered(.{});
+    if (hovered) {
+        _ = z.beginTooltip();
+        z.text("Revolver", .{});
+        z.endTooltip();
+    }
+    const active = z.isItemActive();
+
+    // Background color
+    const bg_col: u32 = if (active)
+        palette.active
+    else if (hovered)
+        palette.hover
+    else
+        palette.default;
+
+    dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
+
+    // Draw cross
+    const pad: f32 = 6.0; // space from edges
+    const thick: f32 = 4.0;
+    dl.addLine(.{ .p1 = .{ min[0] + pad, min[1] + pad }, .p2 = .{ max[0] - pad, max[1] - pad }, .col = 0xff_00_00_00, .thickness = thick });
+    dl.addLine(.{ .p1 = .{ min[0] + pad, max[1] - pad }, .p2 = .{ max[0] - pad, min[1] + pad }, .col = 0xff_00_00_00, .thickness = thick });
 
     return clicked;
 }

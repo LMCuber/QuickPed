@@ -51,6 +51,7 @@ pub fn getNextNode(self: Self, current_node: *node.Node) ?*node.Node {
     const current_title: [*c]const u8 = switch (current_node.kind) {
         .spawner => |s| s.output_slots[0].title,
         .area => |a| a.output_slots[0].title,
+        .fork => |f| f.getOutputSlotTitle(),
         .sink => null,
     };
 

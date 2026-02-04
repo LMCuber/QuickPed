@@ -2,6 +2,7 @@ const std = @import("std");
 const rl = @import("raylib");
 const SimData = @import("editor/SimData.zig");
 
+pub const PI: f32 = 4.0 * std.math.atan(@as(f32, @floatCast(1.0)));
 pub var camera: *rl.Camera2D = undefined;
 
 pub fn roundN(value: i32, n: i32) i32 {

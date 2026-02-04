@@ -2,6 +2,7 @@ const Self = @This();
 const std = @import("std");
 const rl = @import("raylib");
 const color = @import("../color.zig");
+const palette = @import("../palette.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../editor/SimData.zig");
@@ -66,17 +67,17 @@ pub fn update(self: *Self, sim_data: SimData) Entity.EntityAction {
 }
 
 pub fn draw(self: Self) void {
-    const line_width = 2;
-    const col = if (self.placed) (color.green) else (color.green_t);
+    const thick = 4;
+    const col = if (self.placed) (palette.env.green) else (color.green_t);
     if (self.point_count == 0) {
         // has placed nothing yet, so show white circle
         rl.drawCircleV(self.pos, 6, col);
     } else if (self.point_count == 1) {
         // has placed single point
-        rl.drawLineEx(self.points[0], self.pos, line_width, col);
+        rl.drawLineEx(self.points[0], self.pos, thick, col);
     } else if (self.point_count == 2) {
         // has placed all points
-        rl.drawLineEx(self.points[0], self.points[1], line_width, col);
+        rl.drawLineEx(self.points[0], self.points[1], thick, col);
     } else {
         unreachable;
     }

@@ -13,6 +13,7 @@ const imnodes = @import("imnodesez");
 // namespaces
 const commons = @import("commons.zig");
 const color = @import("color.zig");
+const palette = @import("palette.zig");
 
 // environment
 const entity = @import("environment/entity.zig");
@@ -20,6 +21,7 @@ const Agent = @import("Agent.zig");
 const Contour = @import("environment/Contour.zig");
 const Spawner = @import("environment/Spawner.zig");
 const Area = @import("environment/Area.zig");
+const Revolver = @import("environment/Revolver.zig");
 
 // data objects
 const Settings = @import("settings.zig");
@@ -70,9 +72,14 @@ pub fn main() !void {
     defer imnodes.ez.freeContext(ctx.?);
 
     // custom font
-    const font = z.io.addFontFromFile("fonts/DroidSans.ttf", 20);
-    z.io.setDefaultFont(font);
-    c.rlImGuiReloadFonts();
+    const mono_font: bool = false;
+    if (mono_font) {
+        imnodes.setZoom(imnodes.ez.getState(), 1.4);
+    } else {
+        const font = z.io.addFontFromFile("fonts/DroidSans.ttf", 20);
+        z.io.setDefaultFont(font);
+        c.rlImGuiReloadFonts();
+    }
 
     // seeding
     rl.setRandomSeed(123);
@@ -89,13 +96,15 @@ pub fn main() !void {
 
     var current_entity: ?entity.Entity = null;
 
-    // specific entities
+    // specific entity containers
     var contours = std.ArrayList(*Contour).init(allocator);
     defer contours.deinit();
     var spawners = std.ArrayList(*Spawner).init(allocator);
     defer spawners.deinit();
     var areas = std.ArrayList(*Area).init(allocator);
     defer areas.deinit();
+    var revolvers = std.ArrayList(*Revolver).init(allocator);
+    defer revolvers.deinit();
 
     // allocated editor objects
     var stats = Stats.init(allocator);
@@ -112,6 +121,7 @@ pub fn main() !void {
         &contours,
         &spawners,
         &areas,
+        &revolvers,
     );
 
     // camera shenanigans
@@ -151,7 +161,7 @@ pub fn main() !void {
                 rl.beginMode2D(camera);
                 defer rl.endMode2D();
 
-                rl.drawRectangleRec(sim_rect, color.arrToColor(sim_data.bg_color));
+                rl.drawRectangleRec(sim_rect, palette.env.black);
                 renderGrid();
 
                 // update selected entity
@@ -167,6 +177,7 @@ pub fn main() !void {
                                 .contour => try contours.append(&stored_entity_ptr.kind.contour),
                                 .spawner => try spawners.append(&stored_entity_ptr.kind.spawner),
                                 .area => try areas.append(&stored_entity_ptr.kind.area),
+                                .revolver => try revolvers.append(&stored_entity_ptr.kind.revolver),
                             }
 
                             current_entity = null;
@@ -235,13 +246,14 @@ pub fn main() !void {
                 {
                     z.setNextWindowPos(.{
                         .x = @floatFromInt(settings.width - settings.tab_width),
-                        .y = 25,
+                        .y = z.calcTextSize("Node editor", .{})[1] + 5,
                     });
                     z.setNextWindowSize(.{
                         .w = @floatFromInt(settings.tab_width),
                         .h = @floatFromInt(settings.height),
                     });
                     _ = z.begin("Settings", .{});
+
                     defer z.end();
 
                     const fps: f32 = @floatFromInt(rl.getFPS());
@@ -270,7 +282,6 @@ pub fn main() !void {
                         // spawner
                         z.sameLine(.{});
                         if (EB.spawnerButton(bs)) {
-                            // free previous entities
                             if (current_entity) |*ent| {
                                 ent.deinit(allocator);
                             }
@@ -280,13 +291,22 @@ pub fn main() !void {
                         // area
                         z.sameLine(.{});
                         if (EB.areaButton(bs)) {
-                            // free previous entities
                             if (current_entity) |*ent| {
                                 ent.deinit(allocator);
                             }
                             current_entity = try entity.Entity.initArea(allocator);
                         }
 
+                        // revolver button
+                        z.sameLine(.{});
+                        if (EB.revolverButton(bs)) {
+                            if (current_entity) |*ent| {
+                                ent.deinit(allocator);
+                            }
+                            current_entity = try entity.Entity.initRevolver(allocator);
+                        }
+
+                        // reset
                         if (EB.resetButton()) {
                             // dealloc and delete existing entities (environmental objects)
                             for (entities.items) |*e| {
@@ -358,6 +378,7 @@ pub fn main() !void {
 
 pub fn renderGrid() void {
     const num_hor_blocks = @divTrunc(settings.sim_width, sim_data.grid_size);
+    const col = palette.env.gray;
     for (0..@as(usize, @intCast(num_hor_blocks))) |i| {
         const i_i32: i32 = @intCast(i);
         const grid_pos = i_i32 * sim_data.grid_size;
@@ -366,7 +387,7 @@ pub fn renderGrid() void {
             0,
             grid_pos,
             settings.sim_height,
-            color.navy,
+            col,
         );
     }
     const num_ver_blocks = @divExact(settings.sim_height, sim_data.grid_size);
@@ -378,7 +399,7 @@ pub fn renderGrid() void {
             grid_pos,
             settings.sim_width,
             grid_pos,
-            color.navy,
+            col,
         );
     }
 }
@@ -420,6 +441,7 @@ pub fn loadScene(
     contours: *std.ArrayList(*Contour),
     spawners: *std.ArrayList(*Spawner),
     areas: *std.ArrayList(*Area),
+    revolvers: *std.ArrayList(*Revolver),
 ) !void {
     const json = try commons.readFile(allocator, path);
     defer allocator.free(json);
@@ -463,6 +485,7 @@ pub fn loadScene(
             .contour => |*contour| try contours.append(contour),
             .spawner => |*spawner| try spawners.append(spawner),
             .area => |*area| try areas.append(area),
+            .revolver => |*revolver| try revolvers.append(revolver),
         }
     }
 }

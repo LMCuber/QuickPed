@@ -22,6 +22,10 @@ pub const palette = [_][]const u8{
     "#34acba",
 };
 
+// pub const e_palette = [_][]const u8{
+
+// }
+
 const Palette = enum(u8) {
     hazel = 0,
     clay = 1,

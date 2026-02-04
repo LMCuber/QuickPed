@@ -2,6 +2,7 @@ const Contour = @import("Contour.zig");
 const SimData = @import("../editor/SimData.zig");
 const Spawner = @import("Spawner.zig");
 const Area = @import("Area.zig");
+const Revolver = @import("Revolver.zig");
 const commons = @import("../commons.zig");
 const std = @import("std");
 const rl = @import("raylib");
@@ -15,6 +16,7 @@ pub const EntitySnapshot = struct {
         contour: Contour.ContourSnapshot,
         spawner: Spawner.SpawnerSnapshot,
         area: Area.AreaSnapshot,
+        revolver: Revolver.RevolverSnapshot,
     };
 };
 
@@ -27,6 +29,7 @@ pub const Entity = struct {
         contour: Contour,
         spawner: Spawner,
         area: Area,
+        revolver: Revolver,
     };
 
     pub const EntityAction = enum {
@@ -110,6 +113,19 @@ pub const Entity = struct {
         };
     }
 
+    pub fn initRevolver(allocator: std.mem.Allocator) !Entity {
+        const id = nextId();
+        const revolver = Revolver.init();
+        const name = try std.fmt.allocPrintZ(allocator, "Revolver{}", .{revolver.revolver_id});
+        return .{
+            .id = id,
+            .name = name,
+            .kind = .{
+                .revolver = revolver,
+            },
+        };
+    }
+
     pub fn deinit(self: *Entity, allocator: std.mem.Allocator) void {
         allocator.free(self.name);
         switch (self.kind) {
@@ -141,13 +157,14 @@ pub const Entity = struct {
                 .contour => |cs| .{ .contour = try Contour.fromSnapshot(allocator, cs) },
                 .spawner => |ss| .{ .spawner = Spawner.fromSnapshot(ss) },
                 .area => |as| .{ .area = Area.fromSnapshot(as) },
+                .revolver => |rs| .{ .revolver = Revolver.fromSnapshot(rs) },
             },
         };
     }
 
-    pub fn draw(self: Entity) void {
+    pub fn draw(self: *Entity) void {
         switch (self.kind) {
-            inline else => |kind| kind.draw(),
+            inline else => |*kind| kind.draw(),
         }
     }
 };

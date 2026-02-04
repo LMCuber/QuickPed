@@ -25,28 +25,26 @@ pub fn deinit(self: *Self) void {
     self.graph.deinit();
 }
 
-pub fn render(
-    self: *Self,
-    entities: *std.ArrayList(entity.Entity),
-) !void {
+pub fn render(self: *Self, entities: *std.ArrayList(entity.Entity)) !void {
     if (rl.isKeyPressed(.key_space)) {
         self.active = !self.active;
     }
-    // if (!self.active) {
-    //     return;
-    // }
-
-    // z.setNextWindowCollapsed(.{
-    //     .collapsed = false,
-    // });
 
     if (z.begin("Node editor", .{ .flags = .{ .no_scrollbar = true, .no_scroll_with_mouse = true } })) {
+        // tutorial
+        z.text("[a] to add node", .{});
+        z.text("[c] to recenter", .{});
+
         imnodes.ez.beginCanvas();
         defer imnodes.ez.endCanvas();
 
+        // user centers the editor
+        if (rl.isKeyReleased(.key_c) and !z.isAnyItemHovered()) {
+            imnodes.setOffset(imnodes.ez.getState(), .{ .x = 0, .y = 0 });
+        }
+
         // user adds new nodes
-        const open_popup: bool = (rl.isKeyReleased(.key_a));
-        if (!z.isAnyItemHovered() and open_popup) {
+        if (rl.isKeyReleased(.key_a) and !z.isAnyItemHovered()) {
             z.openPopup("edit", .{});
         }
         if (z.beginPopup("edit", .{})) {
@@ -97,9 +95,10 @@ pub fn render(
                 }
 
                 // // fork node
-                // if (z.menuItem("Fork", .{})) {
-                //     try self.graph.addNode(node.Node.initFork());
-                // }
+                if (z.menuItem("Fork", .{})) {
+                    try self.graph.addNode(node.Node.initFork());
+                }
+
                 // sink node
                 if (z.menuItem("Sink", .{})) {
                     try self.graph.addNode(node.Node.initSink());

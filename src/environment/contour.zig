@@ -2,6 +2,7 @@ const Self = @This();
 const std = @import("std");
 const rl = @import("raylib");
 const color = @import("../color.zig");
+const palette = @import("../palette.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../editor/SimData.zig");
@@ -66,14 +67,13 @@ pub fn update(self: *Self, sim_data: SimData) !Entity.EntityAction {
             return .placed;
         }
         return .none;
-    } else {
-        return .none;
     }
+    return .none;
 }
 
 pub fn draw(self: Self) void {
     const line_width = 2;
-    const col = if (self.placed) (color.white) else (color.white_t);
+    const col = if (self.placed) (palette.env.white) else (color.white_t);
     if (self.points.items.len == 0) {
         // has placed nothing yet, so show white circle
         rl.drawCircleV(self.pos, 6, col);

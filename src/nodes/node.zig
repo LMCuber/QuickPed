@@ -9,7 +9,6 @@ const Spawner = @import("../environment/Spawner.zig");
 const Area = @import("../environment/Area.zig");
 const Agent = @import("../Agent.zig");
 const Graph = @import("Graph.zig");
-const node = @import("node.zig");
 const commons = @import("../commons.zig");
 const entity = @import("../environment/entity.zig");
 
@@ -30,7 +29,7 @@ pub const Node = struct {
         spawner: SpawnerNode,
         sink: SinkNode,
         area: AreaNode,
-        // fork: ForkNode,
+        fork: ForkNode,
     },
 
     //
@@ -79,25 +78,15 @@ pub const Node = struct {
         };
     }
 
-    // pub fn initFork() Node {
-    //     return .{
-    //         .id = Node.nextId(),
-    //         .name = "Fork",
-    //         .kind = .{
-    //             .fork = .{
-    //                 .from = .{
-    //                     .id = Port.nextId(),
-    //                 },
-    //                 .targets = .{
-    //                     .{ .id = Port.nextId() },
-    //                     .{ .id = Port.nextId() },
-    //                     .{ .id = Port.nextId() },
-    //                     .{ .id = Port.nextId() },
-    //                 },
-    //             },
-    //         },
-    //     };
-    // }
+    pub fn initFork() Node {
+        return .{
+            .id = Node.nextId(),
+            .name = "Fork",
+            .kind = .{
+                .fork = .{},
+            },
+        };
+    }
 
     pub fn initSink() Node {
         return .{
@@ -134,9 +123,9 @@ pub const Slot = struct {
 };
 
 pub const NewConnection = struct {
-    input_node: ?*node.Node = null,
+    input_node: ?*Node = null,
     input_slot_title: [*c]const u8 = "",
-    output_node: ?*node.Node = null,
+    output_node: ?*Node = null,
     output_slot_title: [*c]const u8 = "",
 };
 
@@ -198,7 +187,7 @@ pub const SpawnerNode = struct {
         parent: *Node,
     ) void {
         // style setup
-        const node_width: f32 = 140;
+        const node_width: f32 = 160;
         imnodes.ez.pushStyleColor(.node_title_bar_bg, 0xFF3d913c);
         imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, 0xFF52b851);
         defer imnodes.ez.popStyleColor(2);
@@ -211,7 +200,7 @@ pub const SpawnerNode = struct {
         imnodes.ez.inputSlots(&self.input_slots);
 
         // spawner selector
-        var buf: [2048]u8 = undefined;
+        var buf: [2 << 11]u8 = undefined;
         const names = entity.Entity.buildNameComboString(
             .spawner,
             self.entities,
@@ -241,7 +230,7 @@ pub const SpawnerNode = struct {
         self: *SpawnerNode,
         agents: *std.ArrayList(Agent),
         graph: *Graph,
-        parent: *node.Node,
+        parent: *Node,
     ) !void {
         const time: f64 = commons.getTimeMillis();
         if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {
@@ -303,8 +292,8 @@ pub const AreaNode = struct {
         return Node.getEnvironmentalObject(self, Area, self.area_index);
     }
 
-    pub fn getCenter(self: *AreaNode) rl.Vector2 {
-        return self.getArea().getCenter();
+    pub fn getPos(self: *AreaNode) rl.Vector2 {
+        return self.getArea().getPos();
     }
 
     pub fn getWaitTime(self: AreaNode) i32 {
@@ -394,70 +383,69 @@ pub const AreaNode = struct {
     pub fn update(_: AreaNode, _: *std.ArrayList(Agent)) !void {}
 };
 
-// pub const ForkNode = struct {
-//     from: Port,
-//     targets: [4]Port,
-//     values: [4]f32 = .{ 0.25, 0.25, 0.25, 0.25 },
+pub const ForkNode = struct {
+    input_slots: [1]imnodes.ez.SlotInfo = .{
+        .{ .title = "in", .kind = -1 },
+    },
+    output_slots: [4]imnodes.ez.SlotInfo = .{
+        .{ .title = "outA", .kind = 1 },
+        .{ .title = "outB", .kind = 1 },
+        .{ .title = "outC", .kind = 1 },
+        .{ .title = "outD", .kind = 1 },
+    },
+    values: [4]f32 = .{ 0.25, 0.25, 0.25, 0.25 },
 
-//     pub fn getOutputPort(self: ForkNode) Port {
-//         var sum: f32 = 0;
-//         for (self.values) |prob| {
-//             sum += prob;
-//         }
+    pub fn getOutputSlotTitle(self: ForkNode) [*c]const u8 {
+        var sum: f32 = 0;
+        for (self.values) |prob| {
+            sum += prob;
+        }
 
-//         // add up until larger than cumulative
-//         const r: f32 = commons.rand01() * sum;
-//         var cum: f64 = 0;
-//         var i: usize = 0;
-//         for (self.values) |value| {
-//             cum += value;
-//             if (r < cum) {
-//                 return self.targets[i];
-//             }
-//             i += 1;
-//         }
-//         std.debug.print("{}|{}|{}\n", .{ sum, cum, r });
-//         unreachable;
-//     }
+        // add up until larger than cumulative
+        const r: f32 = commons.rand01() * sum;
+        var cum: f64 = 0;
+        var i: usize = 0;
+        for (self.values) |value| {
+            cum += value;
+            if (r < cum) {
+                return self.output_slots[i].title;
+            }
+            i += 1;
+        }
+        unreachable;
+    }
 
-//     pub fn draw(
-//         self: *ForkNode,
-//         id: i32,
-//     ) void {
-//         // style setup
-//         const node_width: f32 = 70;
-//         imnodes.pushColorStyle(.ImNodesCol_TitleBar, 0xFF636363);
-//         imnodes.pushColorStyle(.ImNodesCol_TitleBarHovered, 0xFFA9A9A9);
-//         imnodes.pushColorStyle(.ImNodesCol_TitleBarSelected, 0xFFA9A9A9);
-//         defer imnodes.popColorStyle();
-//         defer imnodes.popColorStyle();
-//         defer imnodes.popColorStyle();
+    pub fn draw(
+        self: *ForkNode,
+        parent: *Node,
+    ) void {
+        // style setup
+        const node_width: f32 = 70;
+        imnodes.ez.pushStyleColor(.node_title_bar_bg, 0xFF636363);
+        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, 0xFFA9A9A9);
+        defer imnodes.ez.popStyleColor(2);
 
-//         // start the node
-//         imnodes.beginNode(id);
-//         defer imnodes.endNode();
+        // init node
+        _ = imnodes.ez.beginNode(parent, parent.name, &parent.pos, &parent.selected);
+        defer imnodes.ez.endNode();
 
-//         // title bar
-//         imnodes.beginNodeTitleBar();
-//         z.text("Fork", .{});
-//         imnodes.endNodeTitleBar();
+        // input slots
+        imnodes.ez.inputSlots(&self.input_slots);
 
-//         // input port
-//         imnodes.beginInputAttribute(self.from.id);
-//         z.text("from", .{});
-//         imnodes.endInputAttribute();
+        // output ports
+        for (0..self.values.len) |i| {
+            // make sure to have unique id
+            z.pushIntId(@intCast(i));
+            defer z.popId();
 
-//         // output ports
-//         for (0..self.targets.len) |i| {
-//             imnodes.beginOutputAttribute(self.targets[i].id);
-//             defer imnodes.endOutputAttribute();
+            // float input
+            setNextItemWidth(node_width);
+            if (z.inputFloat("##", .{ .v = &self.values[i], .cfmt = "%.2f" })) {
+                // input changed
+            }
+        }
 
-//             // float input
-//             setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
-//             if (z.inputFloat("##asd", .{ .v = &self.values[i], .cfmt = "%.2f" })) {
-//                 // input changed
-
-//             }
-//         }
-//     }
-// };
+        // output slots
+        imnodes.ez.outputSlots(&self.output_slots);
+    }
+};

@@ -2,6 +2,7 @@ const Self = @This();
 const std = @import("std");
 const rl = @import("raylib");
 const color = @import("../color.zig");
+const palette = @import("../palette.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../editor/SimData.zig");
@@ -27,6 +28,7 @@ pub const SeatData = struct {
 pub const AreaSnapshot = struct {
     area_id: i32,
     rect: rl.Rectangle,
+    seat_data: SeatData,
 };
 
 pub fn init() Self {
@@ -39,6 +41,7 @@ pub fn getSnapshot(self: Self) AreaSnapshot {
     return .{
         .area_id = self.area_id,
         .rect = self.rect,
+        .seat_data = self.seat_data,
     };
 }
 
@@ -48,6 +51,7 @@ pub fn fromSnapshot(snap: AreaSnapshot) Self {
         .rect = snap.rect,
         .anchored = true,
         .placed = true,
+        .seat_data = snap.seat_data,
     };
 }
 
@@ -112,6 +116,21 @@ pub fn confirm(self: *Self) void {
     }
 }
 
+pub fn getPos(self: Self) rl.Vector2 {
+    if (self.seat_data.seats) {
+        const row_index: f32 = @floatFromInt(rl.getRandomValue(1, self.seat_data.num_rows));
+        const col_index: f32 = @floatFromInt(rl.getRandomValue(1, self.seat_data.num_cols));
+        const seat_offset: rl.Vector2 = self.getSeatOffset();
+        const rel_seat_pos: rl.Vector2 = .{
+            .x = col_index * seat_offset.x,
+            .y = row_index * seat_offset.y,
+        };
+        return rel_seat_pos.add(.{ .x = self.rect.x, .y = self.rect.y });
+    } else {
+        return self.getCenter();
+    }
+}
+
 pub fn getCenter(self: Self) rl.Vector2 {
     return .{
         .x = self.rect.x + self.rect.width / 2,
@@ -119,10 +138,17 @@ pub fn getCenter(self: Self) rl.Vector2 {
     };
 }
 
+fn getSeatOffset(self: Self) rl.Vector2 {
+    return .{
+        .x = self.rect.width / @as(f32, @floatFromInt(self.seat_data.num_cols + 1)),
+        .y = self.rect.height / @as(f32, @floatFromInt(self.seat_data.num_rows + 1)),
+    };
+}
+
 pub fn draw(self: Self) void {
     var col: rl.Color = undefined;
     if (self.placed) {
-        col = .{ .r = 15, .g = 42, .b = 65, .a = 180 };
+        col = palette.env.navy;
     } else if (self.anchored) {
         col = color.navy_t;
     } else {
@@ -135,5 +161,20 @@ pub fn draw(self: Self) void {
     } else {
         // placed topleft
         rl.drawRectangleRec(self.rect, col);
+    }
+
+    // draw circles for seats if seats is turned on
+    if (self.seat_data.seats) {
+        const c: rl.Color = .{ .r = 96, .g = 166, .b = 180, .a = 150 };
+        const seat_offset: rl.Vector2 = self.getSeatOffset();
+        for (1..@intCast(self.seat_data.num_rows + 1)) |row_index| {
+            for (1..@intCast(self.seat_data.num_cols + 1)) |col_index| {
+                const seat_pos: rl.Vector2 = .{
+                    .x = self.rect.x + @as(f32, @floatFromInt(col_index)) * seat_offset.x,
+                    .y = self.rect.y + @as(f32, @floatFromInt(row_index)) * seat_offset.y,
+                };
+                rl.drawCircleV(seat_pos, 8, c);
+            }
+        }
     }
 }
