@@ -1,9 +1,9 @@
-# Agent based pedestrian simulation using a social force model
+# Very quick pedestrian flow simulation
 
 To view the paper we have written on this subject: [overleaf link](https://www.overleaf.com/project/66f667ffb591f8ff65cffdd8) (broken)
 
 * Go to the [backlog](#project-backlog) to see the planned features.
-* Go to [my previous Python implementation](https://www.github.com/lmcuber/agentbasedmodel) without a node editor for some spaghetti code
+* Go to [my previous Python implementation](htt ps://www.github.com/lmcuber/agentbasedmodel) without a node editor for some spaghetti code
 
 # Previews
 ![main](previews/main.png "main")

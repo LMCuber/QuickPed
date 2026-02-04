@@ -29,7 +29,12 @@ pub const Entity = struct {
         area: Area,
     };
 
-    pub const EntityAction = enum { none, placed, cancelled };
+    pub const EntityAction = enum {
+        none,
+        placed,
+        cancelled,
+        confirm,
+    };
     pub var next_id: i32 = 0;
 
     //

@@ -152,3 +152,16 @@ pub fn areaButton(bs: f32) bool {
 
     return clicked;
 }
+
+pub fn resetButton() bool {
+    // reset
+    z.separatorText("");
+    //
+    z.pushStyleColor4f(.{ .idx = .button, .c = .{ 0.55, 0.2, 0.32, 1 } });
+    z.pushStyleColor4f(.{ .idx = .button_hovered, .c = .{ 0.65, 0.3, 0.4, 2 } });
+    z.pushStyleColor4f(.{ .idx = .button_active, .c = .{ 0.8, 0.5, 0.7, 2 } });
+    const clicked = z.button("Clear", .{});
+    z.popStyleColor(.{ .count = 3 });
+    //
+    return clicked;
+}

@@ -125,10 +125,25 @@
           }
         }
       }
+    },
+    {
+      "id": 15,
+      "name": "Area7",
+      "kind": {
+        "area": {
+          "area_id": 7,
+          "rect": {
+            "x": 1.76e2,
+            "y": 2.08e2,
+            "width": 2.08e2,
+            "height": 1.44e2
+          }
+        }
+      }
     }
   ],
-  "next_id": 15,
-  "next_contour_id": 5,
-  "next_spawner_id": 3,
-  "next_area_id": 7
+  "next_id": 33,
+  "next_contour_id": 6,
+  "next_spawner_id": 5,
+  "next_area_id": 22
 }

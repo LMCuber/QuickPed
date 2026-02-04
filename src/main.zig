@@ -142,6 +142,12 @@ pub fn main() !void {
             defer rl.endDrawing();
             rl.clearBackground(color.black);
 
+            // set popup attribute of current entity
+            if (current_entity) |ent| {
+                if (ent.kind == .area) {}
+            }
+
+            var confirm_current: bool = false;
             {
                 rl.beginMode2D(camera);
                 defer rl.endMode2D();
@@ -152,23 +158,24 @@ pub fn main() !void {
                 // update selected entity
                 if (current_entity) |ent| {
                     const action = try ent.update(sim_data);
-                    if (action == .placed) {
-                        try entities.append(ent.*);
+                    switch (action) {
+                        .cancelled, .none => {},
+                        .placed => {
+                            try entities.append(ent.*);
+                            const stored_entity_ptr = &entities.items[entities.items.len - 1];
 
-                        // stored entity ptr is the pointer to the latest entity we just
-                        // added because entity_storage and current_entity are both
-                        // on the stack
-                        const stored_entity_ptr = &entities.items[entities.items.len - 1];
+                            switch (stored_entity_ptr.kind) {
+                                .contour => try contours.append(&stored_entity_ptr.kind.contour),
+                                .spawner => try spawners.append(&stored_entity_ptr.kind.spawner),
+                                .area => try areas.append(&stored_entity_ptr.kind.area),
+                            }
 
-                        switch (stored_entity_ptr.kind) {
-                            .contour => try contours.append(&stored_entity_ptr.kind.contour),
-                            .spawner => try spawners.append(&stored_entity_ptr.kind.spawner),
-                            .area => try areas.append(&stored_entity_ptr.kind.area),
-                        }
-
-                        entity_storage = null;
-                        current_entity = null;
-                    } else {
+                            entity_storage = null;
+                            current_entity = null;
+                        },
+                        .confirm => confirm_current = true,
+                    }
+                    if (action == .placed) {} else {
                         ent.draw();
                     }
                 }
@@ -285,13 +292,7 @@ pub fn main() !void {
                             current_entity = if (entity_storage) |*ent| ent else null;
                         }
 
-                        // reset
-                        z.separatorText("");
-                        //
-                        z.pushStyleColor4f(.{ .idx = .button, .c = .{ 0.55, 0.2, 0.32, 1 } });
-                        z.pushStyleColor4f(.{ .idx = .button_hovered, .c = .{ 0.65, 0.3, 0.4, 2 } });
-                        z.pushStyleColor4f(.{ .idx = .button_active, .c = .{ 0.8, 0.5, 0.7, 2 } });
-                        if (z.button("Clear", .{})) {
+                        if (EB.resetButton()) {
                             // dealloc and delete existing entities (environmental objects)
                             for (entities.items) |*e| {
                                 e.deinit(allocator);
@@ -300,13 +301,27 @@ pub fn main() !void {
                             contours.clearRetainingCapacity();
                             spawners.clearRetainingCapacity();
                         }
-                        z.popStyleColor(.{ .count = 3 });
                     }
                     z.newLine();
                     // ------------------------------------------------------------------
 
                     // statistics header
                     try stats.render(&agents);
+
+                    // process new popups if placing entity gave .confirm signal
+                    if (confirm_current) {
+                        z.openPopup("Confirm", .{});
+                        confirm_current = false;
+                    }
+
+                    // popups
+                    if (z.beginPopupModal("Confirm", .{ .flags = .{ .always_auto_resize = true } })) {
+                        z.newLine();
+                        if (z.button("confirm", .{})) {
+                            z.closeCurrentPopup();
+                        }
+                        z.endPopup();
+                    }
                 }
 
                 // draw node editor

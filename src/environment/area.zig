@@ -5,6 +5,7 @@ const color = @import("../color.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../editor/SimData.zig");
+const z = @import("zgui");
 
 area_id: i32,
 topleft: rl.Vector2 = undefined,
@@ -12,8 +13,16 @@ rect: rl.Rectangle = undefined,
 placed: bool = false,
 anchored: bool = false,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
+seat_data: SeatData = .{},
 
 pub var next_id: i32 = 0;
+
+pub const SeatData = struct {
+    open_popup: bool = true,
+    seats: bool = false,
+    num_cols: i32 = 1,
+    num_rows: i32 = 1,
+};
 
 pub const AreaSnapshot = struct {
     area_id: i32,
@@ -62,9 +71,9 @@ pub fn update(self: *Self, sim_data: SimData) Entity.EntityAction {
                     self.anchored = false;
                     return .cancelled;
                 }
-                // no issues; already anchored; finish the entity
                 self.placed = true;
-                return .placed;
+                // return .placed;
+                return .confirm;
             }
         }
         if (self.anchored) {
@@ -76,6 +85,17 @@ pub fn update(self: *Self, sim_data: SimData) Entity.EntityAction {
             );
         }
     }
+
+    // confirm popup
+    // if (z.beginPopupModal("Confirm", .{})) {
+    //     z.text("Test", .{});
+    //     z.text("Newline text", .{});
+    //     if (z.button("OK", .{})) {
+    //         z.closeCurrentPopup();
+    //     }
+    //     z.endPopup();
+    // }
+
     return .none;
 }
 
