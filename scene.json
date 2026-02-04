@@ -140,10 +140,94 @@
           }
         }
       }
+    },
+    {
+      "id": 33,
+      "name": "Contour6",
+      "kind": {
+        "contour": {
+          "contour_id": 6,
+          "points": [
+            {
+              "x": 6.24e2,
+              "y": 1.76e2
+            },
+            {
+              "x": 5.28e2,
+              "y": 2.08e2
+            },
+            {
+              "x": 5.92e2,
+              "y": 2.88e2
+            },
+            {
+              "x": 6.56e2,
+              "y": 2.24e2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 34,
+      "name": "Contour7",
+      "kind": {
+        "contour": {
+          "contour_id": 7,
+          "points": [
+            {
+              "x": 9.28e2,
+              "y": 4e2
+            },
+            {
+              "x": 7.36e2,
+              "y": 3.84e2
+            },
+            {
+              "x": 7.36e2,
+              "y": 5.6e2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 36,
+      "name": "Spawner5",
+      "kind": {
+        "spawner": {
+          "spawner_id": 5,
+          "points": [
+            {
+              "x": 1.2e3,
+              "y": 2.08e2
+            },
+            {
+              "x": 1.216e3,
+              "y": 2.08e2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 47,
+      "name": "Area30",
+      "kind": {
+        "area": {
+          "area_id": 30,
+          "rect": {
+            "x": 2.56e2,
+            "y": 4.8e1,
+            "width": 8e1,
+            "height": 6.4e1
+          }
+        }
+      }
     }
   ],
-  "next_id": 33,
-  "next_contour_id": 6,
-  "next_spawner_id": 5,
-  "next_area_id": 22
+  "next_id": 51,
+  "next_contour_id": 11,
+  "next_spawner_id": 8,
+  "next_area_id": 32
 }

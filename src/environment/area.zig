@@ -99,6 +99,19 @@ pub fn update(self: *Self, sim_data: SimData) Entity.EntityAction {
     return .none;
 }
 
+pub fn confirm(self: *Self) void {
+    _ = z.checkbox("Seats", .{ .v = &self.seat_data.seats });
+
+    // parameters for discrete
+    if (self.seat_data.seats) {
+        const w: f32 = 100;
+        z.setNextItemWidth(w);
+        _ = z.inputInt("cols ", .{ .v = &self.seat_data.num_cols });
+        z.setNextItemWidth(w);
+        _ = z.inputInt("rows ", .{ .v = &self.seat_data.num_rows });
+    }
+}
+
 pub fn getCenter(self: Self) rl.Vector2 {
     return .{
         .x = self.rect.x + self.rect.width / 2,

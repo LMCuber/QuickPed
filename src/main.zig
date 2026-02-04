@@ -87,8 +87,7 @@ pub fn main() !void {
     var agents = std.ArrayList(Agent).init(allocator);
     defer agents.deinit();
 
-    var current_entity: ?*entity.Entity = null;
-    var entity_storage: ?entity.Entity = null;
+    var current_entity: ?entity.Entity = null;
 
     // specific entities
     var contours = std.ArrayList(*Contour).init(allocator);
@@ -156,7 +155,7 @@ pub fn main() !void {
                 renderGrid();
 
                 // update selected entity
-                if (current_entity) |ent| {
+                if (current_entity) |*ent| {
                     const action = try ent.update(sim_data);
                     switch (action) {
                         .cancelled, .none => {},
@@ -170,7 +169,6 @@ pub fn main() !void {
                                 .area => try areas.append(&stored_entity_ptr.kind.area),
                             }
 
-                            entity_storage = null;
                             current_entity = null;
                         },
                         .confirm => confirm_current = true,
@@ -263,33 +261,30 @@ pub fn main() !void {
                         // contour
                         if (EB.contourButton(bs)) {
                             // free previous entities
-                            if (entity_storage) |*ent| {
+                            if (current_entity) |*ent| {
                                 ent.deinit(allocator);
                             }
-                            entity_storage = try entity.Entity.initContour(allocator);
-                            current_entity = if (entity_storage) |*ent| ent else unreachable;
+                            current_entity = try entity.Entity.initContour(allocator);
                         }
 
                         // spawner
                         z.sameLine(.{});
                         if (EB.spawnerButton(bs)) {
                             // free previous entities
-                            if (entity_storage) |*ent| {
+                            if (current_entity) |*ent| {
                                 ent.deinit(allocator);
                             }
-                            entity_storage = try entity.Entity.initSpawner(allocator);
-                            current_entity = if (entity_storage) |*ent| ent else null;
+                            current_entity = try entity.Entity.initSpawner(allocator);
                         }
 
                         // area
                         z.sameLine(.{});
                         if (EB.areaButton(bs)) {
                             // free previous entities
-                            if (entity_storage) |*ent| {
+                            if (current_entity) |*ent| {
                                 ent.deinit(allocator);
                             }
-                            entity_storage = try entity.Entity.initArea(allocator);
-                            current_entity = if (entity_storage) |*ent| ent else null;
+                            current_entity = try entity.Entity.initArea(allocator);
                         }
 
                         if (EB.resetButton()) {
@@ -301,8 +296,8 @@ pub fn main() !void {
                             contours.clearRetainingCapacity();
                             spawners.clearRetainingCapacity();
                         }
+                        z.newLine();
                     }
-                    z.newLine();
                     // ------------------------------------------------------------------
 
                     // statistics header
@@ -316,9 +311,19 @@ pub fn main() !void {
 
                     // popups
                     if (z.beginPopupModal("Confirm", .{ .flags = .{ .always_auto_resize = true } })) {
+                        if (current_entity) |*ent| {
+                            switch (ent.kind) {
+                                .area => |*a| a.confirm(),
+                                inline else => {},
+                            }
+                        }
                         z.newLine();
                         if (z.button("confirm", .{})) {
                             z.closeCurrentPopup();
+                            try entities.append(current_entity.?);
+                            const stored_entity_ptr = &entities.items[entities.items.len - 1];
+                            try areas.append(&stored_entity_ptr.kind.area);
+                            current_entity = null;
                         }
                         z.endPopup();
                     }
@@ -343,7 +348,7 @@ pub fn main() !void {
     try saveScene(allocator, entities, "scene.json");
 
     // deinit all entity allocations
-    if (current_entity) |ent| {
+    if (current_entity) |*ent| {
         ent.deinit(allocator);
     }
     for (entities.items) |*ent| {
@@ -453,7 +458,7 @@ pub fn loadScene(
     for (scene.entities) |snap| {
         try entities.append(try entity.Entity.fromSnapshot(allocator, snap));
 
-        const entity_ptr = &entities.items[entities.items.len - 1];
+        var entity_ptr: *entity.Entity = &entities.items[entities.items.len - 1];
         switch (entity_ptr.kind) {
             .contour => |*contour| try contours.append(contour),
             .spawner => |*spawner| try spawners.append(spawner),
