@@ -2,6 +2,8 @@ const std = @import("std");
 const rl = @import("raylib");
 const SimData = @import("editor/SimData.zig");
 
+pub var prng = std.Random.DefaultPrng.init(47);
+pub var rng = prng.random();
 pub const PI: f32 = 4.0 * std.math.atan(@as(f32, @floatCast(1.0)));
 pub var camera: *rl.Camera2D = undefined;
 

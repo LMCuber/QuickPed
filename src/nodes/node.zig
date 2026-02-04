@@ -283,8 +283,7 @@ pub const AreaNode = struct {
         sigma: i32 = 500,
 
         pub fn get(self: Normal) i32 {
-            // TODO: gauss
-            return self.mu;
+            return @intFromFloat(@as(f32, @floatFromInt(self.mu)) + @as(f32, @floatFromInt(self.sigma)) * commons.rng.floatNorm(f32));
         }
     };
 
