@@ -219,21 +219,23 @@ pub fn main() !void {
                 // Make sure to check that ImGui is not capturing the mouse inputs
                 // before checking mouse inputs in Raylib!
                 capture = z.io.getWantCaptureMouse();
+                capture = z.io.getWantCaptureMouse();
+                capture = z.io.getWantCaptureMouse();
                 if (!capture) {
-                    const mouse_position = commons.mousePos();
-                    defer prev_mouse_position = mouse_position;
-
+                    const mouse_position: rl.Vector2 = rl.getMousePosition();
                     const zoom_delta = rl.getMouseWheelMove() * 0.01;
                     if (zoom_delta > 0 or (zoom_delta < 0 and camera.zoom > 0.05))
                         camera.zoom += zoom_delta;
-                    if (rl.isMouseButtonDown(rl.MouseButton.mouse_button_left)) {
+                    if (rl.isMouseButtonDown(.mouse_button_left)) {
                         const delta_x = mouse_position.x - prev_mouse_position.x;
                         const delta_y = mouse_position.y - prev_mouse_position.y;
+                        std.debug.print("{} | {}\n", .{ prev_mouse_position.x, prev_mouse_position.y });
                         camera.target = .{
                             .x = camera.target.x - delta_x,
                             .y = camera.target.y - delta_y,
                         };
                     }
+                    prev_mouse_position = mouse_position;
                 }
             }
 
