@@ -24,7 +24,7 @@ const Area = @import("environment/Area.zig");
 const Revolver = @import("environment/Revolver.zig");
 
 // data objects
-const Settings = @import("settings.zig");
+const Settings = @import("Settings.zig");
 const SimData = @import("editor/SimData.zig");
 const AgentData = @import("editor/AgentData.zig");
 const EB = @import("editor/EnvironmentButtons.zig");
@@ -167,7 +167,7 @@ pub fn main() !void {
 
                 // update selected entity
                 if (current_entity) |*ent| {
-                    const action = try ent.update(sim_data);
+                    const action = try ent.update(sim_data, settings);
                     switch (action) {
                         .cancelled, .none => {},
                         .placed => {
@@ -191,7 +191,7 @@ pub fn main() !void {
                 }
                 // update all placed entities
                 for (entities.items) |*ent| {
-                    _ = try ent.update(sim_data);
+                    _ = try ent.update(sim_data, settings);
                 }
 
                 // update the agents
@@ -220,14 +220,14 @@ pub fn main() !void {
                 // Make sure to check that ImGui is not capturing the mouse inputs
                 // before checking mouse inputs in Raylib!
                 capture = z.io.getWantCaptureMouse();
+                capture = z.io.getWantCaptureMouse();
+                capture = z.io.getWantCaptureMouse();
                 if (!capture) {
-                    const mouse_position = commons.mousePos();
-                    defer prev_mouse_position = mouse_position;
-
+                    const mouse_position: rl.Vector2 = rl.getMousePosition();
                     const zoom_delta = rl.getMouseWheelMove() * 0.01;
                     if (zoom_delta > 0 or (zoom_delta < 0 and camera.zoom > 0.05))
                         camera.zoom += zoom_delta;
-                    if (rl.isMouseButtonDown(rl.MouseButton.mouse_button_left)) {
+                    if (rl.isMouseButtonDown(.mouse_button_left)) {
                         const delta_x = mouse_position.x - prev_mouse_position.x;
                         const delta_y = mouse_position.y - prev_mouse_position.y;
                         camera.target = .{
@@ -235,6 +235,7 @@ pub fn main() !void {
                             .y = camera.target.y - delta_y,
                         };
                     }
+                    prev_mouse_position = mouse_position;
                 }
             }
 

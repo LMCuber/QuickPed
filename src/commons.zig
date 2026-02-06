@@ -1,11 +1,17 @@
 const std = @import("std");
 const rl = @import("raylib");
 const SimData = @import("editor/SimData.zig");
+const Settings = @import("Settings.zig");
 
 pub var prng = std.Random.DefaultPrng.init(47);
 pub var rng = prng.random();
 pub const PI: f32 = 4.0 * std.math.atan(@as(f32, @floatCast(1.0)));
 pub var camera: *rl.Camera2D = undefined;
+
+pub fn editorCapturingMouse(settings: Settings) bool {
+    const mouse: rl.Vector2 = rl.getMousePosition();
+    return mouse.x <= @as(f32, @floatFromInt(settings.width)) and mouse.y <= @as(f32, @floatFromInt((settings.height)));
+}
 
 pub fn roundN(value: i32, n: i32) i32 {
     return @divTrunc(value + @divTrunc(n, 2), n) * n;

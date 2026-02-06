@@ -1,5 +1,6 @@
-const Contour = @import("Contour.zig");
 const SimData = @import("../editor/SimData.zig");
+const Settings = @import("../Settings.zig");
+const Contour = @import("Contour.zig");
 const Spawner = @import("Spawner.zig");
 const Area = @import("Area.zig");
 const Revolver = @import("Revolver.zig");
@@ -63,9 +64,9 @@ pub const Entity = struct {
         return buf[0..pos :0];
     }
 
-    pub fn update(self: *Entity, sim_data: SimData) !EntityAction {
+    pub fn update(self: *Entity, sim_data: SimData, settings: Settings) !EntityAction {
         switch (self.kind) {
-            inline else => |*kind| return kind.update(sim_data),
+            inline else => |*kind| return kind.update(sim_data, settings),
         }
     }
 
