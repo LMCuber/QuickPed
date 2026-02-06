@@ -53,6 +53,7 @@ pub fn main() !void {
         settings.height,
         "QuickPed",
     );
+    rl.setWindowFlags(.{ .vsync_hint = true });
 
     defer rl.closeWindow();
     rl.setTargetFPS(settings.fps_cap);
