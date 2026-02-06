@@ -5,6 +5,7 @@ const color = @import("../color.zig");
 const palette = @import("../palette.zig");
 const commons = @import("../commons.zig");
 const SimData = @import("../editor/SimData.zig");
+const Settings = @import("../Settings.zig");
 const Entity = @import("../environment/entity.zig").Entity;
 
 revolver_id: i32,
@@ -46,10 +47,10 @@ pub fn nextId() i32 {
     return next_id - 1;
 }
 
-pub fn update(self: *Self, sim_data: SimData) !Entity.EntityAction {
+pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.EntityAction {
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
-        if (rl.isMouseButtonPressed(.mouse_button_left)) {
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left)) {
             self.placed = true;
             return .placed;
         }

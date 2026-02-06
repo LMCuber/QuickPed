@@ -6,6 +6,7 @@ const palette = @import("../palette.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../editor/SimData.zig");
+const Settings = @import("../Settings.zig");
 const Agent = @import("../Agent.zig");
 
 spawner_id: i32,
@@ -48,11 +49,11 @@ pub fn nextId() i32 {
     return next_id - 1;
 }
 
-pub fn update(self: *Self, sim_data: SimData) Entity.EntityAction {
+pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityAction {
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
         // place new point
-        if (rl.isMouseButtonPressed(.mouse_button_left)) {
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left)) {
             if (self.point_count < 2) {
                 self.points[self.point_count] = self.pos;
                 self.point_count += 1;

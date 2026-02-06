@@ -24,7 +24,7 @@ const Area = @import("environment/Area.zig");
 const Revolver = @import("environment/Revolver.zig");
 
 // data objects
-const Settings = @import("settings.zig");
+const Settings = @import("Settings.zig");
 const SimData = @import("editor/SimData.zig");
 const AgentData = @import("editor/AgentData.zig");
 const EB = @import("editor/EnvironmentButtons.zig");
@@ -166,7 +166,7 @@ pub fn main() !void {
 
                 // update selected entity
                 if (current_entity) |*ent| {
-                    const action = try ent.update(sim_data);
+                    const action = try ent.update(sim_data, settings);
                     switch (action) {
                         .cancelled, .none => {},
                         .placed => {
@@ -190,7 +190,7 @@ pub fn main() !void {
                 }
                 // update all placed entities
                 for (entities.items) |*ent| {
-                    _ = try ent.update(sim_data);
+                    _ = try ent.update(sim_data, settings);
                 }
 
                 // update the agents
@@ -229,7 +229,6 @@ pub fn main() !void {
                     if (rl.isMouseButtonDown(.mouse_button_left)) {
                         const delta_x = mouse_position.x - prev_mouse_position.x;
                         const delta_y = mouse_position.y - prev_mouse_position.y;
-                        std.debug.print("{} | {}\n", .{ prev_mouse_position.x, prev_mouse_position.y });
                         camera.target = .{
                             .x = camera.target.x - delta_x,
                             .y = camera.target.y - delta_y,

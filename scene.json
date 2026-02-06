@@ -3,70 +3,79 @@
   "entities": [
     {
       "id": 0,
-      "name": "Revolver0",
-      "kind": {
-        "revolver": {
-          "revolver_id": 0,
-          "pos": {
-            "x": 3.68e2,
-            "y": 3.2e2
-          }
-        }
-      }
-    },
-    {
-      "id": 1,
-      "name": "Revolver1",
-      "kind": {
-        "revolver": {
-          "revolver_id": 1,
-          "pos": {
-            "x": 5.76e2,
-            "y": 4.64e2
-          }
-        }
-      }
-    },
-    {
-      "id": 2,
-      "name": "Revolver2",
-      "kind": {
-        "revolver": {
-          "revolver_id": 2,
-          "pos": {
-            "x": 5.76e2,
-            "y": 2.24e2
-          }
-        }
-      }
-    },
-    {
-      "id": 3,
-      "name": "Revolver3",
-      "kind": {
-        "revolver": {
-          "revolver_id": 3,
-          "pos": {
-            "x": 7.84e2,
-            "y": 3.68e2
-          }
-        }
-      }
-    },
-    {
-      "id": 4,
       "name": "Spawner0",
       "kind": {
         "spawner": {
           "spawner_id": 0,
           "points": [
             {
-              "x": 8.8e2,
-              "y": 2.24e2
+              "x": 1.6e2,
+              "y": 2.88e2
             },
             {
-              "x": 7.52e2,
-              "y": 3.04e2
+              "x": 4.48e2,
+              "y": 4.8e2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 1,
+      "name": "Area0",
+      "kind": {
+        "area": {
+          "area_id": 0,
+          "rect": {
+            "x": 5.44e2,
+            "y": 9.6e1,
+            "width": 4.8e2,
+            "height": 2.24e2
+          },
+          "seat_data": {
+            "open_popup": true,
+            "seats": false,
+            "num_cols": 1,
+            "num_rows": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "Area1",
+      "kind": {
+        "area": {
+          "area_id": 1,
+          "rect": {
+            "x": 9.6e1,
+            "y": 5.44e2,
+            "width": 1.92e2,
+            "height": 9.6e1
+          },
+          "seat_data": {
+            "open_popup": true,
+            "seats": false,
+            "num_cols": 1,
+            "num_rows": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "name": "Spawner2",
+      "kind": {
+        "spawner": {
+          "spawner_id": 2,
+          "points": [
+            {
+              "x": 9.6e2,
+              "y": 5.44e2
+            },
+            {
+              "x": 5.12e2,
+              "y": 2.88e2
             }
           ]
         }
@@ -74,100 +83,15 @@
     },
     {
       "id": 5,
-      "name": "Area0",
-      "kind": {
-        "area": {
-          "area_id": 0,
-          "rect": {
-            "x": 1.6e2,
-            "y": 4.8e2,
-            "width": 3.04e2,
-            "height": 1.6e2
-          },
-          "seat_data": {
-            "open_popup": true,
-            "seats": false,
-            "num_cols": 1,
-            "num_rows": 1
-          }
-        }
-      }
-    },
-    {
-      "id": 6,
-      "name": "Contour0",
-      "kind": {
-        "contour": {
-          "contour_id": 0,
-          "points": [
-            {
-              "x": 7.68e2,
-              "y": 2.24e2
-            },
-            {
-              "x": 5.76e2,
-              "y": 3.84e2
-            },
-            {
-              "x": 3.52e2,
-              "y": 9.6e1
-            },
-            {
-              "x": 1.28e2,
-              "y": 3.84e2
-            },
-            {
-              "x": 3.84e2,
-              "y": 4.8e2
-            },
-            {
-              "x": 4.8e2,
-              "y": 4.48e2
-            },
-            {
-              "x": 5.44e2,
-              "y": 6.08e2
-            },
-            {
-              "x": 6.72e2,
-              "y": 4.16e2
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": 7,
-      "name": "Area1",
-      "kind": {
-        "area": {
-          "area_id": 1,
-          "rect": {
-            "x": 9.28e2,
-            "y": 4.16e2,
-            "width": 1.28e2,
-            "height": 1.6e2
-          },
-          "seat_data": {
-            "open_popup": true,
-            "seats": false,
-            "num_cols": 1,
-            "num_rows": 1
-          }
-        }
-      }
-    },
-    {
-      "id": 8,
       "name": "Area2",
       "kind": {
         "area": {
           "area_id": 2,
           "rect": {
-            "x": 6.72e2,
-            "y": 7.04e2,
-            "width": 1.28e2,
-            "height": 6.4e1
+            "x": 4.48e2,
+            "y": 3.84e2,
+            "width": 3.2e2,
+            "height": 2.24e2
           },
           "seat_data": {
             "open_popup": true,
@@ -177,29 +101,10 @@
           }
         }
       }
-    },
-    {
-      "id": 9,
-      "name": "Contour1",
-      "kind": {
-        "contour": {
-          "contour_id": 1,
-          "points": [
-            {
-              "x": 3.52e2,
-              "y": 5.12e2
-            },
-            {
-              "x": 5.44e2,
-              "y": 6.08e2
-            }
-          ]
-        }
-      }
     }
   ],
-  "next_id": 11,
-  "next_contour_id": 2,
-  "next_spawner_id": 1,
+  "next_id": 6,
+  "next_contour_id": 0,
+  "next_spawner_id": 3,
   "next_area_id": 3
 }
