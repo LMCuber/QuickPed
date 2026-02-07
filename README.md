@@ -23,7 +23,7 @@ Later Zig versions are not guaranteed to build correctly.
     - [ ] Heatmap showing bottlenecks during simulation
 - [ ] Advanced environmental objects
     - [ ] queues
-    - [ ] revolving doors
+    - [x] revolving doors
 - [ ] *A\** pathfinding for the pedestrians
 - [ ] Quadtree for collisions
 
