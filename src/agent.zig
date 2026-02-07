@@ -8,6 +8,7 @@ const commons = @import("commons.zig");
 const color = @import("color.zig");
 const AgentData = @import("editor/AgentData.zig");
 const Contour = @import("environment/Contour.zig");
+const Revolver = @import("environment/Revolver.zig");
 const Area = @import("environment/Area.zig");
 const node = @import("nodes/node.zig");
 const Graph = @import("nodes/Graph.zig");
@@ -108,12 +109,37 @@ pub fn processCurrentNode(self: *Self) void {
     }
 }
 
+fn obstacleForceFromTwoVectors(
+    self: *Self,
+    A: rl.Vector2,
+    B: rl.Vector2,
+    agent_data: AgentData,
+) rl.Vector2 {
+    const AB = B.subtract(A);
+    const t: f32 = std.math.clamp(
+        self.pos.subtract(A).dotProduct(AB) / AB.dotProduct(AB),
+        0,
+        1,
+    );
+    const C = A.add(AB.scale(t));
+    const D = self.pos.subtract(C);
+    const dist = D.length();
+    const n = D.normalize();
+
+    const radius_float: f32 = @floatFromInt(agent_data.radius);
+    const exp_term: f32 = std.math.exp((radius_float - dist) / agent_data.b_ob);
+    const f_ob = n.scale(agent_data.a_ob * exp_term);
+    return f_ob;
+}
+
 fn calculateObstacleForce(
     self: *Self,
     contours: *std.ArrayList(*Contour),
+    revolvers: *std.ArrayList(*Revolver),
     agent_data: AgentData,
 ) rl.Vector2 {
     var force: rl.Vector2 = .{ .x = 0, .y = 0 };
+
     // iterate over all contour objects
     for (contours.items) |contour| {
         // iterate over all line segements in that contour
@@ -121,23 +147,25 @@ fn calculateObstacleForce(
             if (i == contour.points.items.len - 1) continue;
             const A: rl.Vector2 = contour.points.items[i];
             const B: rl.Vector2 = contour.points.items[i + 1];
-            const AB = B.subtract(A);
-            const t: f32 = std.math.clamp(
-                self.pos.subtract(A).dotProduct(AB) / AB.dotProduct(AB),
-                0,
-                1,
-            );
-            const C = A.add(AB.scale(t));
-            const D = self.pos.subtract(C);
-            const dist = D.length();
-            const n = D.normalize();
 
-            const radius_float: f32 = @floatFromInt(agent_data.radius);
-            const exp_term: f32 = std.math.exp((radius_float - dist) / agent_data.b_ob);
-            const f_ob = n.scale(agent_data.a_ob * exp_term);
+            const f_ob: rl.Vector2 = self.obstacleForceFromTwoVectors(A, B, agent_data);
             force = force.add(f_ob);
         }
     }
+
+    // iterate over all the revolvers
+    for (revolvers.items) |revolver| {
+        // get 4 rotational symmetries
+        for (0..4) |i| {
+            const a: f32 = @as(f32, @floatFromInt(i)) * 0.5 * std.math.pi;
+            const A: rl.Vector2 = revolver.pos;
+            const AB: rl.Vector2 = revolver.getRotatedVector(a);
+            const B: rl.Vector2 = A.add(AB);
+            const f_rev = self.obstacleForceFromTwoVectors(A, B, agent_data);
+            force = force.add(f_rev);
+        }
+    }
+
     return force;
 }
 
@@ -167,12 +195,13 @@ pub fn update(
     self: *Self,
     agents: *std.ArrayList(Self),
     contours: *std.ArrayList(*Contour),
+    revolvers: *std.ArrayList(*Revolver),
     agent_data: AgentData,
 ) void {
     // get force components
     const drive_force = self.calculateDriveForce(agent_data);
     const interactive_force = self.calculateInteractiveForce(agents, agent_data);
-    const obstacle_force = self.calculateObstacleForce(contours, agent_data);
+    const obstacle_force = self.calculateObstacleForce(contours, revolvers, agent_data);
     self.acc = drive_force
         .add(interactive_force)
         .add(obstacle_force);

@@ -1,6 +1,7 @@
 const Self = @This();
 const std = @import("std");
 const rl = @import("raylib");
+const z = @import("zgui");
 const color = @import("../color.zig");
 const palette = @import("../palette.zig");
 const commons = @import("../commons.zig");
@@ -11,8 +12,9 @@ const Entity = @import("../environment/entity.zig").Entity;
 revolver_id: i32,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 placed: bool = false,
-angle: f32 = 0, // radians
-length: f32 = 50,
+angle: f32 = 0, // degrees
+speed: i32 = 37, // degrees
+length: i32 = 50,
 
 pub var next_id: i32 = 0;
 
@@ -47,26 +49,43 @@ pub fn nextId() i32 {
     return next_id - 1;
 }
 
-pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.EntityAction {
+pub fn update(self: *Self, dt: f32, sim_data: SimData, settings: Settings) !Entity.EntityAction {
+    self.angle -= @as(f32, @floatFromInt(self.speed)) * dt;
+    if (self.angle >= 360) {
+        self.angle = @rem(self.angle, 360.0);
+    }
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
         if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left)) {
             self.placed = true;
-            return .placed;
+            return .confirm;
         }
         return .none;
     }
     return .none;
 }
 
+pub fn confirm(self: *Self) void {
+    const w: f32 = 100;
+    z.setNextItemWidth(w);
+    _ = z.inputInt("length", .{ .v = &self.length });
+    z.setNextItemWidth(w);
+    _ = z.inputInt("speed ", .{ .v = &self.speed });
+}
+
+pub fn getRotatedVector(self: Self, a: f32) rl.Vector2 {
+    // a in radians
+    const rad: f32 = std.math.degreesToRadians(self.angle + a);
+    var vec: rl.Vector2 = .{ .x = @floatFromInt(self.length), .y = 0 };
+    return vec.rotate(rad + a);
+}
+
 pub fn draw(self: *Self) void {
     const line_width = 6;
     const col = if (self.placed) (palette.env.purple) else (color.light_gray);
-    self.angle += 0.02;
 
-    const extension: rl.Vector2 = .{ .x = self.length, .y = 0 };
-    rl.drawLineEx(self.pos, self.pos.add(extension.rotate(self.angle)), line_width, col);
-    rl.drawLineEx(self.pos, self.pos.add(extension.rotate(self.angle + 0.5 * commons.PI)), line_width, col);
-    rl.drawLineEx(self.pos, self.pos.add(extension.rotate(self.angle + commons.PI)), line_width, col);
-    rl.drawLineEx(self.pos, self.pos.add(extension.rotate(self.angle + 1.5 * commons.PI)), line_width, col);
+    rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(0)), line_width, col);
+    rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(0.5 * std.math.pi)), line_width, col);
+    rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(std.math.pi)), line_width, col);
+    rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(1.5 * std.math.pi)), line_width, col);
 }

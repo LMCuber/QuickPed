@@ -48,15 +48,15 @@ const SceneSnapshot = struct {
 
 // main
 pub fn main() !void {
+    rl.setConfigFlags(.{ .vsync_hint = true });
     rl.initWindow(
         settings.width,
         settings.height,
         "QuickPed",
     );
-    rl.setWindowFlags(.{ .vsync_hint = true });
 
     defer rl.closeWindow();
-    rl.setTargetFPS(settings.fps_cap);
+    rl.setTargetFPS(rl.getMonitorRefreshRate(0));
 
     c.rlImGuiSetup(true);
     defer c.rlImGuiShutdown();
@@ -146,28 +146,28 @@ pub fn main() !void {
 
     // Main loop
     while (!rl.windowShouldClose()) {
-        // Draw Raylib
         {
+            const dt: f32 = rl.getFrameTime();
             rl.beginDrawing();
             defer rl.endDrawing();
             rl.clearBackground(color.black);
 
-            // set popup attribute of current entity
-            if (current_entity) |ent| {
-                if (ent.kind == .area) {}
-            }
-
+            // UPDATING =============================================
             var confirm_current: bool = false;
             {
-                rl.beginMode2D(camera);
-                defer rl.endMode2D();
+                // set popup attribute of current entity
+                if (current_entity) |ent| {
+                    if (ent.kind == .area) {}
+                }
 
-                rl.drawRectangleRec(sim_rect, palette.env.black);
-                renderGrid();
+                // update all placed entities
+                for (entities.items) |*ent| {
+                    _ = try ent.update(dt, sim_data, settings);
+                }
 
                 // update selected entity
                 if (current_entity) |*ent| {
-                    const action = try ent.update(sim_data, settings);
+                    const action = try ent.update(dt, sim_data, settings);
                     switch (action) {
                         .cancelled, .none => {},
                         .placed => {
@@ -185,19 +185,12 @@ pub fn main() !void {
                         },
                         .confirm => confirm_current = true,
                     }
-                    if (action == .placed) {} else {
-                        ent.draw();
-                    }
-                }
-                // update all placed entities
-                for (entities.items) |*ent| {
-                    _ = try ent.update(sim_data, settings);
                 }
 
                 // update the agents
                 if (!sim_data.paused) {
                     for (agents.items) |*agent| {
-                        agent.update(&agents, &contours, agent_data);
+                        agent.update(&agents, &contours, &revolvers, agent_data);
                     }
                     // cleanup to be deleted agents
                     var i: usize = agents.items.len;
@@ -209,19 +202,21 @@ pub fn main() !void {
                     }
                 }
 
-                // render all the entities
-                for (entities.items) |*ent| {
-                    ent.draw();
-                }
-                for (agents.items) |*agent| {
-                    agent.draw(agent_data);
-                }
-
                 // Make sure to check that ImGui is not capturing the mouse inputs
                 // before checking mouse inputs in Raylib!
                 capture = z.io.getWantCaptureMouse();
                 capture = z.io.getWantCaptureMouse();
                 capture = z.io.getWantCaptureMouse();
+            }
+
+            // DRAWING =============================================
+            {
+                rl.beginMode2D(camera);
+                defer rl.endMode2D();
+
+                rl.drawRectangleRec(sim_rect, palette.env.black);
+                renderGrid();
+
                 if (!capture) {
                     const mouse_position: rl.Vector2 = rl.getMousePosition();
                     const zoom_delta = rl.getMouseWheelMove() * 0.01;
@@ -237,9 +232,24 @@ pub fn main() !void {
                     }
                     prev_mouse_position = mouse_position;
                 }
+
+                // render all the entities
+                for (entities.items) |*ent| {
+                    ent.draw();
+                }
+
+                // render the in-progress selected entity
+                if (current_entity) |*ent| {
+                    ent.draw();
+                }
+
+                // render all pedestrians
+                for (agents.items) |*agent| {
+                    agent.draw(agent_data);
+                }
             }
 
-            // draw ImGui
+            // IMGUI
             {
                 c.rlImGuiBegin();
                 defer c.rlImGuiEnd();
@@ -333,20 +343,38 @@ pub fn main() !void {
 
                     // popups
                     if (z.beginPopupModal("Confirm", .{ .flags = .{ .always_auto_resize = true } })) {
+                        // render the neede widget buttons
                         if (current_entity) |*ent| {
                             switch (ent.kind) {
                                 .area => |*a| a.confirm(),
+                                .revolver => |*r| r.confirm(),
                                 inline else => {},
                             }
                         }
+
                         z.newLine();
+
+                        // confirm and cancel
+                        if (z.button("cancel", .{})) {
+                            z.closeCurrentPopup();
+                            current_entity.?.deinit(allocator);
+                            current_entity = null;
+                        }
+                        z.sameLine(.{});
                         if (z.button("confirm", .{})) {
                             z.closeCurrentPopup();
                             try entities.append(current_entity.?);
-                            const stored_entity_ptr = &entities.items[entities.items.len - 1];
-                            try areas.append(&stored_entity_ptr.kind.area);
+
+                            if (current_entity) |*ent| {
+                                switch (ent.kind) {
+                                    .area => |*a| try areas.append(a),
+                                    .revolver => |*r| try revolvers.append(r),
+                                    inline else => {},
+                                }
+                            }
                             current_entity = null;
                         }
+
                         z.endPopup();
                     }
                 }
