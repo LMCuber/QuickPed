@@ -1,6 +1,7 @@
-///
-///  rl.getTime() is in SECONDS
-///
+//
+//  rl.getTime() is in SECONDS
+//
+const Self = @This();
 const std = @import("std");
 const rl = @import("raylib");
 //
@@ -12,8 +13,7 @@ const Revolver = @import("environment/Revolver.zig");
 const Area = @import("environment/Area.zig");
 const node = @import("nodes/node.zig");
 const Graph = @import("nodes/Graph.zig");
-
-const Self = @This();
+const Environment = @import("environment/Environment.zig");
 
 pos: rl.Vector2,
 target_area: ?*Area = null,
@@ -134,14 +134,13 @@ fn obstacleForceFromTwoVectors(
 
 fn calculateObstacleForce(
     self: *Self,
-    contours: *std.ArrayList(*Contour),
-    revolvers: *std.ArrayList(*Revolver),
+    env: *Environment,
     agent_data: AgentData,
 ) rl.Vector2 {
     var force: rl.Vector2 = .{ .x = 0, .y = 0 };
 
     // iterate over all contour objects
-    for (contours.items) |contour| {
+    for (env.contours.items) |contour| {
         // iterate over all line segements in that contour
         for (0..contour.points.items.len) |i| {
             if (i == contour.points.items.len - 1) continue;
@@ -154,7 +153,7 @@ fn calculateObstacleForce(
     }
 
     // iterate over all the revolvers
-    for (revolvers.items) |revolver| {
+    for (env.revolvers.items) |revolver| {
         // get 4 rotational symmetries
         for (0..4) |i| {
             const a: f32 = @as(f32, @floatFromInt(i)) * 0.5 * std.math.pi;
@@ -194,14 +193,13 @@ fn calculateDriveForce(self: *Self, agent_data: AgentData) rl.Vector2 {
 pub fn update(
     self: *Self,
     agents: *std.ArrayList(Self),
-    contours: *std.ArrayList(*Contour),
-    revolvers: *std.ArrayList(*Revolver),
+    env: *Environment,
     agent_data: AgentData,
 ) void {
     // get force components
     const drive_force = self.calculateDriveForce(agent_data);
     const interactive_force = self.calculateInteractiveForce(agents, agent_data);
-    const obstacle_force = self.calculateObstacleForce(contours, revolvers, agent_data);
+    const obstacle_force = self.calculateObstacleForce(env, agent_data);
     self.acc = drive_force
         .add(interactive_force)
         .add(obstacle_force);
