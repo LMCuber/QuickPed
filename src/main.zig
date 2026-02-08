@@ -6,7 +6,6 @@ const c = @cImport({
 });
 const rl = @import("raylib");
 const z = @import("zgui");
-// const imnodes = @import("imnodes");
 const implot = @import("implot");
 const imnodes = @import("imnodesez");
 
@@ -16,6 +15,7 @@ const color = @import("color.zig");
 const palette = @import("palette.zig");
 
 // environment
+const Environment = @import("environment/Environment.zig");
 const entity = @import("environment/entity.zig");
 const Agent = @import("Agent.zig");
 const Contour = @import("environment/Contour.zig");
@@ -89,40 +89,23 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
-    var entities = std.ArrayList(entity.Entity).init(allocator);
-    defer entities.deinit();
-    try entities.ensureTotalCapacity(100_000);
     var agents = std.ArrayList(Agent).init(allocator);
     defer agents.deinit();
 
+    // environmental objects
+    var env: Environment = Environment.init(allocator);
     var current_entity: ?entity.Entity = null;
-
-    // specific entity containers
-    var contours = std.ArrayList(*Contour).init(allocator);
-    defer contours.deinit();
-    var spawners = std.ArrayList(*Spawner).init(allocator);
-    defer spawners.deinit();
-    var areas = std.ArrayList(*Area).init(allocator);
-    defer areas.deinit();
-    var revolvers = std.ArrayList(*Revolver).init(allocator);
-    defer revolvers.deinit();
 
     // allocated editor objects
     var stats = Stats.init(allocator);
     defer stats.deinit();
-
-    // node editor
     var node_editor = NodeEditor.init(allocator);
     defer node_editor.deinit();
 
     try loadScene(
         allocator,
         "scene.json",
-        &entities,
-        &contours,
-        &spawners,
-        &areas,
-        &revolvers,
+        &env,
     );
 
     // camera shenanigans
@@ -161,7 +144,7 @@ pub fn main() !void {
                 }
 
                 // update all placed entities
-                for (entities.items) |*ent| {
+                for (env.entities.items) |*ent| {
                     _ = try ent.update(dt, sim_data, settings);
                 }
 
@@ -171,14 +154,14 @@ pub fn main() !void {
                     switch (action) {
                         .cancelled, .none => {},
                         .placed => {
-                            try entities.append(ent.*);
-                            const stored_entity_ptr = &entities.items[entities.items.len - 1];
+                            try env.entities.append(ent.*);
+                            const stored_entity_ptr = &env.entities.items[env.entities.items.len - 1];
 
                             switch (stored_entity_ptr.kind) {
-                                .contour => try contours.append(&stored_entity_ptr.kind.contour),
-                                .spawner => try spawners.append(&stored_entity_ptr.kind.spawner),
-                                .area => try areas.append(&stored_entity_ptr.kind.area),
-                                .revolver => try revolvers.append(&stored_entity_ptr.kind.revolver),
+                                .contour => try env.contours.append(&stored_entity_ptr.kind.contour),
+                                .spawner => try env.spawners.append(&stored_entity_ptr.kind.spawner),
+                                .area => try env.areas.append(&stored_entity_ptr.kind.area),
+                                .revolver => try env.revolvers.append(&stored_entity_ptr.kind.revolver),
                             }
 
                             current_entity = null;
@@ -190,7 +173,7 @@ pub fn main() !void {
                 // update the agents
                 if (!sim_data.paused) {
                     for (agents.items) |*agent| {
-                        agent.update(&agents, &contours, &revolvers, agent_data);
+                        agent.update(&agents, &env, agent_data);
                     }
                     // cleanup to be deleted agents
                     var i: usize = agents.items.len;
@@ -234,7 +217,7 @@ pub fn main() !void {
                 }
 
                 // render all the entities
-                for (entities.items) |*ent| {
+                for (env.entities.items) |*ent| {
                     ent.draw();
                 }
 
@@ -321,12 +304,12 @@ pub fn main() !void {
                         // reset
                         if (EB.resetButton()) {
                             // dealloc and delete existing entities (environmental objects)
-                            for (entities.items) |*e| {
-                                e.deinit(allocator);
+                            for (env.entities.items) |*ent| {
+                                ent.deinit(allocator);
                             }
-                            entities.clearRetainingCapacity();
-                            contours.clearRetainingCapacity();
-                            spawners.clearRetainingCapacity();
+                            env.entities.clearRetainingCapacity();
+                            env.contours.clearRetainingCapacity();
+                            env.spawners.clearRetainingCapacity();
                         }
                         z.newLine();
                     }
@@ -363,12 +346,12 @@ pub fn main() !void {
                         z.sameLine(.{});
                         if (z.button("confirm", .{})) {
                             z.closeCurrentPopup();
-                            try entities.append(current_entity.?);
+                            try env.entities.append(current_entity.?);
 
                             if (current_entity) |*ent| {
                                 switch (ent.kind) {
-                                    .area => |*a| try areas.append(a),
-                                    .revolver => |*r| try revolvers.append(r),
+                                    .area => |*a| try env.areas.append(a),
+                                    .revolver => |*r| try env.revolvers.append(r),
                                     inline else => {},
                                 }
                             }
@@ -387,7 +370,7 @@ pub fn main() !void {
                         .h = @floatFromInt(settings.height),
                     });
 
-                    try node_editor.render(&entities);
+                    try node_editor.render(&env.entities);
                     try node_editor.graph.processSpawners(&agents);
                 }
             }
@@ -395,13 +378,13 @@ pub fn main() !void {
     }
 
     // save the scene
-    try saveScene(allocator, entities, "scene.json");
+    try saveScene(allocator, &env, "scene.json");
 
     // deinit all entity allocations
     if (current_entity) |*ent| {
         ent.deinit(allocator);
     }
-    for (entities.items) |*ent| {
+    for (env.entities.items) |*ent| {
         ent.deinit(allocator);
     }
 }
@@ -436,13 +419,13 @@ pub fn renderGrid() void {
 
 pub fn saveScene(
     allocator: std.mem.Allocator,
-    entities: std.ArrayList(entity.Entity),
+    env: *Environment,
     path: []const u8,
 ) !void {
     var snaps = std.ArrayList(entity.EntitySnapshot).init(allocator);
     defer snaps.deinit();
 
-    for (entities.items) |*ent| {
+    for (env.entities.items) |*ent| {
         try snaps.append(ent.getSnapshot());
     }
     const scene_snap: SceneSnapshot = .{
@@ -464,26 +447,25 @@ pub fn saveScene(
     try file.writeAll(buf.items);
 }
 
+//
+// HALF-AI CODE
+//
 pub fn loadScene(
     allocator: std.mem.Allocator,
     path: []const u8,
-    entities: *std.ArrayList(entity.Entity),
-    contours: *std.ArrayList(*Contour),
-    spawners: *std.ArrayList(*Spawner),
-    areas: *std.ArrayList(*Area),
-    revolvers: *std.ArrayList(*Revolver),
+    env: *Environment,
 ) !void {
     const json = try commons.readFile(allocator, path);
     defer allocator.free(json);
 
     // dealloc and delete existing entities (environmental objects)
-    for (entities.items) |*e| {
-        e.deinit(allocator);
+    for (env.entities.items) |*ent| {
+        ent.deinit(allocator);
     }
-    entities.clearRetainingCapacity();
-    contours.clearRetainingCapacity();
-    spawners.clearRetainingCapacity();
-    areas.clearRetainingCapacity();
+    env.entities.clearRetainingCapacity();
+    env.contours.clearRetainingCapacity();
+    env.spawners.clearRetainingCapacity();
+    env.areas.clearRetainingCapacity();
 
     // if there is nothing in the file, return
     if (json.len == 0) {
@@ -508,14 +490,14 @@ pub fn loadScene(
 
     // repopulate entities from saved snapshots
     for (scene.entities) |snap| {
-        try entities.append(try entity.Entity.fromSnapshot(allocator, snap));
+        try env.entities.append(try entity.Entity.fromSnapshot(allocator, snap));
 
-        var entity_ptr: *entity.Entity = &entities.items[entities.items.len - 1];
+        var entity_ptr: *entity.Entity = &env.entities.items[env.entities.items.len - 1];
         switch (entity_ptr.kind) {
-            .contour => |*contour| try contours.append(contour),
-            .spawner => |*spawner| try spawners.append(spawner),
-            .area => |*area| try areas.append(area),
-            .revolver => |*revolver| try revolvers.append(revolver),
+            .contour => |*contour| try env.contours.append(contour),
+            .spawner => |*spawner| try env.spawners.append(spawner),
+            .area => |*area| try env.areas.append(area),
+            .revolver => |*revolver| try env.revolvers.append(revolver),
         }
     }
 }
