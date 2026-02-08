@@ -44,6 +44,7 @@ const SceneSnapshot = struct {
     next_contour_id: i32,
     next_spawner_id: i32,
     next_area_id: i32,
+    next_revolver_id: i32,
 };
 
 // main
@@ -303,14 +304,8 @@ pub fn main() !void {
                         }
 
                         // reset
-                        if (EB.resetButton()) {
-                            // dealloc and delete existing entities (environmental objects)
-                            for (env.entities.items) |*ent| {
-                                ent.deinit(allocator);
-                            }
-                            env.entities.clearRetainingCapacity();
-                            env.contours.clearRetainingCapacity();
-                            env.spawners.clearRetainingCapacity();
+                        if (EB.clearButton()) {
+                            clearEntities(&env, allocator);
                         }
                         z.newLine();
                     }
@@ -436,6 +431,7 @@ pub fn saveScene(
         .next_contour_id = Contour.next_id,
         .next_spawner_id = Spawner.next_id,
         .next_area_id = Area.next_id,
+        .next_revolver_id = Revolver.next_id,
     };
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();
@@ -488,6 +484,7 @@ pub fn loadScene(
     Contour.next_id = scene.next_contour_id;
     Spawner.next_id = scene.next_spawner_id;
     Area.next_id = scene.next_area_id;
+    Revolver.next_id = scene.next_revolver_id;
 
     // repopulate entities from saved snapshots
     for (scene.entities) |snap| {
@@ -501,4 +498,22 @@ pub fn loadScene(
             .revolver => |*revolver| try env.revolvers.append(revolver),
         }
     }
+}
+
+pub fn clearEntities(env: *Environment, alloc: std.mem.Allocator) void {
+    // dealloc and delete existing entities
+    for (env.entities.items) |*ent| {
+        ent.deinit(alloc);
+    }
+
+    // clear the reference lists
+    env.entities.clearRetainingCapacity();
+    env.contours.clearRetainingCapacity();
+    env.spawners.clearRetainingCapacity();
+
+    // reset the id variables
+    entity.Entity.next_id = 0;
+    Contour.next_id = 0;
+    Spawner.next_id = 0;
+    Area.next_id = 0;
 }

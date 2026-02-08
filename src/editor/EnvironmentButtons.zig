@@ -184,7 +184,7 @@ pub fn revolverButton(bs: f32) bool {
     return clicked;
 }
 
-pub fn resetButton() bool {
+pub fn clearButton() bool {
     // reset
     z.separatorText("");
     //
