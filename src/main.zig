@@ -94,6 +94,7 @@ pub fn main() !void {
 
     // environmental objects
     var env: Environment = Environment.init(allocator);
+    defer env.deinit();
     var current_entity: ?entity.Entity = null;
 
     // allocated editor objects

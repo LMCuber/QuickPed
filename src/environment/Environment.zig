@@ -24,7 +24,7 @@ pub fn init(alloc: std.mem.Allocator) Self {
 }
 
 pub fn deinit(self: *Self) void {
-    self.env.entities.deinit();
+    self.entities.deinit();
     self.contours.deinit();
     self.spawners.deinit();
     self.areas.deinit();
