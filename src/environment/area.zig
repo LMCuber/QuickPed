@@ -162,6 +162,7 @@ pub fn draw(self: Self) void {
     } else {
         // placed topleft
         rl.drawRectangleRec(self.rect, col);
+        rl.drawRectangleLinesEx(self.rect, 4, palette.env.light_blue);
     }
 
     // draw circles for seats if seats is turned on

@@ -56,10 +56,6 @@ pub fn arrToColor(col: [4]f32) rl.Color {
     };
 }
 
-pub fn colorToU32(col: rl.Color) u32 {
-    return (@as(u32, col.a) << 24) | (@as(u32, col.b) << 16) | (@as(u32, col.g) << 8) | (@as(u32, col.r));
-}
-
 fn hexCharToInt(c: u8) u8 {
     if (c >= '0' and c <= '9') return c - '0';
     if (c >= 'A' and c <= 'F') return c - 'A' + 10;

@@ -10,6 +10,7 @@ const Area = @import("../environment/Area.zig");
 const Agent = @import("../Agent.zig");
 const Graph = @import("Graph.zig");
 const commons = @import("../commons.zig");
+const palette = @import("../palette.zig");
 const entity = @import("../environment/entity.zig");
 
 fn setNextItemWidth(width: f32) void {
@@ -150,8 +151,8 @@ pub const SinkNode = struct {
         parent: *Node,
     ) void {
         // const node_width: f32 = 140;
-        imnodes.ez.pushStyleColor(.node_title_bar_bg, 0xff53367d);
-        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, 0xff7656a3);
+        imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.red));
+        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, palette.lighten(palette.env.red));
         defer imnodes.ez.popStyleColor(2);
 
         // init node
@@ -188,8 +189,8 @@ pub const SpawnerNode = struct {
     ) void {
         // style setup
         const node_width: f32 = 160;
-        imnodes.ez.pushStyleColor(.node_title_bar_bg, 0xFF3d913c);
-        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, 0xFF52b851);
+        imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.green));
+        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, palette.lighten(palette.env.green));
         defer imnodes.ez.popStyleColor(2);
 
         // start the node
@@ -307,8 +308,8 @@ pub const AreaNode = struct {
     ) void {
         const node_width: f32 = 120;
 
-        imnodes.ez.pushStyleColor(.node_title_bar_bg, 0xff2978c2);
-        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, 0xff379bde);
+        imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.light_blue));
+        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, palette.lighten(palette.env.light_blue));
         defer imnodes.ez.popStyleColor(2);
 
         // start the node
@@ -420,8 +421,8 @@ pub const ForkNode = struct {
     ) void {
         // style setup
         const node_width: f32 = 70;
-        imnodes.ez.pushStyleColor(.node_title_bar_bg, 0xFF636363);
-        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, 0xFFA9A9A9);
+        imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.light_gray));
+        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, palette.lighten(palette.env.light_gray));
         defer imnodes.ez.popStyleColor(2);
 
         // init node
