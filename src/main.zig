@@ -198,7 +198,7 @@ pub fn main() !void {
                 rl.beginMode2D(camera);
                 defer rl.endMode2D();
 
-                rl.drawRectangleRec(sim_rect, palette.env.black);
+                rl.drawRectangleRec(sim_rect, palette.env.dark_blue);
                 renderGrid();
 
                 if (!capture) {
@@ -392,7 +392,7 @@ pub fn main() !void {
 
 pub fn renderGrid() void {
     const num_hor_blocks = @divTrunc(settings.sim_width, sim_data.grid_size);
-    const col = palette.env.gray;
+    const col = palette.env.light_blue;
     for (0..@as(usize, @intCast(num_hor_blocks))) |i| {
         const i_i32: i32 = @intCast(i);
         const grid_pos = i_i32 * sim_data.grid_size;

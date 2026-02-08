@@ -21,6 +21,8 @@ pub var next_id: i32 = 0;
 pub const RevolverSnapshot = struct {
     revolver_id: i32,
     pos: rl.Vector2,
+    speed: i32,
+    length: i32,
 };
 
 pub fn init() Self {
@@ -33,6 +35,8 @@ pub fn getSnapshot(self: Self) RevolverSnapshot {
     return .{
         .revolver_id = self.revolver_id,
         .pos = self.pos,
+        .speed = self.speed,
+        .length = self.length,
     };
 }
 
@@ -40,6 +44,8 @@ pub fn fromSnapshot(snap: RevolverSnapshot) Self {
     return .{
         .revolver_id = snap.revolver_id,
         .pos = snap.pos,
+        .speed = snap.speed,
+        .length = snap.length,
         .placed = true,
     };
 }
@@ -75,14 +81,14 @@ pub fn confirm(self: *Self) void {
 
 pub fn getRotatedVector(self: Self, a: f32) rl.Vector2 {
     // a in radians
-    const rad: f32 = std.math.degreesToRadians(self.angle + a);
+    const rad: f32 = std.math.degreesToRadians(self.angle);
     var vec: rl.Vector2 = .{ .x = @floatFromInt(self.length), .y = 0 };
     return vec.rotate(rad + a);
 }
 
 pub fn draw(self: *Self) void {
     const line_width = 6;
-    const col = if (self.placed) (palette.env.purple) else (color.light_gray);
+    const col = if (self.placed) (palette.env.orange) else (palette.env.white_t);
 
     rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(0)), line_width, col);
     rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(0.5 * std.math.pi)), line_width, col);

@@ -7,6 +7,7 @@ const rl = @import("raylib");
 //
 const commons = @import("commons.zig");
 const color = @import("color.zig");
+const palette = @import("palette.zig");
 const AgentData = @import("editor/AgentData.zig");
 const Contour = @import("environment/Contour.zig");
 const Revolver = @import("environment/Revolver.zig");
@@ -155,6 +156,7 @@ fn calculateObstacleForce(
     // iterate over all the revolvers
     for (env.revolvers.items) |revolver| {
         // get 4 rotational symmetries
+        std.debug.print("{}\n", .{revolver});
         for (0..4) |i| {
             const a: f32 = @as(f32, @floatFromInt(i)) * 0.5 * std.math.pi;
             const A: rl.Vector2 = revolver.pos;

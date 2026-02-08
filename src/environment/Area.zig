@@ -149,7 +149,7 @@ fn getSeatOffset(self: Self) rl.Vector2 {
 pub fn draw(self: Self) void {
     var col: rl.Color = undefined;
     if (self.placed) {
-        col = palette.env.navy;
+        col = palette.env.light_blue_t;
     } else if (self.anchored) {
         col = color.navy_t;
     } else {
