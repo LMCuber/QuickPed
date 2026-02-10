@@ -140,11 +140,6 @@ pub fn main() !void {
             // UPDATING =============================================
             var confirm_current: bool = false;
             {
-                // set popup attribute of current entity
-                if (current_entity) |ent| {
-                    if (ent.kind == .area) {}
-                }
-
                 // update all placed entities
                 for (env.entities.items) |*ent| {
                     _ = try ent.update(dt, sim_data, settings);
@@ -322,41 +317,74 @@ pub fn main() !void {
 
                     // popups
                     if (z.beginPopupModal("Confirm", .{ .flags = .{ .always_auto_resize = true } })) {
-                        // render the neede widget buttons
+                        // give focus the first time it appears
+                        if (z.isWindowAppearing()) {
+                            z.setKeyboardFocusHere(0);
+                        }
+
                         if (current_entity) |*ent| {
+                            const node_width: i32 = 130;
+
+                            ent.name_edit_buf = .{0} ** 256;
+                            z.setNextItemWidth(node_width);
+                            var name_str: [:0]const u8 = "";
+                            if (z.inputText("name", .{ .buf = &ent.name_edit_buf })) {
+                                name_str = std.mem.sliceTo(&ent.name_edit_buf, 0);
+                                try current_entity.?.setName(allocator, name_str);
+                            }
+
+                            name_str = std.mem.sliceTo(&ent.name_edit_buf, 0);
+                            // if name already exists, display that
+                            var duplicate_name: bool = false;
+                            for (env.entities.items) |*inner_ent| {
+                                if (std.mem.eql(u8, inner_ent.name, name_str)) {
+                                    duplicate_name = true;
+                                }
+                            }
+                            if (duplicate_name) {
+                                z.text("duplicate name!", .{});
+                            } else {
+                                z.newLine();
+                            }
+                            z.newLine();
+
+                            // render the needed widget buttons
                             switch (ent.kind) {
                                 .area => |*a| a.confirm(),
-                                .revolver => |*r| r.confirm(),
+                                .revolver => |*r| {
+                                    r.confirm();
+                                },
                                 inline else => {},
                             }
-                        }
 
-                        z.newLine();
+                            z.newLine();
 
-                        // confirm and cancel
-                        if (z.button("cancel", .{})) {
-                            z.closeCurrentPopup();
-                            current_entity.?.deinit(allocator);
-                            current_entity = null;
-                        }
-                        z.sameLine(.{});
-                        if (z.button("confirm", .{})) {
-                            z.closeCurrentPopup();
-                            try env.entities.append(current_entity.?);
+                            // confirm and cancel
+                            if (z.button("cancel", .{})) {
+                                z.closeCurrentPopup();
+                                current_entity.?.deinit(allocator);
+                                current_entity = null;
+                            }
+                            z.sameLine(.{});
+                            if (z.button("confirm", .{}) and !duplicate_name) {
+                                z.closeCurrentPopup();
+                                try env.entities.append(current_entity.?);
+                                const new_entity: *entity.Entity = &env.entities.items[env.entities.items.len - 1];
 
-                            if (current_entity) |*ent| {
-                                switch (ent.kind) {
+                                switch (new_entity.kind) {
                                     .area => |*a| try env.areas.append(a),
                                     .revolver => |*r| try env.revolvers.append(r),
                                     inline else => {},
                                 }
-                            }
-                            current_entity = null;
-                        }
 
-                        z.endPopup();
+                                current_entity = null;
+                            }
+
+                            z.endPopup();
+                        } else unreachable;
                     }
                 }
+                std.debug.print("111, {any}\n", .{env.revolvers.getLastOrNull()});
 
                 // draw node editor
                 {

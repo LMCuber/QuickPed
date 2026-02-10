@@ -1,9 +1,65 @@
 {
   "version": "0.1.0",
-  "entities": [],
-  "next_id": 0,
+  "entities": [
+    {
+      "id": 0,
+      "name": "323123",
+      "kind": {
+        "revolver": {
+          "revolver_id": 0,
+          "pos": {
+            "x": 7.04e2,
+            "y": 4.48e2
+          },
+          "speed": 37,
+          "length": 50
+        }
+      }
+    },
+    {
+      "id": 1,
+      "name": "3213",
+      "kind": {
+        "spawner": {
+          "spawner_id": 0,
+          "points": [
+            {
+              "x": 5.44e2,
+              "y": 4.8e2
+            },
+            {
+              "x": 7.04e2,
+              "y": 6.08e2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "2323",
+      "kind": {
+        "area": {
+          "area_id": 0,
+          "rect": {
+            "x": 8.32e2,
+            "y": 2.88e2,
+            "width": 1.92e2,
+            "height": 1.92e2
+          },
+          "seat_data": {
+            "open_popup": true,
+            "seats": false,
+            "num_cols": 1,
+            "num_rows": 1
+          }
+        }
+      }
+    }
+  ],
+  "next_id": 3,
   "next_contour_id": 0,
-  "next_spawner_id": 0,
-  "next_area_id": 0,
-  "next_revolver_id": 0
+  "next_spawner_id": 1,
+  "next_area_id": 1,
+  "next_revolver_id": 1
 }

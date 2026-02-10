@@ -60,7 +60,7 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityA
             }
             if (self.point_count == 2) {
                 self.placed = true;
-                return .placed;
+                return .confirm;
             }
         }
     }

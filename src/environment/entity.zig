@@ -24,6 +24,7 @@ pub const EntitySnapshot = struct {
 pub const Entity = struct {
     id: i32,
     name: [:0]const u8,
+    name_edit_buf: [256:0]u8 = undefined,
     kind: Kind,
 
     const Kind = union(enum) {
@@ -74,6 +75,11 @@ pub const Entity = struct {
     pub fn nextId() i32 {
         next_id += 1;
         return next_id - 1;
+    }
+
+    pub fn setName(self: *Entity, alloc: std.mem.Allocator, new_name: [:0]const u8) !void {
+        alloc.free(self.name);
+        self.name = try alloc.dupeZ(u8, new_name);
     }
 
     pub fn initContour(allocator: std.mem.Allocator) !Entity {
