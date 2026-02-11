@@ -91,11 +91,53 @@
           "length": 50
         }
       }
+    },
+    {
+      "id": 6,
+      "name": "third",
+      "kind": {
+        "area": {
+          "area_id": 3,
+          "rect": {
+            "x": 9.6e1,
+            "y": 6.72e2,
+            "width": 7.68e2,
+            "height": 9.6e1
+          },
+          "seat_data": {
+            "open_popup": true,
+            "seats": false,
+            "num_cols": 1,
+            "num_rows": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "name": "fourth",
+      "kind": {
+        "area": {
+          "area_id": 4,
+          "rect": {
+            "x": 5.44e2,
+            "y": 6.4e1,
+            "width": 3.84e2,
+            "height": 1.28e2
+          },
+          "seat_data": {
+            "open_popup": true,
+            "seats": false,
+            "num_cols": 1,
+            "num_rows": 1
+          }
+        }
+      }
     }
   ],
-  "next_id": 6,
+  "next_id": 8,
   "next_contour_id": 0,
   "next_spawner_id": 1,
-  "next_area_id": 3,
+  "next_area_id": 5,
   "next_revolver_id": 2
 }
