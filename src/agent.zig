@@ -15,6 +15,8 @@ const Area = @import("environment/Area.zig");
 const node = @import("nodes/node.zig");
 const Graph = @import("nodes/Graph.zig");
 const Environment = @import("environment/Environment.zig");
+const Stats = @import("editor/Stats.zig");
+const Settings = @import("Settings.zig");
 
 pos: rl.Vector2,
 target_area: ?*Area = null,
@@ -195,7 +197,11 @@ pub fn update(
     self: *Self,
     agents: *std.ArrayList(Self),
     env: *Environment,
+    stats: *Stats,
+    settings: Settings,
     agent_data: AgentData,
+    n_rows: i32,
+    n_cols: i32,
 ) void {
     // get force components
     const drive_force = self.calculateDriveForce(agent_data);
@@ -209,8 +215,19 @@ pub fn update(
     self.vel = self.vel.add(self.acc);
     self.pos = self.pos.add(self.vel);
 
+    // update the heatmap
+    self.update_heatmap(stats, settings, n_rows, n_cols);
+
     // process node
     self.processCurrentNode();
+}
+
+pub fn update_heatmap(self: *Self, stats: *Stats, settings: Settings, n_rows: i32, n_cols: i32) void {
+    const int_x: i32 = @intFromFloat((self.pos.x / @as(f32, @floatFromInt(settings.width))) * @as(f32, @floatFromInt(n_rows)));
+    const int_y: i32 = @intFromFloat((self.pos.y / @as(f32, @floatFromInt(settings.height))) * @as(f32, @floatFromInt(n_cols)));
+    if (int_x >= n_rows) return;
+    if (int_y >= n_cols) return;
+    stats.add_to_heatmap(int_x, int_y);
 }
 
 pub fn draw(self: *const Self, agent_data: AgentData) void {

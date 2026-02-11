@@ -39,4 +39,17 @@ void ImPlot_PlotLineS32Ptr(const char* label_id, const int* xs, const int* ys, i
     ImPlot::PlotLine(label_id, xs, ys, count, flags, offset, stride);
 }
 
+// Heatmap
+void ImPlot_PlotHeatmapFloatPtr(const char* label_id, const float* values, int rows, int cols, double scale_min, double scale_max, const char* fmt, double bounds_min_x, double bounds_min_y, double bounds_max_x, double bounds_max_y, ImPlotHeatmapFlags flags) {
+    ImPlot::PlotHeatmap(label_id, values, rows, cols, scale_min, scale_max, fmt, ImPlotPoint(bounds_min_x, bounds_min_y), ImPlotPoint(bounds_max_x, bounds_max_y), flags);
+}
+
+void ImPlot_PlotHeatmapDoublePtr(const char* label_id, const double* values, int rows, int cols, double scale_min, double scale_max, const char* fmt, double bounds_min_x, double bounds_min_y, double bounds_max_x, double bounds_max_y, ImPlotHeatmapFlags flags) {
+    ImPlot::PlotHeatmap(label_id, values, rows, cols, scale_min, scale_max, fmt, ImPlotPoint(bounds_min_x, bounds_min_y), ImPlotPoint(bounds_max_x, bounds_max_y), flags);
+}
+
+void ImPlot_PlotHeatmapS32Ptr(const char* label_id, const int* values, int rows, int cols, double scale_min, double scale_max, const char* fmt, double bounds_min_x, double bounds_min_y, double bounds_max_x, double bounds_max_y, ImPlotHeatmapFlags flags) {
+    ImPlot::PlotHeatmap(label_id, values, rows, cols, scale_min, scale_max, fmt, ImPlotPoint(bounds_min_x, bounds_min_y), ImPlotPoint(bounds_max_x, bounds_max_y), flags);
+}
+
 } // extern "C"

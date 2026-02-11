@@ -6,6 +6,12 @@ const Agent = @import("../Agent.zig");
 const commons = @import("../commons.zig");
 const rl = @import("raylib");
 
+render_checks: struct {
+    graph: bool = true,
+    heatmap: bool = false,
+} = .{},
+
+// graph
 x_width: f64 = 10,
 x_data: std.ArrayList(f64),
 num_agents: std.ArrayList(f64),
@@ -13,11 +19,19 @@ num_waiting_agents: std.ArrayList(f64),
 update_interval: i32 = 100,
 last_update: f64 = 0,
 
-pub fn init(alloc: std.mem.Allocator) Self {
+// heatmap
+heatmap: []f32,
+rows: i32,
+cols: i32,
+
+pub fn init(alloc: std.mem.Allocator, buffer: []f32, rows: i32, cols: i32) Self {
     return .{
         .x_data = std.ArrayList(f64).init(alloc),
         .num_agents = std.ArrayList(f64).init(alloc),
         .num_waiting_agents = std.ArrayList(f64).init(alloc),
+        .heatmap = buffer,
+        .rows = rows,
+        .cols = cols,
     };
 }
 
@@ -60,58 +74,82 @@ fn getNumWaitingAgents(agents: *std.ArrayList(Agent)) f64 {
 
 pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
     if (z.collapsingHeader("Statistics", .{ .default_open = false })) {
-        if (implot.beginPlot("Agents", -1.0, 0.0, implot.Flags.none)) {
-            defer implot.endPlot();
+        _ = z.checkbox("Graph", .{ .v = &self.render_checks.graph });
+        z.sameLine(.{});
+        _ = z.checkbox("Heatmap", .{ .v = &self.render_checks.heatmap });
 
-            const time: f64 = commons.getTimeMillis();
-            if (time - self.last_update >= @as(f64, @floatFromInt(self.update_interval))) {
-                // make a new point pair
-                try self.x_data.append(rl.getTime());
-                try self.num_agents.append(@floatFromInt(agents.items.len));
-                try self.num_waiting_agents.append(getNumWaitingAgents(agents));
+        // graph
+        if (self.render_checks.graph) {
+            if (implot.beginPlot("Agents", -1.0, 0.0, implot.Flags.none)) {
+                defer implot.endPlot();
 
-                // reset last update
-                self.last_update = commons.getTimeMillis();
+                const time: f64 = commons.getTimeMillis();
+                if (time - self.last_update >= @as(f64, @floatFromInt(self.update_interval))) {
+                    // make a new point pair
+                    try self.x_data.append(rl.getTime());
+                    try self.num_agents.append(@floatFromInt(agents.items.len));
+                    try self.num_waiting_agents.append(getNumWaitingAgents(agents));
+
+                    // reset last update
+                    self.last_update = commons.getTimeMillis();
+                }
+                // calculate x-interval
+                const x_count: f64 = rl.getTime();
+                var x_min: f64 = 0.0;
+                var x_max: f64 = self.x_width;
+                if (x_count > self.x_width) {
+                    x_min = x_count - self.x_width;
+                    x_max = x_count;
+                }
+
+                // calculate y-interval
+                const y_max: f64 = maxItemBetweenInterval(
+                    f64,
+                    self.num_agents.items,
+                    self.num_agents.items.len -| 50,
+                    self.num_agents.items.len,
+                ) * 2;
+
+                // setup graph axes
+                implot.setupAxisLimits(.Y1, 0.0, y_max, .Always);
+                implot.setupAxisLimits(.X1, x_min, x_max, .Always);
+
+                // all agents
+                implot.plotLine(f64, "Agents", self.x_data.items, self.num_agents.items, .{});
+
+                // all waiting agents
+                implot.plotLine(f64, "Waiting agents", self.x_data.items, self.num_waiting_agents.items, .{});
+
+                // TEXTUAL INFO
+                // X
+                z.text("X = ", .{});
+                if (z.isItemHovered(.{})) {
+                    _ = z.beginTooltip();
+                    defer z.endTooltip();
+                    z.text("waiting/total ratio", .{});
+                }
+                z.sameLine(.{});
+                if (self.num_waiting_agents.getLast() > self.num_agents.getLast()) unreachable;
+                const ratio = if (self.num_agents.getLast() == 0) 0 else self.num_waiting_agents.getLast() / self.num_agents.getLast() * 100;
+                z.text("{d:.0}%", .{ratio});
             }
-            // calculate x-interval
-            const x_count: f64 = rl.getTime();
-            var x_min: f64 = 0.0;
-            var x_max: f64 = self.x_width;
-            if (x_count > self.x_width) {
-                x_min = x_count - self.x_width;
-                x_max = x_count;
+        }
+
+        // heatmap
+        if (self.render_checks.heatmap) {
+            if (implot.beginPlot("Agents", -1.0, 0.0, implot.Flags.none)) {
+                defer implot.endPlot();
+
+                // reset graph axes
+                implot.setupAxisLimits(.Y1, 0.0, 1.0, .Always);
+                implot.setupAxisLimits(.X1, 0.0, 1.0, .Always);
+
+                implot.plotHeatmap(f32, "heatmap", self.heatmap, @intCast(self.rows), @intCast(self.cols), 0, 0, null, 0, 0, 1, 1, .{});
             }
-
-            // calculate y-interval
-            const y_max: f64 = maxItemBetweenInterval(
-                f64,
-                self.num_agents.items,
-                self.num_agents.items.len -| 50,
-                self.num_agents.items.len,
-            ) * 2;
-
-            // setup graph axes
-            implot.setupAxisLimits(.Y1, 0.0, y_max, .Always);
-            implot.setupAxisLimits(.X1, x_min, x_max, .Always);
-
-            // all agents
-            implot.plotLine(f64, "Agents", self.x_data.items, self.num_agents.items, .{});
-
-            // all waiting agents
-            implot.plotLine(f64, "Waiting agents", self.x_data.items, self.num_waiting_agents.items, .{});
-
-            // TEXTUAL INFO
-            // X
-            z.text("X = ", .{});
-            if (z.isItemHovered(.{})) {
-                _ = z.beginTooltip();
-                defer z.endTooltip();
-                z.text("waiting/total ratio", .{});
-            }
-            z.sameLine(.{});
-            if (self.num_waiting_agents.getLast() > self.num_agents.getLast()) unreachable;
-            const ratio = if (self.num_agents.getLast() == 0) 0 else self.num_waiting_agents.getLast() / self.num_agents.getLast() * 100;
-            z.text("{d:.0}%", .{ratio});
         }
     }
+}
+
+pub fn add_to_heatmap(self: *Self, x_pos: i32, y_pos: i32) void {
+    self.heatmap[@intCast(y_pos * self.cols + x_pos)] += 1;
 }

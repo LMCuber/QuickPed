@@ -60,6 +60,9 @@ extern fn ImPlot_SetupAxisLimits(axis: Axis, v_min: f64, v_max: f64, cond: Cond)
 extern fn ImPlot_PlotLineDoublePtr(label_id: [*:0]const u8, xs: [*]const f64, ys: [*]const f64, count: c_int, flags: LineFlags, offset: c_int, stride: c_int) void;
 extern fn ImPlot_PlotLineFloatPtr(label_id: [*:0]const u8, xs: [*]const f32, ys: [*]const f32, count: c_int, flags: LineFlags, offset: c_int, stride: c_int) void;
 extern fn ImPlot_PlotLineS32Ptr(label_id: [*:0]const u8, xs: [*]const i32, ys: [*]const i32, count: c_int, flags: LineFlags, offset: c_int, stride: c_int) void;
+extern fn ImPlot_PlotHeatmapFloatPtr(label_id: [*:0]const u8, values: [*]const f32, rows: c_int, cols: c_int, scale_min: f64, scale_max: f64, fmt: ?[*:0]const u8, bounds_min_x: f64, bounds_min_y: f64, bounds_max_x: f64, bounds_max_y: f64, flags: HeatmapFlags) void;
+extern fn ImPlot_PlotHeatmapDoublePtr(label_id: [*:0]const u8, values: [*]const f64, rows: c_int, cols: c_int, scale_min: f64, scale_max: f64, fmt: ?[*:0]const u8, bounds_min_x: f64, bounds_min_y: f64, bounds_max_x: f64, bounds_max_y: f64, flags: HeatmapFlags) void;
+extern fn ImPlot_PlotHeatmapS32Ptr(label_id: [*:0]const u8, values: [*]const i32, rows: c_int, cols: c_int, scale_min: f64, scale_max: f64, fmt: ?[*:0]const u8, bounds_min_x: f64, bounds_min_y: f64, bounds_max_x: f64, bounds_max_y: f64, flags: HeatmapFlags) void;
 
 // Zig wrapper functions
 
@@ -92,5 +95,40 @@ pub fn plotLine(comptime T: type, label_id: [*:0]const u8, xs: []const T, ys: []
         f32 => ImPlot_PlotLineFloatPtr(label_id, xs.ptr, ys.ptr, count, flags, 0, @sizeOf(T)),
         i32 => ImPlot_PlotLineS32Ptr(label_id, xs.ptr, ys.ptr, count, flags, 0, @sizeOf(T)),
         else => @compileError("plotLine only supports f32, f64, and i32"),
+    }
+}
+
+pub const HeatmapFlags = packed struct(c_int) {
+    _padding0: u10 = 0,
+    col_major: bool = false,
+    _padding1: u21 = 0,
+
+    pub const none: HeatmapFlags = .{};
+};
+
+pub fn plotHeatmap(
+    comptime T: type,
+    label_id: [*:0]const u8,
+    values: []const T,
+    rows: usize,
+    cols: usize,
+    scale_min: f64,
+    scale_max: f64,
+    fmt: ?[*:0]const u8,
+    bounds_min_x: f64,
+    bounds_min_y: f64,
+    bounds_max_x: f64,
+    bounds_max_y: f64,
+    flags: HeatmapFlags,
+) void {
+    std.debug.assert(values.len == rows * cols);
+    const rows_c: c_int = @intCast(rows);
+    const cols_c: c_int = @intCast(cols);
+
+    switch (T) {
+        f64 => ImPlot_PlotHeatmapDoublePtr(label_id, values.ptr, rows_c, cols_c, scale_min, scale_max, fmt, bounds_min_x, bounds_min_y, bounds_max_x, bounds_max_y, flags),
+        f32 => ImPlot_PlotHeatmapFloatPtr(label_id, values.ptr, rows_c, cols_c, scale_min, scale_max, fmt, bounds_min_x, bounds_min_y, bounds_max_x, bounds_max_y, flags),
+        i32 => ImPlot_PlotHeatmapS32Ptr(label_id, values.ptr, rows_c, cols_c, scale_min, scale_max, fmt, bounds_min_x, bounds_min_y, bounds_max_x, bounds_max_y, flags),
+        else => @compileError("plotHeatmap only supports f32, f64, and i32"),
     }
 }

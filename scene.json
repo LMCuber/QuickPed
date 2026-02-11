@@ -55,11 +55,47 @@
           }
         }
       }
+    },
+    {
+      "id": 3,
+      "name": "123",
+      "kind": {
+        "area": {
+          "area_id": 1,
+          "rect": {
+            "x": 2.24e2,
+            "y": 1.6e2,
+            "width": 2.56e2,
+            "height": 3.52e2
+          },
+          "seat_data": {
+            "open_popup": true,
+            "seats": false,
+            "num_cols": 1,
+            "num_rows": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "name": "2323",
+      "kind": {
+        "revolver": {
+          "revolver_id": 1,
+          "pos": {
+            "x": 5.44e2,
+            "y": 2.56e2
+          },
+          "speed": 37,
+          "length": 50
+        }
+      }
     }
   ],
-  "next_id": 3,
+  "next_id": 6,
   "next_contour_id": 0,
   "next_spawner_id": 1,
-  "next_area_id": 1,
-  "next_revolver_id": 1
+  "next_area_id": 3,
+  "next_revolver_id": 2
 }

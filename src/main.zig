@@ -98,9 +98,19 @@ pub fn main() !void {
     defer env.deinit();
     var current_entity: ?entity.Entity = null;
 
-    // allocated editor objects
-    var stats = Stats.init(allocator);
+    // stats
+    const n_rows = 100;
+    const n_cols = 100;
+    const buf = try allocator.alloc(f32, n_rows * n_cols);
+    // @memset(buf, 0);
+    // for (buf) |*b| {
+    //     // b.* = commons.rand01();
+    // }
+    defer allocator.free(buf);
+    var stats = Stats.init(allocator, buf, n_rows, n_cols);
     defer stats.deinit();
+
+    // node editor
     var node_editor = NodeEditor.init(allocator);
     defer node_editor.deinit();
 
@@ -140,9 +150,11 @@ pub fn main() !void {
             // UPDATING =============================================
             var confirm_current: bool = false;
             {
-                // update all placed entities
-                for (env.entities.items) |*ent| {
-                    _ = try ent.update(dt, sim_data, settings);
+                if (!sim_data.paused) {
+                    // update all placed entities
+                    for (env.entities.items) |*ent| {
+                        _ = try ent.update(dt, sim_data, settings);
+                    }
                 }
 
                 // update selected entity
@@ -170,7 +182,7 @@ pub fn main() !void {
                 // update the agents
                 if (!sim_data.paused) {
                     for (agents.items) |*agent| {
-                        agent.update(&agents, &env, agent_data);
+                        agent.update(&agents, &env, &stats, settings, agent_data, n_rows, n_cols);
                     }
                     // cleanup to be deleted agents
                     var i: usize = agents.items.len;
@@ -384,7 +396,6 @@ pub fn main() !void {
                         } else unreachable;
                     }
                 }
-                std.debug.print("111, {any}\n", .{env.revolvers.getLastOrNull()});
 
                 // draw node editor
                 {
@@ -395,7 +406,9 @@ pub fn main() !void {
                     });
 
                     try node_editor.render(&env.entities);
-                    try node_editor.graph.processSpawners(&agents);
+                    if (!sim_data.paused) {
+                        try node_editor.graph.processSpawners(&agents);
+                    }
                 }
             }
         }
