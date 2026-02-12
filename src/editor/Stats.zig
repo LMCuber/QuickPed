@@ -21,17 +21,17 @@ last_update: f64 = 0,
 
 // heatmap
 heatmap: []f32,
-rows: i32,
-cols: i32,
+n_cols: i32,
+n_rows: i32,
 
-pub fn init(alloc: std.mem.Allocator, buffer: []f32, rows: i32, cols: i32) Self {
+pub fn init(alloc: std.mem.Allocator, buffer: []f32, cols: i32, rows: i32) Self {
     return .{
         .x_data = std.ArrayList(f64).init(alloc),
         .num_agents = std.ArrayList(f64).init(alloc),
         .num_waiting_agents = std.ArrayList(f64).init(alloc),
         .heatmap = buffer,
-        .rows = rows,
-        .cols = cols,
+        .n_cols = cols,
+        .n_rows = rows,
     };
 }
 
@@ -144,12 +144,21 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
                 implot.setupAxisLimits(.Y1, 0.0, 1.0, .Always);
                 implot.setupAxisLimits(.X1, 0.0, 1.0, .Always);
 
-                implot.plotHeatmap(f32, "heatmap", self.heatmap, @intCast(self.rows), @intCast(self.cols), 0, 0, null, 0, 0, 1, 1, .{});
+                implot.pushColormap(.Spectral);
+                defer implot.popColormap(1);
+
+                implot.plotHeatmap(f32, "heatmap", self.heatmap, @intCast(self.n_rows), @intCast(self.n_cols), 0, 0, null, 0, 0, 1, 1, .{});
             }
         }
     }
 }
 
 pub fn add_to_heatmap(self: *Self, x_pos: i32, y_pos: i32) void {
-    self.heatmap[@intCast(y_pos * self.cols + x_pos)] += 1;
+    self.heatmap[@intCast(y_pos * self.n_cols + x_pos)] += 1;
+    // for (0..@intCast(self.n_cols)) |x| {
+    //     for (0..@intCast(self.n_rows)) |y| {
+    //         self.heatmap[y * @as(usize, @intCast(self.n_rows)) + x] = @sqrt(@as(f32, @floatFromInt(x * x + y * y)));
+    //         self.heatmap[y * @as(usize, @intCast(self.n_rows)) + x] = @as(f32, @floatFromInt(x + y));
+    //     }
+    // }
 }

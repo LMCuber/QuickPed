@@ -223,6 +223,8 @@ pub fn update(
 }
 
 pub fn update_heatmap(self: *Self, stats: *Stats, settings: Settings, n_rows: i32, n_cols: i32) void {
+    if (self.pos.x < 0) return;
+    if (self.pos.y < 0) return;
     const int_x: i32 = @intFromFloat((self.pos.x / @as(f32, @floatFromInt(settings.width))) * @as(f32, @floatFromInt(n_rows)));
     const int_y: i32 = @intFromFloat((self.pos.y / @as(f32, @floatFromInt(settings.height))) * @as(f32, @floatFromInt(n_cols)));
     if (int_x >= n_rows) return;

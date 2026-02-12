@@ -99,15 +99,15 @@ pub fn main() !void {
     var current_entity: ?entity.Entity = null;
 
     // stats
-    const n_rows = 100;
     const n_cols = 100;
-    const buf = try allocator.alloc(f32, n_rows * n_cols);
+    const n_rows = 100;
+    const buf = try allocator.alloc(f32, n_cols * n_rows);
     // @memset(buf, 0);
     // for (buf) |*b| {
     //     // b.* = commons.rand01();
     // }
     defer allocator.free(buf);
-    var stats = Stats.init(allocator, buf, n_rows, n_cols);
+    var stats = Stats.init(allocator, buf, n_cols, n_rows);
     defer stats.deinit();
 
     // node editor

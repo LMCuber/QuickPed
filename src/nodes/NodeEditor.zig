@@ -44,7 +44,8 @@ pub fn render(self: *Self, entities: *std.ArrayList(entity.Entity)) !void {
         }
 
         // user adds new nodes
-        if (rl.isKeyReleased(.key_a) and !z.isAnyItemHovered()) {
+        const wants_add: bool = rl.isKeyReleased(.key_a) or rl.isMouseButtonDown(.mouse_button_right);
+        if (wants_add and !z.isAnyItemHovered()) {
             z.openPopup("edit", .{});
         }
         if (z.beginPopup("edit", .{})) {

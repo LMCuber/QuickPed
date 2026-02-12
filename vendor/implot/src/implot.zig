@@ -132,3 +132,244 @@ pub fn plotHeatmap(
         else => @compileError("plotHeatmap only supports f32, f64, and i32"),
     }
 }
+
+// ImPlot enums
+pub const Colormap = enum(c_int) {
+    Deep = 0,
+    Dark = 1,
+    Pastel = 2,
+    Paired = 3,
+    Viridis = 4,
+    Plasma = 5,
+    Hot = 6,
+    Cool = 7,
+    Pink = 8,
+    Jet = 9,
+    Twilight = 10,
+    RdBu = 11,
+    BrBG = 12,
+    PiYG = 13,
+    Spectral = 14,
+    Greys = 15,
+};
+
+pub const Col = enum(c_int) {
+    Line = 0,
+    Fill = 1,
+    MarkerOutline = 2,
+    MarkerFill = 3,
+    ErrorBar = 4,
+    FrameBg = 5,
+    PlotBg = 6,
+    PlotBorder = 7,
+    LegendBg = 8,
+    LegendBorder = 9,
+    LegendText = 10,
+    TitleText = 11,
+    InlayText = 12,
+    AxisText = 13,
+    AxisGrid = 14,
+    AxisTick = 15,
+    AxisBg = 16,
+    AxisBgHovered = 17,
+    AxisBgActive = 18,
+    Selection = 19,
+    Crosshairs = 20,
+    COUNT = 21,
+};
+
+pub const AUTO = -1;
+pub const AUTO_COL = Vec4{ .x = 0, .y = 0, .z = 0, .w = -1 };
+
+pub const Vec4 = extern struct {
+    x: f32,
+    y: f32,
+    z: f32,
+    w: f32,
+};
+
+pub const Style = extern struct {
+    LineWeight: f32,
+    Marker: c_int,
+    MarkerSize: f32,
+    MarkerWeight: f32,
+    FillAlpha: f32,
+    ErrorBarSize: f32,
+    ErrorBarWeight: f32,
+    DigitalBitHeight: f32,
+    DigitalBitGap: f32,
+    PlotBorderSize: f32,
+    MinorAlpha: f32,
+    MajorTickLen: [2]f32,
+    MinorTickLen: [2]f32,
+    MajorTickSize: [2]f32,
+    MinorTickSize: [2]f32,
+    MajorGridSize: [2]f32,
+    MinorGridSize: [2]f32,
+    PlotPadding: [2]f32,
+    LabelPadding: [2]f32,
+    LegendPadding: [2]f32,
+    LegendInnerPadding: [2]f32,
+    LegendSpacing: [2]f32,
+    MousePosPadding: [2]f32,
+    AnnotationPadding: [2]f32,
+    FitPadding: [2]f32,
+    PlotDefaultSize: [2]f32,
+    PlotMinSize: [2]f32,
+    Colors: [21]Vec4,
+    Colormap: c_int,
+    UseLocalTime: bool,
+    UseISO8601: bool,
+    Use24HourClock: bool,
+};
+
+// Colormap functions
+extern fn ImPlot_AddColormapVec4(name: [*:0]const u8, cols: [*]const Vec4, size: c_int, qual: bool) c_int;
+extern fn ImPlot_AddColormapU32(name: [*:0]const u8, cols: [*]const u32, size: c_int, qual: bool) c_int;
+extern fn ImPlot_GetColormapCount() c_int;
+extern fn ImPlot_GetColormapName(cmap: c_int) [*:0]const u8;
+extern fn ImPlot_GetColormapIndex(name: [*:0]const u8) c_int;
+extern fn ImPlot_PushColormap(cmap: c_int) void;
+extern fn ImPlot_PushColormapName(name: [*:0]const u8) void;
+extern fn ImPlot_PopColormap(count: c_int) void;
+extern fn ImPlot_NextColormapColor() Vec4;
+extern fn ImPlot_GetColormapSize(cmap: c_int) c_int;
+extern fn ImPlot_GetColormapColor(idx: c_int, cmap: c_int) Vec4;
+extern fn ImPlot_SampleColormap(t: f32, cmap: c_int) Vec4;
+extern fn ImPlot_ColormapScale(label: [*:0]const u8, scale_min: f64, scale_max: f64, width: f32, height: f32, format: [*:0]const u8, flags: c_int, cmap: c_int) void;
+extern fn ImPlot_ColormapSlider(label: [*:0]const u8, t: *f32, out: ?*Vec4, format: [*:0]const u8, cmap: c_int) bool;
+extern fn ImPlot_ColormapButton(label: [*:0]const u8, width: f32, height: f32, cmap: c_int) bool;
+extern fn ImPlot_BustColorCache(plot_title_id: ?[*:0]const u8) void;
+
+// Style color functions
+extern fn ImPlot_PushStyleColorU32(idx: c_int, col: u32) void;
+extern fn ImPlot_PushStyleColorVec4(idx: c_int, r: f32, g: f32, b: f32, a: f32) void;
+extern fn ImPlot_PopStyleColor(count: c_int) void;
+
+// Style functions
+extern fn ImPlot_GetStyle() *Style;
+extern fn ImPlot_StyleColorsAuto() void;
+extern fn ImPlot_StyleColorsClassic() void;
+extern fn ImPlot_StyleColorsDark() void;
+extern fn ImPlot_StyleColorsLight() void;
+extern fn ImPlot_GetStyleColorVec4(idx: c_int) Vec4;
+extern fn ImPlot_SetStyleColorVec4(idx: c_int, r: f32, g: f32, b: f32, a: f32) void;
+extern fn ImPlot_GetStyleColormap() c_int;
+extern fn ImPlot_SetStyleColormap(cmap: c_int) void;
+
+// Public API
+pub fn addColormapVec4(name: [:0]const u8, cols: []const Vec4, qual: bool) Colormap {
+    return @enumFromInt(ImPlot_AddColormapVec4(name.ptr, cols.ptr, @intCast(cols.len), qual));
+}
+
+pub fn addColormapU32(name: [:0]const u8, cols: []const u32, qual: bool) Colormap {
+    return @enumFromInt(ImPlot_AddColormapU32(name.ptr, cols.ptr, @intCast(cols.len), qual));
+}
+
+pub fn getColormapCount() i32 {
+    return ImPlot_GetColormapCount();
+}
+
+pub fn getColormapName(cmap: Colormap) [:0]const u8 {
+    const ptr = ImPlot_GetColormapName(@intFromEnum(cmap));
+    return std.mem.span(ptr);
+}
+
+pub fn getColormapIndex(name: [:0]const u8) ?Colormap {
+    const idx = ImPlot_GetColormapIndex(name.ptr);
+    if (idx < 0) return null;
+    return @enumFromInt(idx);
+}
+
+pub fn pushColormap(cmap: Colormap) void {
+    ImPlot_PushColormap(@intFromEnum(cmap));
+}
+
+pub fn pushColormapName(name: [:0]const u8) void {
+    ImPlot_PushColormapName(name.ptr);
+}
+
+pub fn popColormap(count: i32) void {
+    ImPlot_PopColormap(count);
+}
+
+pub fn nextColormapColor() Vec4 {
+    return ImPlot_NextColormapColor();
+}
+
+pub fn getColormapSize(cmap: Colormap) i32 {
+    return ImPlot_GetColormapSize(@intFromEnum(cmap));
+}
+
+pub fn getColormapColor(idx: i32, cmap: Colormap) Vec4 {
+    return ImPlot_GetColormapColor(idx, @intFromEnum(cmap));
+}
+
+pub fn sampleColormap(t: f32, cmap: Colormap) Vec4 {
+    return ImPlot_SampleColormap(t, @intFromEnum(cmap));
+}
+
+pub fn colormapScale(label: [:0]const u8, scale_min: f64, scale_max: f64, size: [2]f32, format: [:0]const u8, flags: c_int, cmap: Colormap) void {
+    ImPlot_ColormapScale(label.ptr, scale_min, scale_max, size[0], size[1], format.ptr, flags, @intFromEnum(cmap));
+}
+
+pub fn colormapSlider(label: [:0]const u8, t: *f32, out: ?*Vec4, format: [:0]const u8, cmap: Colormap) bool {
+    return ImPlot_ColormapSlider(label.ptr, t, out, format.ptr, @intFromEnum(cmap));
+}
+
+pub fn colormapButton(label: [:0]const u8, size: [2]f32, cmap: Colormap) bool {
+    return ImPlot_ColormapButton(label.ptr, size[0], size[1], @intFromEnum(cmap));
+}
+
+pub fn bustColorCache(plot_title_id: ?[:0]const u8) void {
+    const ptr = if (plot_title_id) |id| id.ptr else null;
+    ImPlot_BustColorCache(ptr);
+}
+
+pub fn pushStyleColorU32(idx: Col, col: u32) void {
+    ImPlot_PushStyleColorU32(@intFromEnum(idx), col);
+}
+
+pub fn pushStyleColor(idx: Col, color: Vec4) void {
+    ImPlot_PushStyleColorVec4(@intFromEnum(idx), color.x, color.y, color.z, color.w);
+}
+
+pub fn popStyleColor(count: i32) void {
+    ImPlot_PopStyleColor(count);
+}
+
+pub fn getStyle() *Style {
+    return ImPlot_GetStyle();
+}
+
+pub fn styleColorsAuto() void {
+    ImPlot_StyleColorsAuto();
+}
+
+pub fn styleColorsClassic() void {
+    ImPlot_StyleColorsClassic();
+}
+
+pub fn styleColorsDark() void {
+    ImPlot_StyleColorsDark();
+}
+
+pub fn styleColorsLight() void {
+    ImPlot_StyleColorsLight();
+}
+
+pub fn getStyleColor(idx: Col) Vec4 {
+    return ImPlot_GetStyleColorVec4(@intFromEnum(idx));
+}
+
+pub fn setStyleColor(idx: Col, color: Vec4) void {
+    ImPlot_SetStyleColorVec4(@intFromEnum(idx), color.x, color.y, color.z, color.w);
+}
+
+pub fn getStyleColormap() Colormap {
+    return @enumFromInt(ImPlot_GetStyleColormap());
+}
+
+pub fn setStyleColormap(cmap: Colormap) void {
+    ImPlot_SetStyleColormap(@intFromEnum(cmap));
+}
