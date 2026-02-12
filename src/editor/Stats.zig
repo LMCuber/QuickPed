@@ -144,7 +144,7 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
                 implot.setupAxisLimits(.Y1, 0.0, 1.0, .Always);
                 implot.setupAxisLimits(.X1, 0.0, 1.0, .Always);
 
-                implot.pushColormap(.Spectral);
+                implot.pushColormap(.Jet);
                 defer implot.popColormap(1);
 
                 implot.plotHeatmap(f32, "heatmap", self.heatmap, @intCast(self.n_rows), @intCast(self.n_cols), 0, 0, null, 0, 0, 1, 1, .{});

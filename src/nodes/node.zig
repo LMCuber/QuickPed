@@ -401,6 +401,11 @@ pub const ForkNode = struct {
             sum += prob;
         }
 
+        // if all-zeroes just in case
+        if (sum <= 0) {
+            return self.output_slots[0].title;
+        }
+
         // add up until larger than cumulative
         const r: f32 = commons.rand01() * sum;
         var cum: f64 = 0;
@@ -412,7 +417,9 @@ pub const ForkNode = struct {
             }
             i += 1;
         }
-        unreachable;
+
+        // fallback for floating-point precision issues
+        return self.output_slots[self.output_slots.len - 1].title;
     }
 
     pub fn draw(
