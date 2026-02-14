@@ -133,11 +133,32 @@
           }
         }
       }
+    },
+    {
+      "id": 8,
+      "name": "oij",
+      "kind": {
+        "area": {
+          "area_id": 5,
+          "rect": {
+            "x": 9.6e1,
+            "y": 3.84e2,
+            "width": 4.48e2,
+            "height": 3.2e2
+          },
+          "seat_data": {
+            "open_popup": true,
+            "seats": false,
+            "num_cols": 1,
+            "num_rows": 1
+          }
+        }
+      }
     }
   ],
-  "next_id": 8,
+  "next_id": 9,
   "next_contour_id": 0,
   "next_spawner_id": 1,
-  "next_area_id": 5,
+  "next_area_id": 6,
   "next_revolver_id": 2
 }

@@ -23,6 +23,7 @@ last_update: f64 = 0,
 heatmap: []f32,
 n_cols: i32,
 n_rows: i32,
+current_heatmap_index: i32 = 0,
 
 pub fn init(alloc: std.mem.Allocator, buffer: []f32, cols: i32, rows: i32) Self {
     return .{
@@ -80,6 +81,7 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
 
         // graph
         if (self.render_checks.graph) {
+            z.separatorText("Graph");
             if (implot.beginPlot("Agents", -1.0, 0.0, implot.Flags.none)) {
                 defer implot.endPlot();
 
@@ -137,6 +139,15 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
 
         // heatmap
         if (self.render_checks.heatmap) {
+            z.separatorText("Heatmap");
+
+            // change palette
+            z.setNextItemWidth(90);
+            _ = z.inputInt("palette", .{ .v = &self.current_heatmap_index });
+            self.current_heatmap_index = @min(self.current_heatmap_index, @typeInfo(implot.Colormap).Enum.fields.len - 1);
+            self.current_heatmap_index = @max(0, self.current_heatmap_index);
+
+            // plot
             if (implot.beginPlot("Agents", -1.0, 0.0, implot.Flags.none)) {
                 defer implot.endPlot();
 
@@ -144,7 +155,8 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
                 implot.setupAxisLimits(.Y1, 0.0, 1.0, .Always);
                 implot.setupAxisLimits(.X1, 0.0, 1.0, .Always);
 
-                implot.pushColormap(.Jet);
+                const color = try std.meta.intToEnum(implot.Colormap, self.current_heatmap_index);
+                implot.pushColormap(color);
                 defer implot.popColormap(1);
 
                 implot.plotHeatmap(f32, "heatmap", self.heatmap, @intCast(self.n_rows), @intCast(self.n_cols), 0, 0, null, 0, 0, 1, 1, .{});

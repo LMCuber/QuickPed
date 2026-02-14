@@ -145,7 +145,7 @@ pub fn main() !void {
             const dt: f32 = rl.getFrameTime();
             rl.beginDrawing();
             defer rl.endDrawing();
-            rl.clearBackground(color.black);
+            rl.clearBackground(palette.env.black);
 
             // UPDATING =============================================
             var confirm_current: bool = false;
@@ -309,6 +309,9 @@ pub fn main() !void {
                             }
                             current_entity = try entity.Entity.initRevolver(allocator);
                         }
+
+                        // reset
+                        z.separatorText("");
 
                         // reset
                         if (EB.clearButton()) {

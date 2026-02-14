@@ -79,6 +79,7 @@ pub fn traverseFromCurrent(self: *Self) void {
     } else {
         // the spawner is standalone, so just kill the agent
         // this works for both a dangling Spawner & Area
+        // but have different effects
         self.marked = true;
     }
 }
