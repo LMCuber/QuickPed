@@ -7,6 +7,7 @@ To view the paper we have written on this subject: [overleaf link](https://www.o
 
 # Previews
 ![main](previews/main.png "main")
+![main2](previews/main2.png "main2")
 ![node editor](previews/node_editor.png "node editor")
 
 # Version support
