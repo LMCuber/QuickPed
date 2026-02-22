@@ -12,11 +12,26 @@ const Graph = @import("Graph.zig");
 const commons = @import("../commons.zig");
 const palette = @import("../palette.zig");
 const entity = @import("../environment/entity.zig");
+const Environment = @import("../environment/Environment.zig");
 
 fn setNextItemWidth(width: f32) void {
     const zoom: f32 = imnodes.getZoom(imnodes.ez.getState());
     z.setNextItemWidth(width * zoom);
 }
+
+pub const NodeSnapshot = struct {
+    id: i32,
+    name: [:0]const u8,
+    pos: imnodes.Vec2 = .{ .x = 230, .y = 230 },
+    kind: Kind,
+
+    const Kind = union(enum) {
+        spawner: SpawnerNodeSnapshot,
+        sink: SinkNodeSnapshot,
+        area: AreaNodeSnapshot,
+        fork: ForkNodeSnapshot,
+    };
+};
 
 pub const Node = struct {
     pub var next_id: i32 = 0;
@@ -25,13 +40,51 @@ pub const Node = struct {
     name: [:0]const u8,
     pos: imnodes.Vec2 = .{ .x = 230, .y = 230 },
     selected: bool = false,
+    kind: Kind,
 
-    kind: union(enum) {
+    pub const Kind = union(enum) {
         spawner: SpawnerNode,
         sink: SinkNode,
         area: AreaNode,
         fork: ForkNode,
-    },
+    };
+
+    pub fn deinit(self: *Node, allocator: std.mem.Allocator) void {
+        allocator.free(self.name);
+    }
+
+    pub fn getSnapshot(self: Node) NodeSnapshot {
+        return .{
+            .id = self.id,
+            .name = self.name,
+            .pos = self.pos,
+            .kind = switch (self.kind) {
+                inline else => |k, tag| @unionInit(
+                    NodeSnapshot.Kind,
+                    @tagName(tag),
+                    k.getSnapshot(),
+                ),
+            },
+        };
+    }
+
+    pub fn fromSnapshot(
+        allocator: std.mem.Allocator,
+        snap: NodeSnapshot,
+        env: *Environment,
+    ) !Node {
+        return .{
+            .id = snap.id,
+            .name = try allocator.dupeZ(u8, snap.name),
+            .pos = snap.pos,
+            .kind = switch (snap.kind) {
+                .sink => |sk| .{ .sink = SinkNode.fromSnapshot(sk) },
+                .spawner => |sk| .{ .spawner = SpawnerNode.fromSnapshot(sk, env) },
+                .area => |sk| .{ .area = AreaNode.fromSnapshot(sk, env) },
+                .fork => |sk| .{ .fork = ForkNode.fromSnapshot(sk) },
+            },
+        };
+    }
 
     //
     // AI CODE
@@ -99,7 +152,7 @@ pub const Node = struct {
         };
     }
 
-    pub fn initArea(entities: *std.ArrayList(entity.Entity), wait: AreaNode.Wait) Node {
+    pub fn initArea(entities: *std.ArrayList(entity.Entity), wait: AreaWait) Node {
         return .{
             .id = Node.nextId(),
             .name = "Area",
@@ -113,6 +166,7 @@ pub const Node = struct {
     }
 };
 
+// slot is identified by composite key: (node_ptr, title)
 pub const Slot = struct {
     node: *Node,
     title: [*c]const u8,
@@ -121,13 +175,47 @@ pub const Slot = struct {
         return self.node == other.node and
             self.title == other.title;
     }
+
+    pub fn getSnapshot(self: Slot) SlotSnapshot {
+        return .{
+            .node = self.node.id,
+            .title = std.mem.span(self.title),
+        };
+    }
+
+    pub fn fromSnapshot(snap: SlotSnapshot, nodes: *std.ArrayList(Node)) Slot {
+        // find the node with the saved ID to get its pointer
+        var found_node: *Node = undefined;
+        for (nodes.items) |*node| {
+            if (node.id == snap.node) {
+                found_node = node;
+                return .{
+                    .node = found_node,
+                    .title = snap.title.ptr,
+                };
+            }
+        }
+        unreachable;
+    }
+};
+
+pub const SlotSnapshot = struct {
+    node: i32, // node id instead of runtime pointer
+    title: []const u8,
 };
 
 pub const NewConnection = struct {
+    // optional, because we want it to be null at creation.
+    // the underlying imnodes API will assign a node pointer (*anyopaque) to it later
     input_node: ?*Node = null,
     input_slot_title: [*c]const u8 = "",
     output_node: ?*Node = null,
     output_slot_title: [*c]const u8 = "",
+};
+
+pub const ConnectionSnapshot = struct {
+    output_slot: SlotSnapshot,
+    input_slot: SlotSnapshot,
 };
 
 pub const Connection = struct {
@@ -138,13 +226,37 @@ pub const Connection = struct {
         return self.output_slot.equals(other.output_slot) and
             self.input_slot.equals(other.input_slot);
     }
+
+    pub fn getSnapshot(self: Connection) ConnectionSnapshot {
+        return .{
+            .output_slot = self.output_slot.getSnapshot(),
+            .input_slot = self.input_slot.getSnapshot(),
+        };
+    }
+
+    pub fn fromSnapshot(snap: ConnectionSnapshot, nodes: *std.ArrayList(Node)) Connection {
+        return .{
+            .output_slot = Slot.fromSnapshot(snap.output_slot, nodes),
+            .input_slot = Slot.fromSnapshot(snap.input_slot, nodes),
+        };
+    }
 };
+
+pub const SinkNodeSnapshot = struct {};
 
 pub const SinkNode = struct {
     input_slots: [1]imnodes.ez.SlotInfo = .{
         .{ .title = "in", .kind = 1 },
     },
     output_slots: [0]imnodes.ez.SlotInfo = .{},
+
+    pub fn getSnapshot(_: SinkNode) SinkNodeSnapshot {
+        return .{};
+    }
+
+    pub fn fromSnapshot(_: SinkNodeSnapshot) SinkNode {
+        return .{};
+    }
 
     pub fn draw(
         self: *SinkNode,
@@ -167,6 +279,11 @@ pub const SinkNode = struct {
     }
 };
 
+pub const SpawnerNodeSnapshot = struct {
+    spawner_index: i32,
+    wait: i32,
+};
+
 pub const SpawnerNode = struct {
     entities: *std.ArrayList(entity.Entity),
     spawner_index: i32 = 0,
@@ -178,6 +295,21 @@ pub const SpawnerNode = struct {
     },
 
     last_spawn: f64 = 0,
+
+    pub fn getSnapshot(self: SpawnerNode) SpawnerNodeSnapshot {
+        return .{
+            .spawner_index = self.spawner_index,
+            .wait = self.wait,
+        };
+    }
+
+    pub fn fromSnapshot(snap: SpawnerNodeSnapshot, env: *Environment) SpawnerNode {
+        return .{
+            .entities = &env.entities,
+            .spawner_index = snap.spawner_index,
+            .wait = snap.wait,
+        };
+    }
 
     pub fn getSpawner(self: *SpawnerNode) *Spawner {
         return Node.getEnvironmentalObject(self, Spawner, self.spawner_index);
@@ -246,24 +378,7 @@ pub const SpawnerNode = struct {
     }
 };
 
-pub const AreaNode = struct {
-    entities: *std.ArrayList(entity.Entity),
-    area_index: i32 = 0,
-    wait: Wait,
-    wait_type: i32 = 0,
-
-    input_slots: [1]imnodes.ez.SlotInfo = .{
-        .{ .title = "in", .kind = -1 },
-    },
-    output_slots: [1]imnodes.ez.SlotInfo = .{
-        .{ .title = "out", .kind = 1 },
-    },
-
-    pub const Wait = union(enum) {
-        constant: Constant,
-        uniform: Uniform,
-        normal: Normal,
-    };
+const AreaWait = union(enum) {
     pub const Constant = struct {
         wait: i32 = 1000,
 
@@ -287,6 +402,47 @@ pub const AreaNode = struct {
             return @intFromFloat(@as(f32, @floatFromInt(self.mu)) + @as(f32, @floatFromInt(self.sigma)) * commons.rng.floatNorm(f32));
         }
     };
+
+    constant: Constant,
+    uniform: Uniform,
+    normal: Normal,
+};
+
+pub const AreaNodeSnapshot = struct {
+    area_index: i32,
+    wait: AreaWait,
+    wait_type: i32,
+};
+
+pub const AreaNode = struct {
+    entities: *std.ArrayList(entity.Entity),
+    area_index: i32 = 0,
+    wait: AreaWait,
+    wait_type: i32 = 0,
+
+    input_slots: [1]imnodes.ez.SlotInfo = .{
+        .{ .title = "in", .kind = -1 },
+    },
+    output_slots: [1]imnodes.ez.SlotInfo = .{
+        .{ .title = "out", .kind = 1 },
+    },
+
+    pub fn getSnapshot(self: AreaNode) AreaNodeSnapshot {
+        return .{
+            .area_index = self.area_index,
+            .wait = self.wait,
+            .wait_type = self.wait_type,
+        };
+    }
+
+    pub fn fromSnapshot(snap: AreaNodeSnapshot, env: *Environment) AreaNode {
+        return .{
+            .entities = &env.entities,
+            .area_index = snap.area_index,
+            .wait = snap.wait,
+            .wait_type = snap.wait_type,
+        };
+    }
 
     pub fn getArea(self: *AreaNode) *Area {
         return Node.getEnvironmentalObject(self, Area, self.area_index);
@@ -383,6 +539,10 @@ pub const AreaNode = struct {
     pub fn update(_: AreaNode, _: *std.ArrayList(Agent)) !void {}
 };
 
+pub const ForkNodeSnapshot = struct {
+    values: [4]f32,
+};
+
 pub const ForkNode = struct {
     input_slots: [1]imnodes.ez.SlotInfo = .{
         .{ .title = "in", .kind = -1 },
@@ -394,6 +554,16 @@ pub const ForkNode = struct {
         .{ .title = "outD", .kind = 1 },
     },
     values: [4]f32 = .{ 0.25, 0.25, 0.25, 0.25 },
+
+    pub fn getSnapshot(self: ForkNode) ForkNodeSnapshot {
+        return .{
+            .values = self.values,
+        };
+    }
+
+    pub fn fromSnapshot(snap: ForkNodeSnapshot) ForkNode {
+        return .{ .values = snap.values };
+    }
 
     pub fn getOutputSlotTitle(self: ForkNode) [*c]const u8 {
         var sum: f32 = 0;

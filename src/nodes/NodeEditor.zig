@@ -25,7 +25,11 @@ pub fn deinit(self: *Self) void {
     self.graph.deinit();
 }
 
-pub fn render(self: *Self, entities: *std.ArrayList(entity.Entity)) !void {
+pub fn render(
+    self: *Self,
+    _: std.mem.Allocator,
+    entities: *std.ArrayList(entity.Entity),
+) !void {
     if (rl.isKeyPressed(.key_space)) {
         self.active = !self.active;
     }
@@ -122,7 +126,7 @@ pub fn render(self: *Self, entities: *std.ArrayList(entity.Entity)) !void {
             output_node_ptr_ptr,
             &new_conn.output_slot_title,
         )) {
-            // construct the in- and output the slots involved
+            // construct the in- and output the slots involved (see composite key)
             const input_slot: node.Slot = .{
                 .node = new_conn.input_node.?,
                 .title = new_conn.input_slot_title,
@@ -138,6 +142,8 @@ pub fn render(self: *Self, entities: *std.ArrayList(entity.Entity)) !void {
 
         // render existing connections
         for (self.graph.connections.items) |conn| {
+            // cast the *Node pointer types to *anyopaque because C++ wants that;
+            // they're otherwise the same thing
             const input_node_ptr: *anyopaque = @ptrCast(conn.input_slot.node);
             const output_node_ptr: *anyopaque = @ptrCast(conn.output_slot.node);
             _ = imnodes.ez.connection(

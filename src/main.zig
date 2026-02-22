@@ -39,6 +39,7 @@ var ctx: ?*imnodes.ez.Context = null;
 
 const SceneSnapshot = struct {
     version: []const u8,
+
     entities: []const entity.EntitySnapshot,
     next_id: i32,
     next_contour_id: i32,
@@ -102,10 +103,6 @@ pub fn main() !void {
     const n_cols = 100;
     const n_rows = 100;
     const buf = try allocator.alloc(f32, n_cols * n_rows);
-    // @memset(buf, 0);
-    // for (buf) |*b| {
-    //     // b.* = commons.rand01();
-    // }
     defer allocator.free(buf);
     var stats = Stats.init(allocator, buf, n_cols, n_rows);
     defer stats.deinit();
@@ -114,11 +111,8 @@ pub fn main() !void {
     var node_editor = NodeEditor.init(allocator);
     defer node_editor.deinit();
 
-    try loadScene(
-        allocator,
-        "scene.json",
-        &env,
-    );
+    try loadScene(allocator, "data/scene.json", &env);
+    try node_editor.graph.loadNodes(allocator, "data/nodes.json", &env);
 
     // camera shenanigans
     const camera_default = rl.Camera2D{
@@ -408,7 +402,7 @@ pub fn main() !void {
                         .h = @floatFromInt(settings.height),
                     });
 
-                    try node_editor.render(&env.entities);
+                    try node_editor.render(allocator, &env.entities);
                     if (!sim_data.paused) {
                         try node_editor.graph.processSpawners(&agents);
                     }
@@ -417,8 +411,9 @@ pub fn main() !void {
         }
     }
 
-    // save the scene
-    try saveScene(allocator, &env, "scene.json");
+    // save the scene and nodes
+    try saveScene(allocator, &env, "data/scene.json");
+    try node_editor.graph.saveNodes(allocator, "data/nodes.json");
 
     // deinit all entity allocations
     if (current_entity) |*ent| {
@@ -426,6 +421,11 @@ pub fn main() !void {
     }
     for (env.entities.items) |*ent| {
         ent.deinit(allocator);
+    }
+
+    // deinit all notes
+    for (node_editor.graph.nodes.items) |*n| {
+        n.deinit(allocator);
     }
 }
 
@@ -483,6 +483,8 @@ pub fn saveScene(
     try std.json.stringify(scene_snap, .{
         .whitespace = .indent_2,
     }, buf.writer());
+
+    // create file it it doesn't exist
     const file = try std.fs.cwd().createFile(path, .{ .truncate = true });
     defer file.close();
     try file.writeAll(buf.items);

@@ -149,7 +149,6 @@ pub const Entity = struct {
             .kind = switch (self.kind) {
                 inline else => |k, tag| @unionInit(
                     EntitySnapshot.Kind,
-                    //
                     @tagName(tag),
                     k.getSnapshot(),
                 ),

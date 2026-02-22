@@ -1,12 +1,22 @@
 const Self = @This();
-const node = @import("node.zig");
 const std = @import("std");
 const Agent = @import("../Agent.zig");
 const imnodes = @import("imnodesez");
+const commons = @import("../commons.zig");
+const node = @import("node.zig");
+const Environment = @import("../environment/Environment.zig");
 
 allocator: std.mem.Allocator,
 nodes: std.ArrayList(node.Node),
 connections: std.ArrayList(node.Connection),
+
+pub const GraphSnapshot = struct {
+    version: []const u8,
+
+    nodes: []const node.NodeSnapshot,
+    connections: []const node.ConnectionSnapshot,
+    next_node_id: i32,
+};
 
 pub fn init(allocator: std.mem.Allocator) Self {
     return .{
@@ -67,4 +77,89 @@ pub fn getNextNode(self: Self, current_node: *node.Node) ?*node.Node {
 
     // no connection found
     return null;
+}
+
+pub fn saveNodes(
+    self: *Self,
+    allocator: std.mem.Allocator,
+    path: []const u8,
+) !void {
+    var conn_snaps = std.ArrayList(node.ConnectionSnapshot).init(allocator);
+    defer conn_snaps.deinit();
+    var node_snaps = std.ArrayList(node.NodeSnapshot).init(allocator);
+    defer node_snaps.deinit();
+
+    for (self.nodes.items) |n| {
+        try node_snaps.append(n.getSnapshot());
+    }
+    for (self.connections.items) |conn| {
+        try conn_snaps.append(conn.getSnapshot());
+    }
+
+    const graph_snap: GraphSnapshot = .{
+        .version = "0.1.0",
+        .nodes = node_snaps.items,
+        .connections = conn_snaps.items,
+        .next_node_id = node.Node.next_id,
+    };
+
+    // create buffer to write the snap data into as JSON
+    var buf = std.ArrayList(u8).init(allocator);
+    defer buf.deinit();
+
+    try std.json.stringify(graph_snap, .{ .whitespace = .indent_2 }, buf.writer());
+
+    // create file it it doesn't exist
+    const file = try std.fs.cwd().createFile(path, .{ .truncate = true });
+    defer file.close();
+    try file.writeAll(buf.items);
+}
+
+pub fn loadNodes(
+    self: *Self,
+    allocator: std.mem.Allocator,
+    path: []const u8,
+    env: *Environment,
+) !void {
+    // parse file into JSON
+    const json = try commons.readFile(allocator, path);
+    defer allocator.free(json);
+
+    // empty existing graph G = (V, E)
+    // but deallocate nodes first
+    for (self.nodes.items) |*n| {
+        n.deinit(allocator);
+    }
+    self.nodes.clearRetainingCapacity();
+    self.connections.clearRetainingCapacity();
+
+    // if there is nothing in the file, return and don't load anything in
+    if (json.len == 0) {
+        return;
+    }
+
+    // get parsed scene
+    const parsed = try std.json.parseFromSlice(
+        GraphSnapshot,
+        allocator,
+        json,
+        .{},
+    );
+    defer parsed.deinit();
+    const graph: GraphSnapshot = parsed.value;
+
+    // set the saved last ids
+    node.Node.next_id = graph.next_node_id;
+
+    // repopulate nodes and connections
+    for (graph.nodes) |node_snap| {
+        try self.nodes.append(try node.Node.fromSnapshot(allocator, node_snap, env));
+    }
+
+    for (graph.connections) |conn_snap| {
+        try self.connections.append(node.Connection.fromSnapshot(
+            conn_snap,
+            &self.nodes,
+        ));
+    }
 }
