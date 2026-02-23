@@ -99,6 +99,10 @@ pub fn main() !void {
     defer env.deinit();
     var current_entity: ?entity.Entity = null;
 
+    // load saved data
+    sim_data = try SimData.loadFromFile(allocator, "data/sim_data.json");
+    agent_data = try AgentData.loadFromFile(allocator, "data/agent_data.json");
+
     // stats
     const n_cols = 100;
     const n_rows = 100;
@@ -420,7 +424,9 @@ pub fn main() !void {
         }
     }
 
-    // save the scene and nodes
+    // save the simulation data, scene, nodes
+    try agent_data.saveToFile(allocator, "data/agent_data.json");
+    try sim_data.saveToFile(allocator, "data/sim_data.json");
     try saveScene(allocator, &env, "data/scene.json");
     try node_editor.graph.saveNodes(allocator, "data/nodes.json");
 
@@ -497,11 +503,7 @@ pub fn saveScene(
 //
 // HALF-AI CODE
 //
-pub fn loadScene(
-    allocator: std.mem.Allocator,
-    path: []const u8,
-    env: *Environment,
-) !void {
+pub fn loadScene(allocator: std.mem.Allocator, path: []const u8, env: *Environment) !void {
     const json = try commons.readFile(allocator, path);
     defer allocator.free(json);
 

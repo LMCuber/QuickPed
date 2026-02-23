@@ -16,9 +16,10 @@ Later Zig versions are not guaranteed to build correctly.
 
 # Planned features
 - [x] Social force model for pedestrians based on [the works](https://www.researchgate.net/publication/1947096_Social_Force_Model_for_Pedestrian_Dynamics) of _Helbing et al_.
-- [ ] A blueprint system
+- [x] A blueprint system
     - [x] Working nodes
-    - [ ] Persistence across runs
+    - [x] Persistence across runs
+    - [ ] Deleting nodes and connections
 - [ ] Statistics
     - [x] Showing number of (waiting) pedestrians
     - [ ] Heatmap showing bottlenecks during simulation

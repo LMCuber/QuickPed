@@ -45,10 +45,7 @@ fn arrSum(comptime T: type, comptime arr: []const T) T {
 //
 // AI CODE
 //
-pub fn readFile(
-    allocator: std.mem.Allocator,
-    path: []const u8,
-) ![]u8 {
+pub fn readFile(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
     const file = std.fs.cwd().openFile(path, .{}) catch |err| {
         if (err == error.FileNotFound) {
             // create empty file
@@ -65,9 +62,6 @@ pub fn readFile(
     );
 }
 
-//
-// AI CODE
-//
 pub fn rand01() f32 {
     return @as(f32, @floatFromInt(rl.getRandomValue(0, 1_000_000))) / 1_000_000.0;
 }
@@ -76,9 +70,6 @@ pub fn getTimeMillis() f64 {
     return rl.getTime() * 1000;
 }
 
-//
-// AI CODE
-//
 pub fn dupeCStr(allocator: std.mem.Allocator, cstr: [*c]const u8) ![:0]u8 {
     var len: usize = 0;
     while (cstr[len] != 0) : (len += 1) {}
