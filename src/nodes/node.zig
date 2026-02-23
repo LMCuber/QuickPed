@@ -21,7 +21,6 @@ fn setNextItemWidth(width: f32) void {
 
 pub const NodeSnapshot = struct {
     id: i32,
-    name: [:0]const u8,
     pos: imnodes.Vec2 = .{ .x = 230, .y = 230 },
     kind: Kind,
 
@@ -37,7 +36,6 @@ pub const Node = struct {
     pub var next_id: i32 = 0;
 
     id: i32,
-    name: [:0]const u8,
     pos: imnodes.Vec2 = .{ .x = 230, .y = 230 },
     selected: bool = false,
     kind: Kind,
@@ -49,14 +47,9 @@ pub const Node = struct {
         fork: ForkNode,
     };
 
-    pub fn deinit(self: *Node, allocator: std.mem.Allocator) void {
-        allocator.free(self.name);
-    }
-
     pub fn getSnapshot(self: Node) NodeSnapshot {
         return .{
             .id = self.id,
-            .name = self.name,
             .pos = self.pos,
             .kind = switch (self.kind) {
                 inline else => |k, tag| @unionInit(
@@ -69,13 +62,11 @@ pub const Node = struct {
     }
 
     pub fn fromSnapshot(
-        allocator: std.mem.Allocator,
         snap: NodeSnapshot,
         env: *Environment,
-    ) !Node {
+    ) Node {
         return .{
             .id = snap.id,
-            .name = try allocator.dupeZ(u8, snap.name),
             .pos = snap.pos,
             .kind = switch (snap.kind) {
                 .sink => |sk| .{ .sink = SinkNode.fromSnapshot(sk) },
@@ -122,7 +113,6 @@ pub const Node = struct {
     pub fn initSpawner(entities: *std.ArrayList(entity.Entity), wait: i32) Node {
         return .{
             .id = Node.nextId(),
-            .name = "Spawner",
             .kind = .{
                 .spawner = .{
                     .entities = entities,
@@ -135,7 +125,6 @@ pub const Node = struct {
     pub fn initFork() Node {
         return .{
             .id = Node.nextId(),
-            .name = "Fork",
             .kind = .{
                 .fork = .{},
             },
@@ -145,7 +134,6 @@ pub const Node = struct {
     pub fn initSink() Node {
         return .{
             .id = Node.nextId(),
-            .name = "Sink",
             .kind = .{
                 .sink = .{},
             },
@@ -155,7 +143,6 @@ pub const Node = struct {
     pub fn initArea(entities: *std.ArrayList(entity.Entity), wait: AreaWait) Node {
         return .{
             .id = Node.nextId(),
-            .name = "Area",
             .kind = .{
                 .area = .{
                     .entities = entities,
@@ -169,21 +156,36 @@ pub const Node = struct {
 // slot is identified by composite key: (node_ptr, title)
 pub const Slot = struct {
     node: *Node,
-    title: [*c]const u8,
+    title: [:0]const u8,
+
+    pub fn init(alloc: std.mem.Allocator, node: *Node, title: [*c]const u8) !Slot {
+        return .{
+            .node = node,
+            .title = try commons.dupeCStr(alloc, title),
+        };
+    }
+
+    pub fn deinit(self: *Slot, alloc: std.mem.Allocator) void {
+        alloc.free(self.title);
+    }
 
     pub fn equals(self: Slot, other: Slot) bool {
         return self.node == other.node and
-            self.title == other.title;
+            std.mem.eql(u8, self.title, other.title);
     }
 
     pub fn getSnapshot(self: Slot) SlotSnapshot {
         return .{
             .node = self.node.id,
-            .title = std.mem.span(self.title),
+            .title = self.title,
         };
     }
 
-    pub fn fromSnapshot(snap: SlotSnapshot, nodes: *std.ArrayList(Node)) Slot {
+    pub fn fromSnapshot(
+        alloc: std.mem.Allocator,
+        snap: SlotSnapshot,
+        nodes: *std.ArrayList(Node),
+    ) !Slot {
         // find the node with the saved ID to get its pointer
         var found_node: *Node = undefined;
         for (nodes.items) |*node| {
@@ -191,7 +193,7 @@ pub const Slot = struct {
                 found_node = node;
                 return .{
                     .node = found_node,
-                    .title = snap.title.ptr,
+                    .title = try alloc.dupeZ(u8, snap.title),
                 };
             }
         }
@@ -234,10 +236,14 @@ pub const Connection = struct {
         };
     }
 
-    pub fn fromSnapshot(snap: ConnectionSnapshot, nodes: *std.ArrayList(Node)) Connection {
+    pub fn fromSnapshot(
+        alloc: std.mem.Allocator,
+        snap: ConnectionSnapshot,
+        nodes: *std.ArrayList(Node),
+    ) !Connection {
         return .{
-            .output_slot = Slot.fromSnapshot(snap.output_slot, nodes),
-            .input_slot = Slot.fromSnapshot(snap.input_slot, nodes),
+            .output_slot = try Slot.fromSnapshot(alloc, snap.output_slot, nodes),
+            .input_slot = try Slot.fromSnapshot(alloc, snap.input_slot, nodes),
         };
     }
 };
@@ -268,7 +274,7 @@ pub const SinkNode = struct {
         defer imnodes.ez.popStyleColor(2);
 
         // init node
-        _ = imnodes.ez.beginNode(parent, parent.name, &parent.pos, &parent.selected);
+        _ = imnodes.ez.beginNode(parent, "Sink", &parent.pos, &parent.selected);
         defer imnodes.ez.endNode();
 
         // input slots
@@ -326,7 +332,7 @@ pub const SpawnerNode = struct {
         defer imnodes.ez.popStyleColor(2);
 
         // start the node
-        _ = imnodes.ez.beginNode(parent, parent.name, &parent.pos, &parent.selected);
+        _ = imnodes.ez.beginNode(parent, "Spawner", &parent.pos, &parent.selected);
         defer imnodes.ez.endNode();
 
         // input slots
@@ -361,6 +367,7 @@ pub const SpawnerNode = struct {
 
     pub fn update(
         self: *SpawnerNode,
+        alloc: std.mem.Allocator,
         agents: *std.ArrayList(Agent),
         graph: *Graph,
         parent: *Node,
@@ -369,7 +376,7 @@ pub const SpawnerNode = struct {
         if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {
             const pos: rl.Vector2 = self.getSpawner().randomSpawnPos();
             // const pos: rl.Vector2 = .{ .x = 0, .y = 0 };
-            const a = Agent.init(pos, parent, graph);
+            const a = try Agent.init(alloc, pos, parent, graph);
             try agents.append(a);
 
             // reset last spawn
@@ -469,7 +476,7 @@ pub const AreaNode = struct {
         defer imnodes.ez.popStyleColor(2);
 
         // start the node
-        _ = imnodes.ez.beginNode(parent, parent.name, &parent.pos, &parent.selected);
+        _ = imnodes.ez.beginNode(parent, "Area", &parent.pos, &parent.selected);
         defer imnodes.ez.endNode();
 
         // input slots
@@ -603,7 +610,7 @@ pub const ForkNode = struct {
         defer imnodes.ez.popStyleColor(2);
 
         // init node
-        _ = imnodes.ez.beginNode(parent, parent.name, &parent.pos, &parent.selected);
+        _ = imnodes.ez.beginNode(parent, "Fork", &parent.pos, &parent.selected);
         defer imnodes.ez.endNode();
 
         // input slots

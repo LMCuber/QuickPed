@@ -34,10 +34,11 @@ waiting: bool = false,
 marked: bool = false, // marked to delete later
 
 pub fn init(
+    alloc: std.mem.Allocator,
     pos: rl.Vector2,
     spawner_node: *node.Node,
     graph: *Graph,
-) Self {
+) !Self {
     const col: rl.Color = color.getAgentColor();
     var obj = Self{
         .pos = pos,
@@ -46,16 +47,16 @@ pub fn init(
         .graph = graph,
     };
     obj.current_node = spawner_node;
-    obj.traverseFromCurrent();
+    try obj.traverseFromCurrent(alloc);
     return obj;
 }
 
-pub fn traverseFromCurrent(self: *Self) void {
+pub fn traverseFromCurrent(self: *Self, alloc: std.mem.Allocator) !void {
     // check if current node exists at all to traverse from
     const from_node: *node.Node = self.current_node orelse unreachable;
 
     // get the next node from graph and then process it
-    if (self.graph.getNextNode(from_node)) |next| {
+    if (try self.graph.getNextNode(alloc, from_node)) |next| {
         // set current node to next by default (might be changed by e.g. fork)
         self.current_node = next;
 
@@ -73,7 +74,7 @@ pub fn traverseFromCurrent(self: *Self) void {
             },
             .fork => {
                 self.current_node = next;
-                self.traverseFromCurrent();
+                try self.traverseFromCurrent(alloc);
             },
         }
     } else {
@@ -86,7 +87,7 @@ pub fn traverseFromCurrent(self: *Self) void {
 
 /// every frame, processCurrentNode checks what node we are on currently, and then
 /// checks (for example) if we need to start waiting because we entered radius of waiting area
-pub fn processCurrentNode(self: *Self) void {
+pub fn processCurrentNode(self: *Self, alloc: std.mem.Allocator) !void {
     if (self.current_node) |n| {
         switch (n.kind) {
             .area => |*area_node| {
@@ -103,7 +104,7 @@ pub fn processCurrentNode(self: *Self) void {
                     const time: f64 = commons.getTimeMillis();
                     if (time - self.last_wait >= @as(f64, @floatFromInt(self.wait))) {
                         // waited long enough. continue
-                        self.traverseFromCurrent();
+                        try self.traverseFromCurrent(alloc);
                     }
                 }
             },
@@ -195,6 +196,7 @@ fn calculateDriveForce(self: *Self, agent_data: AgentData) rl.Vector2 {
 
 pub fn update(
     self: *Self,
+    alloc: std.mem.Allocator,
     agents: *std.ArrayList(Self),
     env: *Environment,
     stats: *Stats,
@@ -202,7 +204,7 @@ pub fn update(
     agent_data: AgentData,
     n_rows: i32,
     n_cols: i32,
-) void {
+) !void {
     // get force components
     const drive_force = self.calculateDriveForce(agent_data);
     const interactive_force = self.calculateInteractiveForce(agents, agent_data);
@@ -219,7 +221,7 @@ pub fn update(
     self.update_heatmap(stats, settings, n_rows, n_cols);
 
     // process node
-    self.processCurrentNode();
+    try self.processCurrentNode(alloc);
 }
 
 pub fn update_heatmap(self: *Self, stats: *Stats, settings: Settings, n_rows: i32, n_cols: i32) void {

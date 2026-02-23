@@ -75,3 +75,12 @@ pub fn rand01() f32 {
 pub fn getTimeMillis() f64 {
     return rl.getTime() * 1000;
 }
+
+//
+// AI CODE
+//
+pub fn dupeCStr(allocator: std.mem.Allocator, cstr: [*c]const u8) ![:0]u8 {
+    var len: usize = 0;
+    while (cstr[len] != 0) : (len += 1) {}
+    return try allocator.dupeZ(u8, cstr[0..len]);
+}

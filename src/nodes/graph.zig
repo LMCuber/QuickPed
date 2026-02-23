@@ -26,8 +26,12 @@ pub fn init(allocator: std.mem.Allocator) Self {
     };
 }
 
-pub fn deinit(self: *Self) void {
+pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
     self.nodes.deinit();
+    for (self.connections.items) |*conn| {
+        conn.input_slot.deinit(allocator);
+        conn.output_slot.deinit(allocator);
+    }
     self.connections.deinit();
 }
 
@@ -47,16 +51,16 @@ pub fn addConnection(
     });
 }
 
-pub fn processSpawners(self: *Self, agents: *std.ArrayList(Agent)) !void {
+pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, agents: *std.ArrayList(Agent)) !void {
     for (self.nodes.items) |*n| {
         switch (n.kind) {
-            .spawner => |*spawner| try spawner.update(agents, self, n),
+            .spawner => |*spawner| try spawner.update(alloc, agents, self, n),
             inline else => {},
         }
     }
 }
 
-pub fn getNextNode(self: Self, current_node: *node.Node) ?*node.Node {
+pub fn getNextNode(self: Self, alloc: std.mem.Allocator, current_node: *node.Node) !?*node.Node {
     // get correct port ID from current node
     const current_title: [*c]const u8 = switch (current_node.kind) {
         .spawner => |s| s.output_slots[0].title,
@@ -66,7 +70,14 @@ pub fn getNextNode(self: Self, current_node: *node.Node) ?*node.Node {
     };
 
     // construct current (output) slot
-    const current_output_slot: node.Slot = .{ .node = current_node, .title = current_title };
+    // as a combination of (node_ptr, title)
+    // we need allocator since it needs a [:0] from a [*c] now
+    var current_output_slot: node.Slot = try node.Slot.init(
+        alloc,
+        current_node,
+        current_title,
+    );
+    defer current_output_slot.deinit(alloc);
 
     // find connection where the its output slot is same as this output slot
     for (self.connections.items) |conn| {
@@ -126,10 +137,6 @@ pub fn loadNodes(
     defer allocator.free(json);
 
     // empty existing graph G = (V, E)
-    // but deallocate nodes first
-    for (self.nodes.items) |*n| {
-        n.deinit(allocator);
-    }
     self.nodes.clearRetainingCapacity();
     self.connections.clearRetainingCapacity();
 
@@ -153,11 +160,12 @@ pub fn loadNodes(
 
     // repopulate nodes and connections
     for (graph.nodes) |node_snap| {
-        try self.nodes.append(try node.Node.fromSnapshot(allocator, node_snap, env));
+        try self.nodes.append(node.Node.fromSnapshot(node_snap, env));
     }
 
     for (graph.connections) |conn_snap| {
-        try self.connections.append(node.Connection.fromSnapshot(
+        try self.connections.append(try node.Connection.fromSnapshot(
+            allocator,
             conn_snap,
             &self.nodes,
         ));

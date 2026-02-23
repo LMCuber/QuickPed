@@ -109,7 +109,7 @@ pub fn main() !void {
 
     // node editor
     var node_editor = NodeEditor.init(allocator);
-    defer node_editor.deinit();
+    defer node_editor.deinit(allocator);
 
     try loadScene(allocator, "data/scene.json", &env);
     try node_editor.graph.loadNodes(allocator, "data/nodes.json", &env);
@@ -176,7 +176,16 @@ pub fn main() !void {
                 // update the agents
                 if (!sim_data.paused) {
                     for (agents.items) |*agent| {
-                        agent.update(&agents, &env, &stats, settings, agent_data, n_rows, n_cols);
+                        try agent.update(
+                            allocator,
+                            &agents,
+                            &env,
+                            &stats,
+                            settings,
+                            agent_data,
+                            n_rows,
+                            n_cols,
+                        );
                     }
                     // cleanup to be deleted agents
                     var i: usize = agents.items.len;
@@ -404,7 +413,7 @@ pub fn main() !void {
 
                     try node_editor.render(allocator, &env.entities);
                     if (!sim_data.paused) {
-                        try node_editor.graph.processSpawners(&agents);
+                        try node_editor.graph.processSpawners(allocator, &agents);
                     }
                 }
             }
@@ -421,11 +430,6 @@ pub fn main() !void {
     }
     for (env.entities.items) |*ent| {
         ent.deinit(allocator);
-    }
-
-    // deinit all notes
-    for (node_editor.graph.nodes.items) |*n| {
-        n.deinit(allocator);
     }
 }
 

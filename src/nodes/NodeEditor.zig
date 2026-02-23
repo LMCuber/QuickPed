@@ -21,13 +21,13 @@ pub fn init(allocator: std.mem.Allocator) Self {
     };
 }
 
-pub fn deinit(self: *Self) void {
-    self.graph.deinit();
+pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+    self.graph.deinit(allocator);
 }
 
 pub fn render(
     self: *Self,
-    _: std.mem.Allocator,
+    allocator: std.mem.Allocator,
     entities: *std.ArrayList(entity.Entity),
 ) !void {
     if (rl.isKeyPressed(.key_space)) {
@@ -127,14 +127,16 @@ pub fn render(
             &new_conn.output_slot_title,
         )) {
             // construct the in- and output the slots involved (see composite key)
-            const input_slot: node.Slot = .{
-                .node = new_conn.input_node.?,
-                .title = new_conn.input_slot_title,
-            };
-            const output_slot: node.Slot = .{
-                .node = new_conn.output_node.?,
-                .title = new_conn.output_slot_title,
-            };
+            const input_slot: node.Slot = try node.Slot.init(
+                allocator,
+                new_conn.input_node.?,
+                new_conn.input_slot_title,
+            );
+            const output_slot: node.Slot = try node.Slot.init(
+                allocator,
+                new_conn.output_node.?,
+                new_conn.output_slot_title,
+            );
 
             // create new connection
             try self.graph.addConnection(output_slot, input_slot);
