@@ -23,6 +23,7 @@ last_update: f64 = 0,
 heatmap: []f32,
 n_cols: i32,
 n_rows: i32,
+decay: f32 = 0.003,
 current_heatmap_index: i32 = 0,
 
 pub fn init(alloc: std.mem.Allocator, buffer: []f32, cols: i32, rows: i32) Self {
@@ -71,6 +72,12 @@ fn getNumWaitingAgents(agents: *std.ArrayList(Agent)) f64 {
         }
     }
     return count;
+}
+
+pub fn decay_map(self: *Self) void {
+    for (0..self.heatmap.len - 1) |i| {
+        self.heatmap[i] *= (1 - self.decay);
+    }
 }
 
 pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
@@ -140,6 +147,9 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
         // heatmap
         if (self.render_checks.heatmap) {
             z.separatorText("Heatmap");
+
+            // exponential decay for all grid items
+            self.decay_map();
 
             // change palette
             z.setNextItemWidth(90);
