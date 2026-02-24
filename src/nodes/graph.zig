@@ -29,8 +29,7 @@ pub fn init(allocator: std.mem.Allocator) Self {
 pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
     self.nodes.deinit();
     for (self.connections.items) |*conn| {
-        conn.input_slot.deinit(allocator);
-        conn.output_slot.deinit(allocator);
+        conn.deinit(allocator);
     }
     self.connections.deinit();
 }
@@ -38,6 +37,25 @@ pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
 pub fn addNode(self: *Self, n: node.Node) !void {
     try self.nodes.append(n);
     imnodes.autoPositionNode(&self.nodes.items[self.nodes.items.len - 1]);
+}
+
+pub fn deleteNode(self: *Self, alloc: std.mem.Allocator, n: *node.Node) !void {
+    // delete the node
+    for (self.nodes.items, 0..) |*other, i| {
+        if (other.id == n.id) {
+            _ = self.nodes.swapRemove(i);
+            break;
+        }
+    }
+
+    // delete the connections
+    for (self.connections.items, 0..) |*conn, i| {
+        if (conn.input_slot.node_id == n.id or conn.output_slot.node_id == n.id) {
+            self.connections.items[i].deinit(alloc);
+            _ = self.connections.swapRemove(i);
+            break;
+        }
+    }
 }
 
 pub fn addConnection(
@@ -60,7 +78,7 @@ pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, agents: *std.Array
     }
 }
 
-pub fn getNextNode(self: Self, alloc: std.mem.Allocator, current_node: *node.Node) !?*node.Node {
+pub fn getNextNode(self: *Self, alloc: std.mem.Allocator, current_node: *node.Node) !?*node.Node {
     // get correct port ID from current node
     const current_title: [*c]const u8 = switch (current_node.kind) {
         .spawner => |s| s.output_slots[0].title,
@@ -74,15 +92,15 @@ pub fn getNextNode(self: Self, alloc: std.mem.Allocator, current_node: *node.Nod
     // we need allocator since it needs a [:0] from a [*c] now
     var current_output_slot: node.Slot = try node.Slot.init(
         alloc,
-        current_node,
+        current_node.id,
         current_title,
     );
     defer current_output_slot.deinit(alloc);
 
     // find connection where the its output slot is same as this output slot
-    for (self.connections.items) |conn| {
+    for (self.connections.items) |*conn| {
         if (current_output_slot.equals(conn.output_slot)) {
-            return conn.input_slot.node;
+            return conn.input_slot.getNode(&self.nodes);
         }
     }
 
@@ -167,7 +185,6 @@ pub fn loadNodes(
         try self.connections.append(try node.Connection.fromSnapshot(
             allocator,
             conn_snap,
-            &self.nodes,
         ));
     }
 }

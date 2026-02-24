@@ -47,6 +47,11 @@ pub const Node = struct {
         fork: ForkNode,
     };
 
+    pub const NodeState = enum {
+        none,
+        selected,
+    };
+
     pub fn getSnapshot(self: Node) NodeSnapshot {
         return .{
             .id = self.id,
@@ -104,6 +109,14 @@ pub const Node = struct {
         return next_id - 1;
     }
 
+    pub fn update(self: *Node) NodeState {
+        // check if wants to delete
+        if (self.selected) {
+            return .selected;
+        }
+        return .none;
+    }
+
     pub fn draw(self: *Node) void {
         switch (self.kind) {
             inline else => |*n| n.draw(self),
@@ -155,12 +168,12 @@ pub const Node = struct {
 
 // slot is identified by composite key: (node_ptr, title)
 pub const Slot = struct {
-    node: *Node,
+    node_id: i32,
     title: [:0]const u8,
 
-    pub fn init(alloc: std.mem.Allocator, node: *Node, title: [*c]const u8) !Slot {
+    pub fn init(alloc: std.mem.Allocator, node_id: i32, title: [*c]const u8) !Slot {
         return .{
-            .node = node,
+            .node_id = node_id,
             .title = try commons.dupeCStr(alloc, title),
         };
     }
@@ -170,39 +183,35 @@ pub const Slot = struct {
     }
 
     pub fn equals(self: Slot, other: Slot) bool {
-        return self.node == other.node and
+        return self.node_id == other.node_id and
             std.mem.eql(u8, self.title, other.title);
     }
 
     pub fn getSnapshot(self: Slot) SlotSnapshot {
         return .{
-            .node = self.node.id,
+            .node_id = self.node_id,
             .title = self.title,
         };
     }
 
-    pub fn fromSnapshot(
-        alloc: std.mem.Allocator,
-        snap: SlotSnapshot,
-        nodes: *std.ArrayList(Node),
-    ) !Slot {
+    pub fn fromSnapshot(alloc: std.mem.Allocator, snap: SlotSnapshot) !Slot {
         // find the node with the saved ID to get its pointer
-        var found_node: *Node = undefined;
-        for (nodes.items) |*node| {
-            if (node.id == snap.node) {
-                found_node = node;
-                return .{
-                    .node = found_node,
-                    .title = try alloc.dupeZ(u8, snap.title),
-                };
-            }
+        return .{
+            .node_id = snap.node_id,
+            .title = try alloc.dupeZ(u8, snap.title),
+        };
+    }
+
+    pub fn getNode(self: *Slot, nodes: *std.ArrayList(Node)) *Node {
+        for (nodes.items) |*n| {
+            if (self.node_id == n.id) return n;
         }
         unreachable;
     }
 };
 
 pub const SlotSnapshot = struct {
-    node: i32, // node id instead of runtime pointer
+    node_id: i32, // node id instead of runtime pointer
     title: []const u8,
 };
 
@@ -224,6 +233,18 @@ pub const Connection = struct {
     output_slot: Slot,
     input_slot: Slot,
 
+    pub fn init(output_slot: Slot, input_slot: Slot) Connection {
+        return .{
+            .output_slot = output_slot,
+            .input_slot = input_slot,
+        };
+    }
+
+    pub fn deinit(self: *Connection, alloc: std.mem.Allocator) void {
+        self.output_slot.deinit(alloc);
+        self.input_slot.deinit(alloc);
+    }
+
     pub fn equals(self: Connection, other: Connection) bool {
         return self.output_slot.equals(other.output_slot) and
             self.input_slot.equals(other.input_slot);
@@ -236,14 +257,10 @@ pub const Connection = struct {
         };
     }
 
-    pub fn fromSnapshot(
-        alloc: std.mem.Allocator,
-        snap: ConnectionSnapshot,
-        nodes: *std.ArrayList(Node),
-    ) !Connection {
+    pub fn fromSnapshot(alloc: std.mem.Allocator, snap: ConnectionSnapshot) !Connection {
         return .{
-            .output_slot = try Slot.fromSnapshot(alloc, snap.output_slot, nodes),
-            .input_slot = try Slot.fromSnapshot(alloc, snap.input_slot, nodes),
+            .output_slot = try Slot.fromSnapshot(alloc, snap.output_slot),
+            .input_slot = try Slot.fromSnapshot(alloc, snap.input_slot),
         };
     }
 };

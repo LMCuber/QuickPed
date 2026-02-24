@@ -9,6 +9,7 @@ const Graph = @import("Graph.zig");
 const Spawner = @import("../environment/Spawner.zig");
 const entity = @import("../environment/entity.zig");
 const Area = @import("../environment/Area.zig");
+const Environment = @import("../environment/Environment.zig");
 const Agent = @import("../Agent.zig");
 const imnodes = @import("imnodesez");
 
@@ -25,6 +26,18 @@ pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
     self.graph.deinit(allocator);
 }
 
+pub fn saveNodes(self: *Self, alloc: std.mem.Allocator, path: []const u8) !void {
+    try self.graph.saveNodes(alloc, path);
+}
+
+pub fn loadNodes(self: *Self, alloc: std.mem.Allocator, path: []const u8, env: *Environment) !void {
+    try self.graph.loadNodes(alloc, path, env);
+}
+
+pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, agents: *std.ArrayList(Agent)) !void {
+    try self.graph.processSpawners(alloc, agents);
+}
+
 pub fn render(
     self: *Self,
     allocator: std.mem.Allocator,
@@ -37,6 +50,7 @@ pub fn render(
     if (z.begin("Node editor", .{ .flags = .{ .no_scrollbar = true, .no_scroll_with_mouse = true } })) {
         // tutorial
         z.text("[a] to add node", .{});
+        z.text("[d] to delete node", .{});
         z.text("[c] to recenter", .{});
 
         imnodes.ez.beginCanvas();
@@ -111,9 +125,22 @@ pub fn render(
             }
         }
 
+        var selected_node: ?*node.Node = null;
+
         // render entire graph using imnodes
         for (self.graph.nodes.items) |*n| {
+            const node_state = n.update();
+            if (node_state == .selected) {
+                selected_node = n;
+            }
             n.draw();
+        }
+
+        // user wants to delete the currently selected node
+        if (selected_node) |n| {
+            if (rl.isKeyReleased(.key_d)) {
+                try self.graph.deleteNode(allocator, n);
+            }
         }
 
         // create new connections
@@ -129,12 +156,12 @@ pub fn render(
             // construct the in- and output the slots involved (see composite key)
             const input_slot: node.Slot = try node.Slot.init(
                 allocator,
-                new_conn.input_node.?,
+                new_conn.input_node.?.id,
                 new_conn.input_slot_title,
             );
             const output_slot: node.Slot = try node.Slot.init(
                 allocator,
-                new_conn.output_node.?,
+                new_conn.output_node.?.id,
                 new_conn.output_slot_title,
             );
 
@@ -143,11 +170,11 @@ pub fn render(
         }
 
         // render existing connections
-        for (self.graph.connections.items) |conn| {
+        for (self.graph.connections.items) |*conn| {
             // cast the *Node pointer types to *anyopaque because C++ wants that;
             // they're otherwise the same thing
-            const input_node_ptr: *anyopaque = @ptrCast(conn.input_slot.node);
-            const output_node_ptr: *anyopaque = @ptrCast(conn.output_slot.node);
+            const input_node_ptr: *anyopaque = @ptrCast(conn.input_slot.getNode(&self.graph.nodes));
+            const output_node_ptr: *anyopaque = @ptrCast(conn.output_slot.getNode(&self.graph.nodes));
             _ = imnodes.ez.connection(
                 input_node_ptr,
                 conn.input_slot.title,

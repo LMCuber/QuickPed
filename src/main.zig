@@ -116,7 +116,7 @@ pub fn main() !void {
     defer node_editor.deinit(allocator);
 
     try loadScene(allocator, "data/scene.json", &env);
-    try node_editor.graph.loadNodes(allocator, "data/nodes.json", &env);
+    try node_editor.loadNodes(allocator, "data/nodes.json", &env);
 
     // camera shenanigans
     const camera_default = rl.Camera2D{
@@ -283,37 +283,28 @@ pub fn main() !void {
 
                         // contour
                         if (EB.contourButton(bs)) {
-                            // free previous entities
-                            if (current_entity) |*ent| {
-                                ent.deinit(allocator);
-                            }
+                            resetCurrentEntity(allocator, &current_entity);
                             current_entity = try entity.Entity.initContour(allocator);
                         }
 
                         // spawner
                         z.sameLine(.{});
                         if (EB.spawnerButton(bs)) {
-                            if (current_entity) |*ent| {
-                                ent.deinit(allocator);
-                            }
+                            resetCurrentEntity(allocator, &current_entity);
                             current_entity = try entity.Entity.initSpawner(allocator);
                         }
 
                         // area
                         z.sameLine(.{});
                         if (EB.areaButton(bs)) {
-                            if (current_entity) |*ent| {
-                                ent.deinit(allocator);
-                            }
+                            resetCurrentEntity(allocator, &current_entity);
                             current_entity = try entity.Entity.initArea(allocator);
                         }
 
                         // revolver button
                         z.sameLine(.{});
                         if (EB.revolverButton(bs)) {
-                            if (current_entity) |*ent| {
-                                ent.deinit(allocator);
-                            }
+                            resetCurrentEntity(allocator, &current_entity);
                             current_entity = try entity.Entity.initRevolver(allocator);
                         }
 
@@ -329,7 +320,7 @@ pub fn main() !void {
                     // ------------------------------------------------------------------
 
                     // statistics header
-                    try stats.render(&agents);
+                    try stats.render(&agents, sim_data.paused);
 
                     // process new popups if placing entity gave .confirm signal
                     if (confirm_current) {
@@ -384,6 +375,12 @@ pub fn main() !void {
                             // confirm and cancel
                             if (z.button("cancel", .{})) {
                                 z.closeCurrentPopup();
+                                switch (current_entity.?.kind) {
+                                    .area => Area.next_id -= 1,
+                                    .contour => Contour.next_id -= 1,
+                                    .revolver => Revolver.next_id -= 1,
+                                    .spawner => Spawner.next_id -= 1,
+                                }
                                 current_entity.?.deinit(allocator);
                                 current_entity = null;
                             }
@@ -417,25 +414,37 @@ pub fn main() !void {
 
                     try node_editor.render(allocator, &env.entities);
                     if (!sim_data.paused) {
-                        try node_editor.graph.processSpawners(allocator, &agents);
+                        try node_editor.processSpawners(allocator, &agents);
                     }
                 }
             }
         }
     }
+    // deinit current entity and decrement the increased ID back to the previous since it hasn't been placed in the end
+    resetCurrentEntity(allocator, &current_entity);
 
     // save the simulation data, scene, nodes
     try agent_data.saveToFile(allocator, "data/agent_data.json");
     try sim_data.saveToFile(allocator, "data/sim_data.json");
     try saveScene(allocator, &env, "data/scene.json");
-    try node_editor.graph.saveNodes(allocator, "data/nodes.json");
+    try node_editor.saveNodes(allocator, "data/nodes.json");
 
-    // deinit all entity allocations
-    if (current_entity) |*ent| {
-        ent.deinit(allocator);
-    }
+    // dealloc all entities
     for (env.entities.items) |*ent| {
         ent.deinit(allocator);
+    }
+}
+
+pub fn resetCurrentEntity(alloc: std.mem.Allocator, current_entity: *?entity.Entity) void {
+    if (current_entity.*) |*ent| {
+        switch (ent.kind) {
+            .contour => Contour.next_id -= 1,
+            .spawner => Spawner.next_id -= 1,
+            .area => Area.next_id -= 1,
+            .revolver => Revolver.next_id -= 1,
+        }
+        entity.Entity.next_id -= 1;
+        ent.deinit(alloc);
     }
 }
 
@@ -562,10 +571,12 @@ pub fn clearEntities(env: *Environment, alloc: std.mem.Allocator) void {
     env.entities.clearRetainingCapacity();
     env.contours.clearRetainingCapacity();
     env.spawners.clearRetainingCapacity();
+    env.revolvers.clearRetainingCapacity();
 
     // reset the id variables
     entity.Entity.next_id = 0;
     Contour.next_id = 0;
     Spawner.next_id = 0;
     Area.next_id = 0;
+    Revolver.next_id = 0;
 }

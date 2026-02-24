@@ -15,6 +15,7 @@ placed: bool = false,
 angle: f32 = 0, // degrees
 speed: i32 = 37, // degrees
 length: i32 = 50,
+clockwise: bool = false, // counterclockwise rotation
 
 pub var next_id: i32 = 0;
 
@@ -23,6 +24,7 @@ pub const RevolverSnapshot = struct {
     pos: rl.Vector2,
     speed: i32,
     length: i32,
+    clockwise: bool,
 };
 
 pub fn init() Self {
@@ -37,6 +39,7 @@ pub fn getSnapshot(self: Self) RevolverSnapshot {
         .pos = self.pos,
         .speed = self.speed,
         .length = self.length,
+        .clockwise = self.clockwise,
     };
 }
 
@@ -47,6 +50,7 @@ pub fn fromSnapshot(snap: RevolverSnapshot) Self {
         .speed = snap.speed,
         .length = snap.length,
         .placed = true,
+        .clockwise = snap.clockwise,
     };
 }
 
@@ -56,7 +60,8 @@ pub fn nextId() i32 {
 }
 
 pub fn update(self: *Self, dt: f32, sim_data: SimData, settings: Settings) !Entity.EntityAction {
-    self.angle -= @as(f32, @floatFromInt(self.speed)) * dt;
+    self.angle -= @as(f32, @floatFromInt(self.speed)) * dt *
+        (if (self.clockwise) @as(f32, -1) else @as(f32, 1));
     if (self.angle >= 360) {
         self.angle = @rem(self.angle, 360.0);
     }
@@ -77,6 +82,7 @@ pub fn confirm(self: *Self) void {
     _ = z.inputInt("length", .{ .v = &self.length });
     z.setNextItemWidth(w);
     _ = z.inputInt("speed ", .{ .v = &self.speed });
+    _ = z.checkbox("clockwise", .{ .v = &self.clockwise });
 }
 
 pub fn getRotatedVector(self: Self, a: f32) rl.Vector2 {

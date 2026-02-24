@@ -1,9 +1,13 @@
 # Very quick pedestrian flow simulation
 
+## What
 To view the paper we have written on this subject: [overleaf link](https://www.overleaf.com/project/66f667ffb591f8ff65cffdd8) (broken)
 
 * Go to the [backlog](#project-backlog) to see the planned features.
-* Go to [my previous Python implementation](htt ps://www.github.com/lmcuber/agentbasedmodel) without a node editor for some spaghetti code
+* Go to [my previous Python implementation](https://www.github.com/lmcuber/agentbasedmodel) without a node editor for some spaghetti code
+
+## Why
+
 
 # Previews
 ![main](previews/main.png "main")
@@ -16,13 +20,13 @@ Later Zig versions are not guaranteed to build correctly.
 
 # Planned features
 - [x] Social force model for pedestrians based on [the works](https://www.researchgate.net/publication/1947096_Social_Force_Model_for_Pedestrian_Dynamics) of _Helbing et al_.
-- [x] A blueprint system
+- [ ] A blueprint system
     - [x] Working nodes
     - [x] Persistence across runs
     - [ ] Deleting nodes and connections
 - [ ] Statistics
     - [x] Showing number of (waiting) pedestrians
-    - [ ] Heatmap showing bottlenecks during simulation
+    - [x] Heatmap showing bottlenecks during simulation
 - [ ] Advanced environmental objects
     - [ ] queues
     - [x] revolving doors

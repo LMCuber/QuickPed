@@ -80,7 +80,7 @@ pub fn decay_map(self: *Self) void {
     }
 }
 
-pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
+pub fn render(self: *Self, agents: *std.ArrayList(Agent), paused: bool) !void {
     if (z.collapsingHeader("Statistics", .{ .default_open = false })) {
         _ = z.checkbox("Graph", .{ .v = &self.render_checks.graph });
         z.sameLine(.{});
@@ -149,7 +149,7 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
             z.separatorText("Heatmap");
 
             // exponential decay for all grid items
-            self.decay_map();
+            if (!paused) self.decay_map();
 
             // change palette
             z.setNextItemWidth(90);
