@@ -4,5 +4,4 @@ zig-out
 imgui.ini
 .DS_Store
 
-data/scene.json
-data/nodes.json
+data/

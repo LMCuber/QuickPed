@@ -387,6 +387,8 @@ pub fn main() !void {
                             z.sameLine(.{});
                             if (z.button("confirm", .{}) and !duplicate_name) {
                                 z.closeCurrentPopup();
+
+                                // insert created entity into correct spot
                                 try env.entities.append(current_entity.?);
                                 const new_entity: *entity.Entity = &env.entities.items[env.entities.items.len - 1];
 
