@@ -9,7 +9,6 @@ const SimData = @import("../editor/SimData.zig");
 const Settings = @import("../Settings.zig");
 const Entity = @import("../environment/entity.zig").Entity;
 
-revolver_id: i32,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 placed: bool = false,
 angle: f32 = 0, // degrees
@@ -17,10 +16,7 @@ speed: i32 = 37, // degrees
 length: i32 = 50,
 clockwise: bool = false, // counterclockwise rotation
 
-pub var next_id: i32 = 0;
-
 pub const RevolverSnapshot = struct {
-    revolver_id: i32,
     pos: rl.Vector2,
     speed: i32,
     length: i32,
@@ -28,14 +24,11 @@ pub const RevolverSnapshot = struct {
 };
 
 pub fn init() Self {
-    return .{
-        .revolver_id = nextId(),
-    };
+    return .{};
 }
 
 pub fn getSnapshot(self: Self) RevolverSnapshot {
     return .{
-        .revolver_id = self.revolver_id,
         .pos = self.pos,
         .speed = self.speed,
         .length = self.length,
@@ -45,18 +38,12 @@ pub fn getSnapshot(self: Self) RevolverSnapshot {
 
 pub fn fromSnapshot(snap: RevolverSnapshot) Self {
     return .{
-        .revolver_id = snap.revolver_id,
         .pos = snap.pos,
         .speed = snap.speed,
         .length = snap.length,
         .placed = true,
         .clockwise = snap.clockwise,
     };
-}
-
-pub fn nextId() i32 {
-    next_id += 1;
-    return next_id - 1;
 }
 
 pub fn update(self: *Self, dt: f32, sim_data: SimData, settings: Settings) !Entity.EntityAction {

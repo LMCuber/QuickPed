@@ -15,6 +15,7 @@ const Area = @import("environment/Area.zig");
 const node = @import("nodes/node.zig");
 const Graph = @import("nodes/Graph.zig");
 const Environment = @import("environment/Environment.zig");
+const entity = @import("environment/entity.zig");
 const Stats = @import("editor/Stats.zig");
 const Settings = @import("Settings.zig");
 
@@ -144,7 +145,9 @@ fn calculateObstacleForce(
     var force: rl.Vector2 = .{ .x = 0, .y = 0 };
 
     // iterate over all contour objects
-    for (env.contours.items) |contour| {
+    for (env.contours.items) |contour_id| {
+        const contour: Contour = env.getEntity(contour_id).kind.contour;
+
         // iterate over all line segements in that contour
         for (0..contour.points.items.len) |i| {
             if (i == contour.points.items.len - 1) continue;
@@ -157,7 +160,9 @@ fn calculateObstacleForce(
     }
 
     // iterate over all the revolvers
-    for (env.revolvers.items) |revolver| {
+    for (env.revolvers.items) |revolver_id| {
+        const revolver: Revolver = env.getEntity(revolver_id).kind.revolver;
+
         // get 4 rotational symmetries
         for (0..4) |i| {
             const a: f32 = @as(f32, @floatFromInt(i)) * 0.5 * std.math.pi;

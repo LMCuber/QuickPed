@@ -41,7 +41,7 @@ pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, agents: *std.Array
 pub fn render(
     self: *Self,
     allocator: std.mem.Allocator,
-    entities: *std.ArrayList(entity.Entity),
+    env: *Environment,
 ) !void {
     if (rl.isKeyPressed(.key_space)) {
         self.active = !self.active;
@@ -73,8 +73,9 @@ pub fn render(
 
                 // check if there are any spawners
                 var first_spawner: ?*Spawner = null;
-                for (entities.items) |*ent| {
-                    switch (ent.kind) {
+                for (env.entities[0..]) |*eslot| {
+                    if (!eslot.alive) continue;
+                    switch (eslot.entity.kind) {
                         .spawner => |*spawner| {
                             first_spawner = spawner;
                             break;
@@ -85,7 +86,7 @@ pub fn render(
                 if (z.menuItem("Spawner", .{ .enabled = first_spawner != null })) {
                     if (first_spawner) |_| {
                         try self.graph.addNode(node.Node.initSpawner(
-                            entities,
+                            env,
                             1_000,
                         ));
                     }
@@ -93,8 +94,9 @@ pub fn render(
 
                 // check if there are any areas
                 var first_area: ?*Area = null;
-                for (entities.items) |*ent| {
-                    switch (ent.kind) {
+                for (env.entities[0..]) |*eslot| {
+                    if (!eslot.alive) continue;
+                    switch (eslot.entity.kind) {
                         .area => |*area| {
                             first_area = area;
                             break;
@@ -102,26 +104,26 @@ pub fn render(
                         inline else => {},
                     }
                 }
-                if (z.menuItem("Area", .{ .enabled = first_area != null })) {
-                    if (first_area != null) {
-                        try self.graph.addNode(node.Node.initArea(
-                            entities,
-                            .{ .constant = .{
-                                .wait = 1000,
-                            } },
-                        ));
-                    }
-                }
+                // if (z.menuItem("Area", .{ .enabled = first_area != null })) {
+                //     if (first_area != null) {
+                //         try self.graph.addNode(node.Node.initArea(
+                //             entities,
+                //             .{ .constant = .{
+                //                 .wait = 1000,
+                //             } },
+                //         ));
+                //     }
+                // }
 
                 // // fork node
-                if (z.menuItem("Fork", .{})) {
-                    try self.graph.addNode(node.Node.initFork());
-                }
+                // if (z.menuItem("Fork", .{})) {
+                //     try self.graph.addNode(node.Node.initFork());
+                // }
 
-                // sink node
-                if (z.menuItem("Sink", .{})) {
-                    try self.graph.addNode(node.Node.initSink());
-                }
+                // // sink node
+                // if (z.menuItem("Sink", .{})) {
+                //     try self.graph.addNode(node.Node.initSink());
+                // }
             }
         }
 
