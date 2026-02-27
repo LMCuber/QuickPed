@@ -34,6 +34,10 @@ pub fn loadNodes(self: *Self, alloc: std.mem.Allocator, path: []const u8, env: *
     try self.graph.loadNodes(alloc, path, env);
 }
 
+pub fn update(self: *Self, alloc: std.mem.Allocator, agents: *std.ArrayList(Agent)) !void {
+    try self.processSpawners(alloc, agents);
+}
+
 pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, agents: *std.ArrayList(Agent)) !void {
     try self.graph.processSpawners(alloc, agents);
 }
@@ -104,16 +108,16 @@ pub fn render(
                         inline else => {},
                     }
                 }
-                // if (z.menuItem("Area", .{ .enabled = first_area != null })) {
-                //     if (first_area != null) {
-                //         try self.graph.addNode(node.Node.initArea(
-                //             entities,
-                //             .{ .constant = .{
-                //                 .wait = 1000,
-                //             } },
-                //         ));
-                //     }
-                // }
+                if (z.menuItem("Area", .{ .enabled = first_area != null })) {
+                    if (first_area != null) {
+                        try self.graph.addNode(node.Node.initArea(
+                            env,
+                            .{ .constant = .{
+                                .wait = 1000,
+                            } },
+                        ));
+                    }
+                }
 
                 // // fork node
                 // if (z.menuItem("Fork", .{})) {

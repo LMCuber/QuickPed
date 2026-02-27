@@ -113,6 +113,18 @@ pub const Node = struct {
         };
     }
 
+    pub fn initArea(env: *Environment, wait: AreaWait) Node {
+        return .{
+            .id = Node.nextId(),
+            .kind = .{
+                .area = .{
+                    .env = env,
+                    .wait = wait,
+                },
+            },
+        };
+    }
+
     // pub fn initFork() Node {
     //     return .{
     //         .id = Node.nextId(),
@@ -127,18 +139,6 @@ pub const Node = struct {
     //         .id = Node.nextId(),
     //         .kind = .{
     //             .sink = .{},
-    //         },
-    //     };
-    // }
-
-    // pub fn initArea(entities: *std.ArrayList(entity.Entity), wait: AreaWait) Node {
-    //     return .{
-    //         .id = Node.nextId(),
-    //         .kind = .{
-    //             .area = .{
-    //                 .entities = entities,
-    //                 .wait = wait,
-    //             },
     //         },
     //     };
     // }
@@ -314,7 +314,7 @@ pub const SpawnerNode = struct {
     }
 
     pub fn getSpawner(self: *SpawnerNode) *Spawner {
-        return &self.env.getEntity(@intCast(self.spawner_index)).kind.spawner;
+        return &self.env.getEntity(self.env.spawners.items[@intCast(self.spawner_index)]).kind.spawner;
     }
 
     pub fn draw(
@@ -457,13 +457,10 @@ pub const AreaNode = struct {
     }
 
     pub fn getArea(self: *AreaNode) *Area {
-        return &self.env.getEntity(@intCast(self.area_index)).kind.area;
+        return &self.env.getEntity(self.env.areas.items[@intCast(self.area_index)]).kind.area;
     }
 
-    pub fn draw(
-        self: *AreaNode,
-        parent: *Node,
-    ) void {
+    pub fn draw(self: *AreaNode, parent: *Node) void {
         const node_width: f32 = 120;
 
         imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.light_blue));

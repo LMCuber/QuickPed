@@ -4,13 +4,14 @@ const Contour = @import("Contour.zig");
 const Spawner = @import("Spawner.zig");
 const Area = @import("Area.zig");
 const Revolver = @import("Revolver.zig");
+const Environment = @import("Environment.zig");
 const commons = @import("../commons.zig");
 const std = @import("std");
 const rl = @import("raylib");
 
 pub const EntitySlot = struct {
     entity: Entity,
-    gen: u32,
+    gen: u32 = 0,
     alive: bool = true,
 };
 
@@ -50,7 +51,7 @@ pub const Entity = struct {
     //
     pub fn buildNameComboString(
         comptime kind_tag: std.meta.Tag(Entity.Kind),
-        entities: *[1024]EntitySlot,
+        entities: *[Environment.MAX_ENTITIES]EntitySlot,
         buf: []u8,
     ) [:0]u8 {
         var pos: usize = 0;
@@ -83,9 +84,9 @@ pub const Entity = struct {
         self.name = try alloc.dupeZ(u8, new_name);
     }
 
-    pub fn initContour(allocator: std.mem.Allocator) !Entity {
+    pub fn initContour(allocator: std.mem.Allocator, id: usize) !Entity {
         const contour = try Contour.init(allocator);
-        const name = try std.fmt.allocPrintZ(allocator, "Contour{}", .{contour.contour_id});
+        const name = try std.fmt.allocPrintZ(allocator, "Contour{}", .{id});
         return .{
             .name = name,
             .kind = .{
@@ -105,9 +106,9 @@ pub const Entity = struct {
         };
     }
 
-    pub fn initArea(allocator: std.mem.Allocator) !Entity {
+    pub fn initArea(allocator: std.mem.Allocator, id: usize) !Entity {
         const area = Area.init();
-        const name = try std.fmt.allocPrintZ(allocator, "Area{}", .{area.area_id});
+        const name = try std.fmt.allocPrintZ(allocator, "Area{}", .{id});
         return .{
             .name = name,
             .kind = .{
@@ -116,9 +117,9 @@ pub const Entity = struct {
         };
     }
 
-    pub fn initRevolver(allocator: std.mem.Allocator) !Entity {
+    pub fn initRevolver(allocator: std.mem.Allocator, id: usize) !Entity {
         const revolver = Revolver.init();
-        const name = try std.fmt.allocPrintZ(allocator, "Revolver{}", .{revolver.revolver_id});
+        const name = try std.fmt.allocPrintZ(allocator, "Revolver{}", .{id});
         return .{
             .name = name,
             .kind = .{
