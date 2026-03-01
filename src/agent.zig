@@ -15,6 +15,7 @@ const Area = @import("environment/Area.zig");
 const node = @import("nodes/node.zig");
 const Graph = @import("nodes/Graph.zig");
 const Environment = @import("environment/Environment.zig");
+const Manager = @import("Manager.zig").Manager;
 const entity = @import("environment/entity.zig");
 const Stats = @import("editor/Stats.zig");
 const Settings = @import("Settings.zig");
@@ -27,19 +28,14 @@ vel: rl.Vector2 = .{ .x = 0, .y = 0 },
 acc: rl.Vector2 = .{ .x = 0, .y = 0 },
 
 graph: *Graph,
-current_node: ?*node.Node = null,
+current_node_id: ?usize = null,
 wait: i32 = 0,
 last_wait: f64 = 0,
 waiting: bool = false,
 
 marked: bool = false, // marked to delete later
 
-pub fn init(
-    alloc: std.mem.Allocator,
-    pos: rl.Vector2,
-    spawner_node: *node.Node,
-    graph: *Graph,
-) !Self {
+pub fn init(alloc: std.mem.Allocator, pos: rl.Vector2, spawner_node_id: usize, graph: *Graph) !Self {
     const col: rl.Color = color.getAgentColor();
     var obj = Self{
         .pos = pos,
@@ -47,22 +43,25 @@ pub fn init(
         .col = col,
         .graph = graph,
     };
-    obj.current_node = spawner_node;
-    try obj.traverseFromCurrent(alloc);
+    obj.current_node_id = spawner_node_id;
+    try obj.traverseFromCurrent(alloc, &graph.nodes);
     return obj;
 }
 
-pub fn traverseFromCurrent(self: *Self, alloc: std.mem.Allocator) !void {
-    // check if current node exists at all to traverse from
-    const from_node: *node.Node = self.current_node orelse unreachable;
-
+pub fn traverseFromCurrent(
+    self: *Self,
+    alloc: std.mem.Allocator,
+    nodes: *Graph.NodeManager,
+) !void {
     // get the next node from graph and then process it
-    if (try self.graph.getNextNode(alloc, from_node)) |next| {
+    if (try self.graph.getNextNodeId(alloc, self.current_node_id.?)) |next_node_id| {
         // set current node to next by default (might be changed by e.g. fork)
-        self.current_node = next;
+        self.current_node_id = next_node_id;
+
+        const next_node: *node.Node = nodes.getItem(next_node_id);
 
         // check what type of node the next found node is
-        switch (next.kind) {
+        switch (next_node.kind) {
             .spawner => unreachable,
             .area => |*area_node| {
                 self.target_area = area_node.getArea();
@@ -74,8 +73,8 @@ pub fn traverseFromCurrent(self: *Self, alloc: std.mem.Allocator) !void {
                 self.marked = true;
             },
             .fork => {
-                self.current_node = next;
-                try self.traverseFromCurrent(alloc);
+                self.current_node_id = next_node_id;
+                try self.traverseFromCurrent(alloc, nodes);
             },
         }
     } else {
@@ -88,29 +87,28 @@ pub fn traverseFromCurrent(self: *Self, alloc: std.mem.Allocator) !void {
 
 /// every frame, processCurrentNode checks what node we are on currently, and then
 /// checks (for example) if we need to start waiting because we entered radius of waiting area
-pub fn processCurrentNode(self: *Self, alloc: std.mem.Allocator) !void {
-    if (self.current_node) |n| {
-        switch (n.kind) {
-            .area => |*area_node| {
-                // check should start waiting
-                if (!self.waiting) {
-                    // start waiting if in bounds
-                    if (rl.checkCollisionPointRec(self.pos, self.target_area.?.rect)) {
-                        self.wait = area_node.getWaitTime();
-                        self.waiting = true;
-                        self.last_wait = commons.getTimeMillis();
-                    }
-                } else {
-                    // is already waiting; check if waited long enough in the area
-                    const time: f64 = commons.getTimeMillis();
-                    if (time - self.last_wait >= @as(f64, @floatFromInt(self.wait))) {
-                        // waited long enough. continue
-                        try self.traverseFromCurrent(alloc);
-                    }
+pub fn processCurrentNode(self: *Self, alloc: std.mem.Allocator, nodes: *Graph.NodeManager) !void {
+    const current_node: *node.Node = nodes.getItem(self.current_node_id.?);
+    switch (current_node.kind) {
+        .area => |*area_node| {
+            // check should start waiting
+            if (!self.waiting) {
+                // start waiting if in bounds
+                if (rl.checkCollisionPointRec(self.pos, self.target_area.?.rect)) {
+                    self.wait = area_node.getWaitTime();
+                    self.waiting = true;
+                    self.last_wait = commons.getTimeMillis();
                 }
-            },
-            inline else => {},
-        }
+            } else {
+                // is already waiting; check if waited long enough in the area
+                const time: f64 = commons.getTimeMillis();
+                if (time - self.last_wait >= @as(f64, @floatFromInt(self.wait))) {
+                    // waited long enough. continue
+                    try self.traverseFromCurrent(alloc, nodes);
+                }
+            }
+        },
+        else => {},
     }
 }
 
@@ -146,7 +144,7 @@ fn calculateObstacleForce(
 
     // iterate over all contour objects
     for (env.contours.items) |contour_id| {
-        const contour: Contour = env.getEntity(contour_id).kind.contour;
+        const contour: Contour = env.entities.getItem(contour_id).kind.contour;
 
         // iterate over all line segements in that contour
         for (0..contour.points.items.len) |i| {
@@ -161,7 +159,7 @@ fn calculateObstacleForce(
 
     // iterate over all the revolvers
     for (env.revolvers.items) |revolver_id| {
-        const revolver: Revolver = env.getEntity(revolver_id).kind.revolver;
+        const revolver: Revolver = env.entities.getItem(revolver_id).kind.revolver;
 
         // get 4 rotational symmetries
         for (0..4) |i| {
@@ -209,6 +207,7 @@ pub fn update(
     agent_data: AgentData,
     n_rows: i32,
     n_cols: i32,
+    nodes: *Graph.NodeManager,
 ) !void {
     // get force components
     const drive_force = self.calculateDriveForce(agent_data);
@@ -226,7 +225,7 @@ pub fn update(
     self.update_heatmap(stats, settings, n_rows, n_cols);
 
     // process node
-    try self.processCurrentNode(alloc);
+    try self.processCurrentNode(alloc, nodes);
 }
 
 pub fn update_heatmap(self: *Self, stats: *Stats, settings: Settings, n_rows: i32, n_cols: i32) void {

@@ -131,9 +131,9 @@ pub fn main() !void {
             {
                 if (!sim_data.paused) {
                     // update all placed entities
-                    for (env.entities[0..]) |*eslot| {
+                    for (&env.entities.items) |*eslot| {
                         if (eslot.alive) {
-                            _ = try eslot.entity.update(
+                            _ = try eslot.value.update(
                                 dt,
                                 sim_data,
                                 settings,
@@ -167,6 +167,7 @@ pub fn main() !void {
                             agent_data,
                             n_rows,
                             n_cols,
+                            &node_editor.graph.nodes,
                         );
                     }
                     // cleanup to be deleted agents
@@ -211,9 +212,9 @@ pub fn main() !void {
                 }
 
                 // render all the entities
-                for (env.entities[0..]) |*eslot| {
+                for (&env.entities.items) |*eslot| {
                     if (!eslot.alive) continue;
-                    eslot.entity.draw();
+                    eslot.value.draw();
                 }
 
                 // render the in-progress selected entity
@@ -260,7 +261,7 @@ pub fn main() !void {
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
                         const bs: i32 = 50;
 
-                        const next_id: usize = env.free_count - 1;
+                        const next_id: usize = env.entities.free_count - 1;
 
                         // contour
                         if (EB.contourButton(bs)) {
@@ -331,9 +332,9 @@ pub fn main() !void {
 
                             // if name already exists, display that
                             var duplicate_name: bool = false;
-                            for (env.entities[0..]) |*inner_eslot| {
+                            for (env.entities.items[0..]) |*inner_eslot| {
                                 if (!inner_eslot.alive) continue;
-                                if (std.mem.eql(u8, inner_eslot.entity.name, name_str)) {
+                                if (std.mem.eql(u8, inner_eslot.value.name, name_str)) {
                                     duplicate_name = true;
                                 }
                             }
@@ -348,7 +349,7 @@ pub fn main() !void {
                             switch (ent.kind) {
                                 .area => |*a| a.confirm(),
                                 .revolver => |*r| r.confirm(),
-                                inline else => {},
+                                else => {},
                             }
 
                             z.newLine();
@@ -400,9 +401,9 @@ pub fn main() !void {
     try node_editor.saveNodes(allocator, "data/nodes.json");
 
     // dealloc all entities
-    for (env.entities[0..]) |*eslot| {
+    for (&env.entities.items) |*eslot| {
         if (!eslot.alive) continue;
-        eslot.entity.deinit(allocator);
+        eslot.value.deinit(allocator);
     }
 }
 

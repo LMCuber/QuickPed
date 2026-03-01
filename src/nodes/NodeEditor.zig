@@ -77,14 +77,14 @@ pub fn render(
 
                 // check if there are any spawners
                 var first_spawner: ?*Spawner = null;
-                for (env.entities[0..]) |*eslot| {
+                for (&env.entities.items) |*eslot| {
                     if (!eslot.alive) continue;
-                    switch (eslot.entity.kind) {
+                    switch (eslot.value.kind) {
                         .spawner => |*spawner| {
                             first_spawner = spawner;
                             break;
                         },
-                        inline else => {},
+                        else => {},
                     }
                 }
                 if (z.menuItem("Spawner", .{ .enabled = first_spawner != null })) {
@@ -98,14 +98,14 @@ pub fn render(
 
                 // check if there are any areas
                 var first_area: ?*Area = null;
-                for (env.entities[0..]) |*eslot| {
+                for (&env.entities.items) |*eslot| {
                     if (!eslot.alive) continue;
-                    switch (eslot.entity.kind) {
+                    switch (eslot.value.kind) {
                         .area => |*area| {
                             first_area = area;
                             break;
                         },
-                        inline else => {},
+                        else => {},
                     }
                 }
                 if (z.menuItem("Area", .{ .enabled = first_area != null })) {
@@ -119,7 +119,7 @@ pub fn render(
                     }
                 }
 
-                // // fork node
+                // fork node
                 // if (z.menuItem("Fork", .{})) {
                 //     try self.graph.addNode(node.Node.initFork());
                 // }
@@ -134,20 +134,21 @@ pub fn render(
         var selected_node: ?*node.Node = null;
 
         // render entire graph using imnodes
-        for (self.graph.nodes.items) |*n| {
-            const node_state = n.update();
+        for (&self.graph.nodes.items) |*nslot| {
+            if (!nslot.alive) continue;
+            const node_state = nslot.value.update();
             if (node_state == .selected) {
-                selected_node = n;
+                selected_node = &nslot.value;
             }
-            n.draw();
+            nslot.value.draw();
         }
 
         // user wants to delete the currently selected node
-        if (selected_node) |n| {
-            if (rl.isKeyReleased(.key_d)) {
-                try self.graph.deleteNode(allocator, n);
-            }
-        }
+        // if (selected_node) |n| {
+        //     if (rl.isKeyReleased(.key_d)) {
+        //         try self.graph.deleteNode(allocator, n);
+        //     }
+        // }
 
         // create new connections
         var new_conn: node.NewConnection = .{};
@@ -159,15 +160,19 @@ pub fn render(
             output_node_ptr_ptr,
             &new_conn.output_slot_title,
         )) {
+            // scan which node id the ptrs correspond to
+            const input_node_id = self.graph.nodes.scan(new_conn.input_node.?).?;
+            const output_node_id = self.graph.nodes.scan(new_conn.output_node.?).?;
+
             // construct the in- and output the slots involved (see composite key)
             const input_slot: node.Slot = try node.Slot.init(
                 allocator,
-                new_conn.input_node.?.id,
+                input_node_id,
                 new_conn.input_slot_title,
             );
             const output_slot: node.Slot = try node.Slot.init(
                 allocator,
-                new_conn.output_node.?.id,
+                output_node_id,
                 new_conn.output_slot_title,
             );
 
@@ -177,10 +182,11 @@ pub fn render(
 
         // render existing connections
         for (self.graph.connections.items) |*conn| {
-            // cast the *Node pointer types to *anyopaque because C++ wants that;
+            // cast the *Node pointer types to *anyopaque because C++ wants that
             // they're otherwise the same thing
-            const input_node_ptr: *anyopaque = @ptrCast(conn.input_slot.getNode(&self.graph.nodes));
-            const output_node_ptr: *anyopaque = @ptrCast(conn.output_slot.getNode(&self.graph.nodes));
+            const input_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.getItem(conn.input_slot.node_id));
+            const output_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.getItem(conn.output_slot.node_id));
+
             _ = imnodes.ez.connection(
                 input_node_ptr,
                 conn.input_slot.title,

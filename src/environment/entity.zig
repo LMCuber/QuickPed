@@ -5,15 +5,10 @@ const Spawner = @import("Spawner.zig");
 const Area = @import("Area.zig");
 const Revolver = @import("Revolver.zig");
 const Environment = @import("Environment.zig");
+const Manager = @import("../Manager.zig").Manager;
 const commons = @import("../commons.zig");
 const std = @import("std");
 const rl = @import("raylib");
-
-pub const EntitySlot = struct {
-    entity: Entity,
-    gen: u32 = 0,
-    alive: bool = true,
-};
 
 pub const EntitySnapshot = struct {
     name: [:0]const u8,
@@ -51,18 +46,18 @@ pub const Entity = struct {
     //
     pub fn buildNameComboString(
         comptime kind_tag: std.meta.Tag(Entity.Kind),
-        entities: *[Environment.MAX_ENTITIES]EntitySlot,
+        entities: *Manager(Entity, Environment.MAX_ENTITIES),
         buf: []u8,
     ) [:0]u8 {
         var pos: usize = 0;
 
-        for (entities) |*eslot| {
-            if (eslot.entity.kind == kind_tag) {
+        for (&entities.items) |*eslot| {
+            if (eslot.value.kind == kind_tag) {
                 @memcpy(
-                    buf[pos..][0..eslot.entity.name.len],
-                    eslot.entity.name,
+                    buf[pos..][0..eslot.value.name.len],
+                    eslot.value.name,
                 );
-                pos += eslot.entity.name.len;
+                pos += eslot.value.name.len;
                 buf[pos] = 0;
                 pos += 1;
             }

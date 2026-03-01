@@ -13,6 +13,7 @@ const commons = @import("../commons.zig");
 const palette = @import("../palette.zig");
 const entity = @import("../environment/entity.zig");
 const Environment = @import("../environment/Environment.zig");
+const Manager = @import("../Manager.zig").Manager;
 
 fn setNextItemWidth(width: f32) void {
     const zoom: f32 = imnodes.getZoom(imnodes.ez.getState());
@@ -20,7 +21,6 @@ fn setNextItemWidth(width: f32) void {
 }
 
 pub const NodeSnapshot = struct {
-    id: i32,
     pos: imnodes.Vec2 = .{ .x = 230, .y = 230 },
     kind: Kind,
 
@@ -33,9 +33,6 @@ pub const NodeSnapshot = struct {
 };
 
 pub const Node = struct {
-    pub var next_id: i32 = 0;
-
-    id: i32,
     pos: imnodes.Vec2 = .{ .x = 230, .y = 230 },
     selected: bool = false,
     kind: Kind,
@@ -52,9 +49,12 @@ pub const Node = struct {
         selected,
     };
 
+    pub fn equals(self: *Node, other: *Node) bool {
+        return self == other;
+    }
+
     pub fn getSnapshot(self: Node) NodeSnapshot {
         return .{
-            .id = self.id,
             .pos = self.pos,
             .kind = switch (self.kind) {
                 inline else => |k, tag| @unionInit(
@@ -71,7 +71,6 @@ pub const Node = struct {
         env: *Environment,
     ) Node {
         return .{
-            .id = snap.id,
             .pos = snap.pos,
             .kind = switch (snap.kind) {
                 .sink => |sk| .{ .sink = SinkNode.fromSnapshot(sk) },
@@ -80,11 +79,6 @@ pub const Node = struct {
                 .fork => |sk| .{ .fork = ForkNode.fromSnapshot(sk) },
             },
         };
-    }
-
-    pub fn nextId() i32 {
-        next_id += 1;
-        return next_id - 1;
     }
 
     pub fn update(self: *Node) NodeState {
@@ -103,7 +97,6 @@ pub const Node = struct {
 
     pub fn initSpawner(env: *Environment, wait: i32) Node {
         return .{
-            .id = Node.nextId(),
             .kind = .{
                 .spawner = .{
                     .env = env,
@@ -115,7 +108,6 @@ pub const Node = struct {
 
     pub fn initArea(env: *Environment, wait: AreaWait) Node {
         return .{
-            .id = Node.nextId(),
             .kind = .{
                 .area = .{
                     .env = env,
@@ -127,7 +119,6 @@ pub const Node = struct {
 
     // pub fn initFork() Node {
     //     return .{
-    //         .id = Node.nextId(),
     //         .kind = .{
     //             .fork = .{},
     //         },
@@ -136,7 +127,6 @@ pub const Node = struct {
 
     // pub fn initSink() Node {
     //     return .{
-    //         .id = Node.nextId(),
     //         .kind = .{
     //             .sink = .{},
     //         },
@@ -145,11 +135,12 @@ pub const Node = struct {
 };
 
 // slot is identified by composite key: (node_ptr, title)
+// since title weakly identifies inside a node
 pub const Slot = struct {
-    node_id: i32,
+    node_id: usize,
     title: [:0]const u8,
 
-    pub fn init(alloc: std.mem.Allocator, node_id: i32, title: [*c]const u8) !Slot {
+    pub fn init(alloc: std.mem.Allocator, node_id: usize, title: [*c]const u8) !Slot {
         return .{
             .node_id = node_id,
             .title = try commons.dupeCStr(alloc, title),
@@ -179,17 +170,10 @@ pub const Slot = struct {
             .title = try alloc.dupeZ(u8, snap.title),
         };
     }
-
-    pub fn getNode(self: *Slot, nodes: *std.ArrayList(Node)) *Node {
-        for (nodes.items) |*n| {
-            if (self.node_id == n.id) return n;
-        }
-        unreachable;
-    }
 };
 
 pub const SlotSnapshot = struct {
-    node_id: i32, // node id instead of runtime pointer
+    node_id: usize, // node id instead of runtime pointer
     title: []const u8,
 };
 
@@ -314,7 +298,7 @@ pub const SpawnerNode = struct {
     }
 
     pub fn getSpawner(self: *SpawnerNode) *Spawner {
-        return &self.env.getEntity(self.env.spawners.items[@intCast(self.spawner_index)]).kind.spawner;
+        return &self.env.entities.getItem(self.env.spawners.items[@intCast(self.spawner_index)]).kind.spawner;
     }
 
     pub fn draw(
@@ -366,12 +350,12 @@ pub const SpawnerNode = struct {
         alloc: std.mem.Allocator,
         agents: *std.ArrayList(Agent),
         graph: *Graph,
-        parent: *Node,
+        node_id: usize,
     ) !void {
         const time: f64 = commons.getTimeMillis();
         if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {
             const pos: rl.Vector2 = self.getSpawner().randomSpawnPos();
-            const a = try Agent.init(alloc, pos, parent, graph);
+            const a = try Agent.init(alloc, pos, node_id, graph);
             try agents.append(a);
 
             // reset last spawn
@@ -457,7 +441,7 @@ pub const AreaNode = struct {
     }
 
     pub fn getArea(self: *AreaNode) *Area {
-        return &self.env.getEntity(self.env.areas.items[@intCast(self.area_index)]).kind.area;
+        return &self.env.entities.getItem(self.env.areas.items[@intCast(self.area_index)]).kind.area;
     }
 
     pub fn draw(self: *AreaNode, parent: *Node) void {
