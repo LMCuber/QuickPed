@@ -9,44 +9,31 @@ const SimData = @import("../editor/SimData.zig");
 const Settings = @import("../Settings.zig");
 const Agent = @import("../Agent.zig");
 
-spawner_id: i32,
 points: [2]rl.Vector2 = undefined,
 point_count: usize = 0,
 placed: bool = false,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 
-pub var next_id: i32 = 0;
-
 pub const SpawnerSnapshot = struct {
-    spawner_id: i32,
     points: [2]rl.Vector2,
 };
 
 pub fn init() Self {
-    return .{
-        .spawner_id = nextId(),
-    };
+    return .{};
 }
 
 pub fn getSnapshot(self: Self) SpawnerSnapshot {
     return .{
-        .spawner_id = self.spawner_id,
         .points = self.points,
     };
 }
 
 pub fn fromSnapshot(snap: SpawnerSnapshot) Self {
     return .{
-        .spawner_id = snap.spawner_id,
         .points = snap.points,
         .point_count = 2,
         .placed = true,
     };
-}
-
-pub fn nextId() i32 {
-    next_id += 1;
-    return next_id - 1;
 }
 
 pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityAction {

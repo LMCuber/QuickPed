@@ -9,15 +9,12 @@ const SimData = @import("../editor/SimData.zig");
 const Settings = @import("../Settings.zig");
 const z = @import("zgui");
 
-area_id: i32,
 topleft: rl.Vector2 = undefined,
 rect: rl.Rectangle = undefined,
 placed: bool = false,
 anchored: bool = false,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 seat_data: SeatData = .{},
-
-pub var next_id: i32 = 0;
 
 pub const SeatData = struct {
     open_popup: bool = true,
@@ -27,20 +24,16 @@ pub const SeatData = struct {
 };
 
 pub const AreaSnapshot = struct {
-    area_id: i32,
     rect: rl.Rectangle,
     seat_data: SeatData,
 };
 
 pub fn init() Self {
-    return .{
-        .area_id = nextId(),
-    };
+    return .{};
 }
 
 pub fn getSnapshot(self: Self) AreaSnapshot {
     return .{
-        .area_id = self.area_id,
         .rect = self.rect,
         .seat_data = self.seat_data,
     };
@@ -48,17 +41,11 @@ pub fn getSnapshot(self: Self) AreaSnapshot {
 
 pub fn fromSnapshot(snap: AreaSnapshot) Self {
     return .{
-        .area_id = snap.area_id,
         .rect = snap.rect,
         .anchored = true,
         .placed = true,
         .seat_data = snap.seat_data,
     };
-}
-
-pub fn nextId() i32 {
-    next_id += 1;
-    return next_id - 1;
 }
 
 pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityAction {
@@ -77,7 +64,6 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityA
                     return .cancelled;
                 }
                 self.placed = true;
-                // return .placed;
                 return .confirm;
             }
         }

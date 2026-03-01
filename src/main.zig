@@ -37,17 +37,6 @@ var agent_data = AgentData.init();
 
 var ctx: ?*imnodes.ez.Context = null;
 
-const SceneSnapshot = struct {
-    version: []const u8,
-
-    entities: []const entity.EntitySnapshot,
-    next_id: i32,
-    next_contour_id: i32,
-    next_spawner_id: i32,
-    next_area_id: i32,
-    next_revolver_id: i32,
-};
-
 // main
 pub fn main() !void {
     rl.setConfigFlags(.{ .vsync_hint = true });
@@ -115,18 +104,10 @@ pub fn main() !void {
     var node_editor = NodeEditor.init(allocator);
     defer node_editor.deinit(allocator);
 
-    try loadScene(allocator, "data/scene.json", &env);
+    try env.loadScene(allocator, "data/scene.json");
     try node_editor.loadNodes(allocator, "data/nodes.json", &env);
 
-    // camera shenanigans
-    const camera_default = rl.Camera2D{
-        .target = .{ .x = 0, .y = 0 },
-        .offset = .{ .x = 0, .y = 0 },
-        .rotation = 0.0,
-        .zoom = 1.0,
-    };
-    var camera = camera_default;
-    commons.camera = &camera;
+    // commons.camera shenanigans
     var prev_mouse_position = commons.mousePos();
     var capture = false;
 
@@ -150,8 +131,14 @@ pub fn main() !void {
             {
                 if (!sim_data.paused) {
                     // update all placed entities
-                    for (env.entities.items) |*ent| {
-                        _ = try ent.update(dt, sim_data, settings);
+                    for (&env.entities.items) |*eslot| {
+                        if (eslot.alive) {
+                            _ = try eslot.value.update(
+                                dt,
+                                sim_data,
+                                settings,
+                            );
+                        }
                     }
                 }
 
@@ -161,16 +148,7 @@ pub fn main() !void {
                     switch (action) {
                         .cancelled, .none => {},
                         .placed => {
-                            try env.entities.append(ent.*);
-                            const stored_entity_ptr = &env.entities.items[env.entities.items.len - 1];
-
-                            switch (stored_entity_ptr.kind) {
-                                .contour => try env.contours.append(&stored_entity_ptr.kind.contour),
-                                .spawner => try env.spawners.append(&stored_entity_ptr.kind.spawner),
-                                .area => try env.areas.append(&stored_entity_ptr.kind.area),
-                                .revolver => try env.revolvers.append(&stored_entity_ptr.kind.revolver),
-                            }
-
+                            try env.createEntity(ent.*);
                             current_entity = null;
                         },
                         .confirm => confirm_current = true,
@@ -189,6 +167,7 @@ pub fn main() !void {
                             agent_data,
                             n_rows,
                             n_cols,
+                            &node_editor.graph.nodes,
                         );
                     }
                     // cleanup to be deleted agents
@@ -210,7 +189,7 @@ pub fn main() !void {
 
             // DRAWING =============================================
             {
-                rl.beginMode2D(camera);
+                rl.beginMode2D(commons.camera);
                 defer rl.endMode2D();
 
                 rl.drawRectangleRec(sim_rect, palette.env.dark_blue);
@@ -219,22 +198,23 @@ pub fn main() !void {
                 if (!capture) {
                     const mouse_position: rl.Vector2 = rl.getMousePosition();
                     const zoom_delta = rl.getMouseWheelMove() * 0.01;
-                    if (zoom_delta > 0 or (zoom_delta < 0 and camera.zoom > 0.05))
-                        camera.zoom += zoom_delta;
+                    if (zoom_delta > 0 or (zoom_delta < 0 and commons.camera.zoom > 0.05))
+                        commons.camera.zoom += zoom_delta;
                     if (rl.isMouseButtonDown(.mouse_button_left)) {
                         const delta_x = mouse_position.x - prev_mouse_position.x;
                         const delta_y = mouse_position.y - prev_mouse_position.y;
-                        camera.target = .{
-                            .x = camera.target.x - delta_x,
-                            .y = camera.target.y - delta_y,
+                        commons.camera.target = .{
+                            .x = commons.camera.target.x - delta_x,
+                            .y = commons.camera.target.y - delta_y,
                         };
                     }
                     prev_mouse_position = mouse_position;
                 }
 
                 // render all the entities
-                for (env.entities.items) |*ent| {
-                    ent.draw();
+                for (&env.entities.items) |*eslot| {
+                    if (!eslot.alive) continue;
+                    eslot.value.draw();
                 }
 
                 // render the in-progress selected entity
@@ -272,7 +252,7 @@ pub fn main() !void {
                     z.text("FPS: {d:.1} | {d:.2} ms frame | peds: {}", .{ fps, frametime, agents.items.len });
 
                     // sim data header
-                    sim_data.render(&camera, camera_default);
+                    sim_data.render(&commons.camera, commons.camera_default);
 
                     // agent data header
                     try agent_data.render(&agents);
@@ -281,31 +261,33 @@ pub fn main() !void {
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
                         const bs: i32 = 50;
 
+                        const next_id: usize = env.entities.free_count - 1;
+
                         // contour
                         if (EB.contourButton(bs)) {
                             resetCurrentEntity(allocator, &current_entity);
-                            current_entity = try entity.Entity.initContour(allocator);
+                            current_entity = try entity.Entity.initContour(allocator, next_id);
                         }
 
-                        // spawner
+                        // // spawner
                         z.sameLine(.{});
                         if (EB.spawnerButton(bs)) {
                             resetCurrentEntity(allocator, &current_entity);
-                            current_entity = try entity.Entity.initSpawner(allocator);
+                            current_entity = try entity.Entity.initSpawner(allocator, next_id);
                         }
 
                         // area
                         z.sameLine(.{});
                         if (EB.areaButton(bs)) {
                             resetCurrentEntity(allocator, &current_entity);
-                            current_entity = try entity.Entity.initArea(allocator);
+                            current_entity = try entity.Entity.initArea(allocator, next_id);
                         }
 
                         // revolver button
                         z.sameLine(.{});
                         if (EB.revolverButton(bs)) {
                             resetCurrentEntity(allocator, &current_entity);
-                            current_entity = try entity.Entity.initRevolver(allocator);
+                            current_entity = try entity.Entity.initRevolver(allocator, next_id);
                         }
 
                         // reset
@@ -313,7 +295,7 @@ pub fn main() !void {
 
                         // reset
                         if (EB.clearButton()) {
-                            clearEntities(&env, allocator);
+                            env.clearEntities(allocator);
                         }
                         z.newLine();
                     }
@@ -347,10 +329,12 @@ pub fn main() !void {
                             }
 
                             name_str = std.mem.sliceTo(&ent.name_edit_buf, 0);
+
                             // if name already exists, display that
                             var duplicate_name: bool = false;
-                            for (env.entities.items) |*inner_ent| {
-                                if (std.mem.eql(u8, inner_ent.name, name_str)) {
+                            for (env.entities.items[0..]) |*inner_eslot| {
+                                if (!inner_eslot.alive) continue;
+                                if (std.mem.eql(u8, inner_eslot.value.name, name_str)) {
                                     duplicate_name = true;
                                 }
                             }
@@ -364,10 +348,8 @@ pub fn main() !void {
                             // render the needed widget buttons
                             switch (ent.kind) {
                                 .area => |*a| a.confirm(),
-                                .revolver => |*r| {
-                                    r.confirm();
-                                },
-                                inline else => {},
+                                .revolver => |*r| r.confirm(),
+                                else => {},
                             }
 
                             z.newLine();
@@ -375,28 +357,15 @@ pub fn main() !void {
                             // confirm and cancel
                             if (z.button("cancel", .{})) {
                                 z.closeCurrentPopup();
-                                switch (current_entity.?.kind) {
-                                    .area => Area.next_id -= 1,
-                                    .contour => Contour.next_id -= 1,
-                                    .revolver => Revolver.next_id -= 1,
-                                    .spawner => Spawner.next_id -= 1,
-                                }
-                                current_entity.?.deinit(allocator);
+                                ent.deinit(allocator);
                                 current_entity = null;
                             }
                             z.sameLine(.{});
                             if (z.button("confirm", .{}) and !duplicate_name) {
                                 z.closeCurrentPopup();
 
-                                // insert created entity into correct spot
-                                try env.entities.append(current_entity.?);
-                                const new_entity: *entity.Entity = &env.entities.items[env.entities.items.len - 1];
-
-                                switch (new_entity.kind) {
-                                    .area => |*a| try env.areas.append(a),
-                                    .revolver => |*r| try env.revolvers.append(r),
-                                    inline else => {},
-                                }
+                                try env.createEntity(ent.*);
+                                // don't deinit!
 
                                 current_entity = null;
                             }
@@ -414,9 +383,9 @@ pub fn main() !void {
                         .h = @floatFromInt(settings.height),
                     });
 
-                    try node_editor.render(allocator, &env.entities);
+                    try node_editor.render(allocator, &env);
                     if (!sim_data.paused) {
-                        try node_editor.processSpawners(allocator, &agents);
+                        try node_editor.update(allocator, &agents);
                     }
                 }
             }
@@ -428,24 +397,18 @@ pub fn main() !void {
     // save the simulation data, scene, nodes
     try agent_data.saveToFile(allocator, "data/agent_data.json");
     try sim_data.saveToFile(allocator, "data/sim_data.json");
-    try saveScene(allocator, &env, "data/scene.json");
+    try env.saveScene(allocator, "data/scene.json");
     try node_editor.saveNodes(allocator, "data/nodes.json");
 
     // dealloc all entities
-    for (env.entities.items) |*ent| {
-        ent.deinit(allocator);
+    for (&env.entities.items) |*eslot| {
+        if (!eslot.alive) continue;
+        eslot.value.deinit(allocator);
     }
 }
 
 pub fn resetCurrentEntity(alloc: std.mem.Allocator, current_entity: *?entity.Entity) void {
     if (current_entity.*) |*ent| {
-        switch (ent.kind) {
-            .contour => Contour.next_id -= 1,
-            .spawner => Spawner.next_id -= 1,
-            .area => Area.next_id -= 1,
-            .revolver => Revolver.next_id -= 1,
-        }
-        entity.Entity.next_id -= 1;
         ent.deinit(alloc);
     }
 }
@@ -476,109 +439,4 @@ pub fn renderGrid() void {
             col,
         );
     }
-}
-
-pub fn saveScene(
-    allocator: std.mem.Allocator,
-    env: *Environment,
-    path: []const u8,
-) !void {
-    var snaps = std.ArrayList(entity.EntitySnapshot).init(allocator);
-    defer snaps.deinit();
-
-    for (env.entities.items) |*ent| {
-        try snaps.append(ent.getSnapshot());
-    }
-    const scene_snap: SceneSnapshot = .{
-        .version = "0.1.0",
-        .entities = snaps.items,
-        .next_id = entity.Entity.next_id,
-        .next_contour_id = Contour.next_id,
-        .next_spawner_id = Spawner.next_id,
-        .next_area_id = Area.next_id,
-        .next_revolver_id = Revolver.next_id,
-    };
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
-
-    try std.json.stringify(scene_snap, .{
-        .whitespace = .indent_2,
-    }, buf.writer());
-
-    // create file it it doesn't exist
-    const file = try std.fs.cwd().createFile(path, .{ .truncate = true });
-    defer file.close();
-    try file.writeAll(buf.items);
-}
-
-//
-// HALF-AI CODE
-//
-pub fn loadScene(allocator: std.mem.Allocator, path: []const u8, env: *Environment) !void {
-    const json = try commons.readFile(allocator, path);
-    defer allocator.free(json);
-
-    // dealloc and delete existing entities (environmental objects)
-    for (env.entities.items) |*ent| {
-        ent.deinit(allocator);
-    }
-    env.entities.clearRetainingCapacity();
-    env.contours.clearRetainingCapacity();
-    env.spawners.clearRetainingCapacity();
-    env.areas.clearRetainingCapacity();
-
-    // if there is nothing in the file, return
-    if (json.len == 0) {
-        return;
-    }
-
-    // get parsed scene
-    const parsed = try std.json.parseFromSlice(
-        SceneSnapshot,
-        allocator,
-        json,
-        .{},
-    );
-    defer parsed.deinit();
-    const scene: SceneSnapshot = parsed.value;
-
-    // get next ids for the EE's
-    entity.Entity.next_id = scene.next_id;
-    Contour.next_id = scene.next_contour_id;
-    Spawner.next_id = scene.next_spawner_id;
-    Area.next_id = scene.next_area_id;
-    Revolver.next_id = scene.next_revolver_id;
-
-    // repopulate entities from saved snapshots
-    for (scene.entities) |snap| {
-        try env.entities.append(try entity.Entity.fromSnapshot(allocator, snap));
-
-        var entity_ptr: *entity.Entity = &env.entities.items[env.entities.items.len - 1];
-        switch (entity_ptr.kind) {
-            .contour => |*contour| try env.contours.append(contour),
-            .spawner => |*spawner| try env.spawners.append(spawner),
-            .area => |*area| try env.areas.append(area),
-            .revolver => |*revolver| try env.revolvers.append(revolver),
-        }
-    }
-}
-
-pub fn clearEntities(env: *Environment, alloc: std.mem.Allocator) void {
-    // dealloc and delete existing entities
-    for (env.entities.items) |*ent| {
-        ent.deinit(alloc);
-    }
-
-    // clear the reference lists
-    env.entities.clearRetainingCapacity();
-    env.contours.clearRetainingCapacity();
-    env.spawners.clearRetainingCapacity();
-    env.revolvers.clearRetainingCapacity();
-
-    // reset the id variables
-    entity.Entity.next_id = 0;
-    Contour.next_id = 0;
-    Spawner.next_id = 0;
-    Area.next_id = 0;
-    Revolver.next_id = 0;
 }
