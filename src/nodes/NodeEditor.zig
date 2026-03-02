@@ -9,6 +9,7 @@ const Graph = @import("Graph.zig");
 const Spawner = @import("../environment/Spawner.zig");
 const entity = @import("../environment/entity.zig");
 const Area = @import("../environment/Area.zig");
+const Queue = @import("../environment/Queue.zig");
 const Environment = @import("../environment/Environment.zig");
 const Agent = @import("../Agent.zig");
 const imnodes = @import("imnodesez");
@@ -34,12 +35,12 @@ pub fn loadNodes(self: *Self, alloc: std.mem.Allocator, path: []const u8, env: *
     try self.graph.loadNodes(alloc, path, env);
 }
 
-pub fn update(self: *Self, alloc: std.mem.Allocator, agents: *std.ArrayList(Agent)) !void {
-    try self.processSpawners(alloc, agents);
+pub fn update(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
+    try self.processSpawners(alloc, env);
 }
 
-pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, agents: *std.ArrayList(Agent)) !void {
-    try self.graph.processSpawners(alloc, agents);
+pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
+    try self.graph.processSpawners(alloc, env);
 }
 
 pub fn render(
@@ -111,6 +112,29 @@ pub fn render(
                 if (z.menuItem("Area", .{ .enabled = first_area != null })) {
                     if (first_area != null) {
                         try self.graph.addNode(node.Node.initArea(
+                            env,
+                            .{ .constant = .{
+                                .wait = 1000,
+                            } },
+                        ));
+                    }
+                }
+
+                // check if there are any queues
+                var first_queue: ?*Queue = null;
+                for (&env.entities.items) |*eslot| {
+                    if (!eslot.alive) continue;
+                    switch (eslot.value.kind) {
+                        .queue => |*queue| {
+                            first_queue = queue;
+                            break;
+                        },
+                        else => {},
+                    }
+                }
+                if (z.menuItem("Queue", .{ .enabled = first_queue != null })) {
+                    if (first_queue != null) {
+                        try self.graph.addNode(node.Node.initQueue(
                             env,
                             .{ .constant = .{
                                 .wait = 1000,

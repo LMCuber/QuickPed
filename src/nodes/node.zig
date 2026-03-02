@@ -5,8 +5,10 @@ const rl = @import("raylib");
 const std = @import("std");
 const imnodes = @import("imnodesez");
 const z = @import("zgui");
+const utils = @import("utils.zig");
 const Spawner = @import("../environment/Spawner.zig");
 const Area = @import("../environment/Area.zig");
+const Queue = @import("../environment/Queue.zig");
 const Agent = @import("../Agent.zig");
 const Graph = @import("Graph.zig");
 const commons = @import("../commons.zig");
@@ -29,6 +31,7 @@ pub const NodeSnapshot = struct {
         sink: SinkNodeSnapshot,
         area: AreaNodeSnapshot,
         fork: ForkNodeSnapshot,
+        queue: QueueNodeSnapshot,
     };
 };
 
@@ -42,6 +45,7 @@ pub const Node = struct {
         sink: SinkNode,
         area: AreaNode,
         fork: ForkNode,
+        queue: QueueNode,
     };
 
     pub const NodeState = enum {
@@ -77,6 +81,7 @@ pub const Node = struct {
                 .spawner => |sk| .{ .spawner = SpawnerNode.fromSnapshot(sk, env) },
                 .area => |sk| .{ .area = AreaNode.fromSnapshot(sk, env) },
                 .fork => |sk| .{ .fork = ForkNode.fromSnapshot(sk) },
+                .queue => |qk| .{ .queue = QueueNode.fromSnapshot(qk, env) },
             },
         };
     }
@@ -106,10 +111,21 @@ pub const Node = struct {
         };
     }
 
-    pub fn initArea(env: *Environment, wait: AreaWait) Node {
+    pub fn initArea(env: *Environment, wait: utils.Wait) Node {
         return .{
             .kind = .{
                 .area = .{
+                    .env = env,
+                    .wait = wait,
+                },
+            },
+        };
+    }
+
+    pub fn initQueue(env: *Environment, wait: utils.Wait) Node {
+        return .{
+            .kind = .{
+                .queue = .{
                     .env = env,
                     .wait = wait,
                 },
@@ -326,7 +342,7 @@ pub const SpawnerNode = struct {
             &buf,
         );
         setNextItemWidth(node_width);
-        const changed = z.combo("##spawner", .{
+        const changed = z.combo("##spawner-selector", .{
             .current_item = &self.spawner_index,
             .items_separated_by_zeros = names,
         });
@@ -339,7 +355,7 @@ pub const SpawnerNode = struct {
         z.text("wait", .{});
         z.sameLine(.{});
         setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
-        _ = z.inputInt("##wait", .{ .v = &self.wait });
+        _ = z.inputInt("##wait-int", .{ .v = &self.wait });
 
         // output slots
         imnodes.ez.outputSlots(&self.output_slots);
@@ -348,15 +364,22 @@ pub const SpawnerNode = struct {
     pub fn update(
         self: *SpawnerNode,
         alloc: std.mem.Allocator,
-        agents: *std.ArrayList(Agent),
+        agents: *Environment.AgentManager,
         graph: *Graph,
         node_id: usize,
     ) !void {
         const time: f64 = commons.getTimeMillis();
         if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {
             const pos: rl.Vector2 = self.getSpawner().randomSpawnPos();
-            const a = try Agent.init(alloc, pos, node_id, graph);
-            try agents.append(a);
+            const a = try Agent.init(
+                alloc,
+                pos,
+                node_id,
+                graph,
+                agents.getNextIndex(),
+                agents,
+            );
+            _ = agents.createItem(a);
 
             // reset last spawn
             self.last_spawn = commons.getTimeMillis();
@@ -364,46 +387,16 @@ pub const SpawnerNode = struct {
     }
 };
 
-const AreaWait = union(enum) {
-    pub const Constant = struct {
-        wait: i32 = 1000,
-
-        pub fn get(self: Constant) i32 {
-            return self.wait;
-        }
-    };
-    pub const Uniform = struct {
-        min: i32 = 500,
-        max: i32 = 1500,
-
-        pub fn get(self: Uniform) i32 {
-            return rl.getRandomValue(self.min, self.max);
-        }
-    };
-    pub const Normal = struct {
-        mu: i32 = 1000,
-        sigma: i32 = 500,
-
-        pub fn get(self: Normal) i32 {
-            return @intFromFloat(@as(f32, @floatFromInt(self.mu)) + @as(f32, @floatFromInt(self.sigma)) * commons.rng.floatNorm(f32));
-        }
-    };
-
-    constant: Constant,
-    uniform: Uniform,
-    normal: Normal,
-};
-
 pub const AreaNodeSnapshot = struct {
     area_index: i32,
-    wait: AreaWait,
+    wait: utils.Wait,
     wait_type: i32,
 };
 
 pub const AreaNode = struct {
     env: *Environment,
     area_index: i32 = 0,
-    wait: AreaWait,
+    wait: utils.Wait,
     wait_type: i32 = 0,
 
     input_slots: [1]imnodes.ez.SlotInfo = .{
@@ -467,7 +460,7 @@ pub const AreaNode = struct {
                 &buf,
             );
             setNextItemWidth(node_width);
-            const changed = z.combo("##area", .{
+            const changed = z.combo("##area-selector", .{
                 .current_item = &self.area_index,
                 .items_separated_by_zeros = names,
             });
@@ -480,9 +473,137 @@ pub const AreaNode = struct {
         // wait time options
         {
             setNextItemWidth(node_width);
-            const changed = z.combo("##type", .{
+            const changed = z.combo("##area-wait-type", .{
                 .current_item = &self.wait_type,
-                .items_separated_by_zeros = "constant\x00uniform\x00normal\x00",
+                .items_separated_by_zeros = utils.Wait.zeroSepItems,
+            });
+            // if the combo box changes, change the base wait struct we operate on
+            if (changed) {
+                self.wait = switch (self.wait_type) {
+                    0 => .{ .constant = .{} },
+                    1 => .{ .uniform = .{} },
+                    2 => .{ .normal = .{} },
+                    else => unreachable,
+                };
+            }
+        }
+
+        // wait time inputs
+        switch (self.wait) {
+            .constant => |*constant| {
+                setNextItemWidth(node_width);
+                _ = z.inputInt("wait", .{ .v = &constant.wait });
+            },
+            .uniform => |*uniform| {
+                setNextItemWidth(node_width);
+                _ = z.inputInt("min", .{ .v = &uniform.min });
+                setNextItemWidth(node_width);
+                _ = z.inputInt("max", .{ .v = &uniform.max });
+            },
+            .normal => |*normal| {
+                setNextItemWidth(node_width);
+                _ = z.inputInt("mu", .{ .v = &normal.mu });
+                setNextItemWidth(node_width);
+                _ = z.inputInt("sigma", .{ .v = &normal.sigma });
+            },
+        }
+
+        // output slots
+        imnodes.ez.outputSlots(&self.output_slots);
+    }
+
+    pub fn update(_: AreaNode, _: *std.ArrayList(Agent)) !void {}
+};
+
+pub const QueueNodeSnapshot = struct {
+    queue_index: i32,
+    wait: utils.Wait,
+    wait_type: i32,
+};
+
+pub const QueueNode = struct {
+    env: *Environment,
+    queue_index: i32 = 0,
+    wait: utils.Wait,
+    wait_type: i32 = 0,
+
+    input_slots: [1]imnodes.ez.SlotInfo = .{
+        .{ .title = "in", .kind = -1 },
+    },
+    output_slots: [1]imnodes.ez.SlotInfo = .{
+        .{ .title = "out", .kind = 1 },
+    },
+
+    pub fn getSnapshot(self: QueueNode) QueueNodeSnapshot {
+        return .{
+            .queue_index = self.queue_index,
+            .wait = self.wait,
+            .wait_type = self.wait_type,
+        };
+    }
+
+    pub fn fromSnapshot(snap: QueueNodeSnapshot, env: *Environment) QueueNode {
+        return .{
+            .env = env,
+            .queue_index = snap.queue_index,
+            .wait = snap.wait,
+            .wait_type = snap.wait_type,
+        };
+    }
+
+    // pub fn getPos(self: *AreaNode) rl.Vector2 {
+    //     return self.getArea().getPos();
+    // }
+
+    // pub fn getWaitTime(self: AreaNode) i32 {
+    //     return switch (self.wait) {
+    //         inline else => |kind| kind.get(),
+    //     };
+    // }
+
+    pub fn getQueue(self: *QueueNode) *Queue {
+        return &self.env.entities.getItem(self.env.queues.items[@intCast(self.queue_index)]).kind.queue;
+    }
+
+    pub fn draw(self: *QueueNode, parent: *Node) void {
+        const node_width: f32 = 120;
+
+        imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.orange));
+        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, palette.lighten(palette.env.orange));
+        defer imnodes.ez.popStyleColor(2);
+
+        // start the node
+        _ = imnodes.ez.beginNode(parent, "Queue", &parent.pos, &parent.selected);
+        defer imnodes.ez.endNode();
+
+        // input slots
+        imnodes.ez.inputSlots(&self.input_slots);
+
+        // queue selector
+        {
+            var buf: [2048]u8 = undefined;
+            const names = entity.Entity.buildNameComboString(
+                .queue,
+                &self.env.entities,
+                &buf,
+            );
+            setNextItemWidth(node_width);
+            const changed = z.combo("##queue-selector", .{
+                .current_item = &self.queue_index,
+                .items_separated_by_zeros = names,
+            });
+            if (changed) {
+                // clicked on a different spawner instance
+                std.debug.print("{}", .{self.queue_index});
+            }
+        }
+
+        // wait time options
+        {
+            setNextItemWidth(node_width);
+            const changed = z.combo("##queue-wait-type", .{
+                .current_item = &self.wait_type,
+                .items_separated_by_zeros = utils.Wait.zeroSepItems,
             });
             // if the combo box changes, change the base wait struct we operate on
             if (changed) {
@@ -600,7 +721,7 @@ pub const ForkNode = struct {
 
             // float input
             setNextItemWidth(node_width);
-            if (z.inputFloat("##", .{ .v = &self.values[i], .cfmt = "%.2f" })) {
+            if (z.inputFloat("##fork-output-nodes", .{ .v = &self.values[i], .cfmt = "%.2f" })) {
                 // input changed
             }
         }

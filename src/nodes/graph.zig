@@ -68,13 +68,13 @@ pub fn addConnection(
     });
 }
 
-pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, agents: *std.ArrayList(Agent)) !void {
+pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
     for (&self.nodes.items, 0..) |*nslot, i| {
         if (!nslot.alive) continue;
         switch (nslot.value.kind) {
             .spawner => |*spawner| try spawner.update(
                 alloc,
-                agents,
+                &env.agents,
                 self,
                 i,
             ),
@@ -88,10 +88,9 @@ pub fn getNextNodeId(self: *Self, alloc: std.mem.Allocator, current_node_id: usi
 
     // get correct port ID from current node
     const current_title: [*c]const u8 = switch (current_node.kind) {
-        .spawner => |s| s.output_slots[0].title,
-        .area => |a| a.output_slots[0].title,
         .fork => |f| f.getOutputSlotTitle(),
         .sink => null,
+        inline else => |kind| kind.output_slots[0].title,
     };
 
     // construct current (output) slot

@@ -81,7 +81,7 @@ pub fn getRotatedVector(self: Self, a: f32) rl.Vector2 {
 
 pub fn draw(self: *Self) void {
     const line_width = 6;
-    const col = if (self.placed) (palette.env.orange) else (palette.env.white_t);
+    const col = if (self.placed) (palette.env.light_gray) else (palette.env.white_t);
 
     rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(0)), line_width, col);
     rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(0.5 * std.math.pi)), line_width, col);

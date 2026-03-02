@@ -5,19 +5,23 @@ const entity = @import("entity.zig");
 const Contour = @import("Contour.zig");
 const Spawner = @import("Spawner.zig");
 const Area = @import("Area.zig");
+const Agent = @import("../Agent.zig");
 const Manager = @import("../Manager.zig").Manager;
 const Revolver = @import("Revolver.zig");
 const commons = @import("../commons.zig");
 
 pub const MAX_ENTITIES: usize = 512;
 pub const EntityManager = Manager(entity.Entity, MAX_ENTITIES);
+pub const AgentManager = Manager(Agent, MAX_ENTITIES);
 
 entities: EntityManager,
 
+agents: AgentManager,
 contours: std.ArrayList(usize),
 spawners: std.ArrayList(usize),
 areas: std.ArrayList(usize),
 revolvers: std.ArrayList(usize),
+queues: std.ArrayList(usize),
 
 const EnvironmentSnapshot = struct {
     version: []const u8,
@@ -26,11 +30,13 @@ const EnvironmentSnapshot = struct {
 
 pub fn init(alloc: std.mem.Allocator) Self {
     return .{
+        .agents = Manager(Agent, MAX_ENTITIES).init(),
         .entities = Manager(entity.Entity, MAX_ENTITIES).init(),
         .contours = std.ArrayList(usize).init(alloc),
         .spawners = std.ArrayList(usize).init(alloc),
         .areas = std.ArrayList(usize).init(alloc),
         .revolvers = std.ArrayList(usize).init(alloc),
+        .queues = std.ArrayList(usize).init(alloc),
     };
 }
 
@@ -39,6 +45,7 @@ pub fn deinit(self: *Self) void {
     self.spawners.deinit();
     self.areas.deinit();
     self.revolvers.deinit();
+    self.queues.deinit();
 }
 
 pub fn createEntity(self: *Self, ent: entity.Entity) !void {
@@ -50,6 +57,7 @@ pub fn createEntity(self: *Self, ent: entity.Entity) !void {
         .spawner => try self.spawners.append(new_index),
         .area => try self.areas.append(new_index),
         .revolver => try self.revolvers.append(new_index),
+        .queue => try self.queues.append(new_index),
     }
 }
 
@@ -65,6 +73,7 @@ pub fn clearEntities(self: *Self, alloc: std.mem.Allocator) void {
     self.contours.clearRetainingCapacity();
     self.spawners.clearRetainingCapacity();
     self.revolvers.clearRetainingCapacity();
+    self.queues.clearRetainingCapacity();
 }
 
 //
