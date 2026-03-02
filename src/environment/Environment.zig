@@ -5,15 +5,18 @@ const entity = @import("entity.zig");
 const Contour = @import("Contour.zig");
 const Spawner = @import("Spawner.zig");
 const Area = @import("Area.zig");
+const Agent = @import("../Agent.zig");
 const Manager = @import("../Manager.zig").Manager;
 const Revolver = @import("Revolver.zig");
 const commons = @import("../commons.zig");
 
 pub const MAX_ENTITIES: usize = 512;
 pub const EntityManager = Manager(entity.Entity, MAX_ENTITIES);
+pub const AgentManager = Manager(Agent, MAX_ENTITIES);
 
 entities: EntityManager,
 
+agents: AgentManager,
 contours: std.ArrayList(usize),
 spawners: std.ArrayList(usize),
 areas: std.ArrayList(usize),
@@ -27,6 +30,7 @@ const EnvironmentSnapshot = struct {
 
 pub fn init(alloc: std.mem.Allocator) Self {
     return .{
+        .agents = Manager(Agent, MAX_ENTITIES).init(),
         .entities = Manager(entity.Entity, MAX_ENTITIES).init(),
         .contours = std.ArrayList(usize).init(alloc),
         .spawners = std.ArrayList(usize).init(alloc),

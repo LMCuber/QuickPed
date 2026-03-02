@@ -45,12 +45,19 @@ pub const AreaPayload = struct {
 
 pub const QueuePayload = struct {
     obj: *Queue,
-    target_agent: ?*Self,
+    target_agent: ?usize,
     is_last: bool = false,
 };
 
 // FUNCTIONS
-pub fn init(alloc: std.mem.Allocator, pos: rl.Vector2, spawner_node_id: usize, graph: *Graph) !Self {
+pub fn init(
+    alloc: std.mem.Allocator,
+    pos: rl.Vector2,
+    spawner_node_id: usize,
+    graph: *Graph,
+    agent_id: usize,
+    agents: *Environment.AgentManager,
+) !Self {
     const col: rl.Color = color.getAgentColor();
     var obj: Self = .{
         .pos = pos,
@@ -60,11 +67,17 @@ pub fn init(alloc: std.mem.Allocator, pos: rl.Vector2, spawner_node_id: usize, g
         .current_payload = null,
     };
     obj.current_node_id = spawner_node_id;
-    try obj.traverseFromCurrent(alloc, &graph.nodes);
+    try obj.traverseFromCurrent(alloc, agent_id, agents, &graph.nodes);
     return obj;
 }
 
-pub fn traverseFromCurrent(self: *Self, alloc: std.mem.Allocator, nodes: *Graph.NodeManager) !void {
+pub fn traverseFromCurrent(
+    self: *Self,
+    alloc: std.mem.Allocator,
+    agent_id: usize,
+    agents: *Environment.AgentManager,
+    nodes: *Graph.NodeManager,
+) !void {
     // get the next node from graph and then process it
     if (try self.graph.getNextNodeId(alloc, self.current_node_id.?)) |next_node_id| {
         // set current node to next by default (might be changed by e.g. fork)
@@ -87,17 +100,19 @@ pub fn traverseFromCurrent(self: *Self, alloc: std.mem.Allocator, nodes: *Graph.
             .sink => self.marked = true, // next is sink, so destroy outselves
             .fork => {
                 self.current_node_id = next_node_id;
-                try self.traverseFromCurrent(alloc, nodes);
+                try self.traverseFromCurrent(alloc, agent_id, agents, nodes);
             },
             .queue => |*queue_node| {
                 self.current_node_id = next_node_id;
+                // make sure the queue knows about the new agent
+                const target_agent: ?usize = try queue_node.getQueue().registerNewAgent(agent_id);
+                // set in payload the queue object and the
                 self.current_payload = .{
                     .queue = .{
                         .obj = queue_node.getQueue(),
-                        .target_agent = queue_node.getQueue().getLastAgent(),
+                        .target_agent = target_agent,
                     },
                 };
-                self.target = self.current_payload.?.queue.obj.regis
             },
         }
     } else {
@@ -108,9 +123,43 @@ pub fn traverseFromCurrent(self: *Self, alloc: std.mem.Allocator, nodes: *Graph.
     }
 }
 
+pub fn getBehindVector(
+    self: *Self,
+    agent_id: usize,
+    agents: *Environment.AgentManager,
+    agent_data: AgentData,
+) rl.Vector2 {
+    // will only be called on agents that are NOT on the front of the queue
+    // (ones which have valid prev_agent_ids)
+
+    const queue_obj: *Queue = self.current_payload.?.queue.obj;
+    const prev_agent_id: usize = queue_obj.getPreviousAgentId(agent_id).?;
+    const prev_prev_agent: ?usize = queue_obj.getPreviousAgentId(prev_agent_id);
+
+    var direction: ?rl.Vector2 = null;
+    if (prev_prev_agent) |prev_prev_agent_id| {
+        direction = agents.getItem(prev_agent_id).target
+            .subtract(agents.getItem(prev_prev_agent_id).target).normalize();
+    } else {
+        // the prev prev is none, so the queue is only 2 long.
+        // Calculate direction using queue.pos
+        std.debug.print("{}\n", .{agents.getItem(prev_agent_id).target.subtract(queue_obj.pos).normalize()});
+
+        direction = agents.getItem(prev_agent_id).target.subtract(queue_obj.pos).normalize();
+    }
+    return self.target.add(direction.?.scale(queue_obj.getPadding(agent_data)));
+}
+
 /// every frame, processCurrentNode checks what node we are on currently, and then
 /// checks (for example) if we need to start waiting because we entered radius of waiting area
-pub fn processCurrentNode(self: *Self, alloc: std.mem.Allocator, nodes: *Graph.NodeManager) !void {
+pub fn processCurrentNode(
+    self: *Self,
+    alloc: std.mem.Allocator,
+    agent_id: usize,
+    agents: *Environment.AgentManager,
+    agent_data: AgentData,
+    nodes: *Graph.NodeManager,
+) !void {
     const current_node: *node.Node = nodes.getItem(self.current_node_id.?);
 
     switch (current_node.kind) {
@@ -129,8 +178,16 @@ pub fn processCurrentNode(self: *Self, alloc: std.mem.Allocator, nodes: *Graph.N
                 const time: f64 = commons.getTimeMillis();
                 if (time - self.last_wait >= @as(f64, @floatFromInt(self.wait))) {
                     // waited long enough. continue
-                    try self.traverseFromCurrent(alloc, nodes);
+                    try self.traverseFromCurrent(alloc, agent_id, agents, nodes);
                 }
+            }
+        },
+        .queue => {
+            // if target agent exists, then follow that. Otherwise follow queue pos
+            if (self.current_payload.?.queue.target_agent) |target_agent_id| {
+                self.target = agents.getItem(target_agent_id).getBehindVector(agent_id, agents, agent_data);
+            } else {
+                self.target = self.current_payload.?.queue.obj.getTarget(agent_data);
             }
         },
         else => {},
@@ -200,10 +257,18 @@ fn calculateObstacleForce(
     return force;
 }
 
-fn calculateInteractiveForce(self: *Self, agents: *std.ArrayList(Self), agent_data: AgentData) rl.Vector2 {
+fn calculateInteractiveForce(
+    self: *Self,
+    agents: *Environment.AgentManager,
+    agent_data: AgentData,
+) rl.Vector2 {
     var force: rl.Vector2 = .{ .x = 0, .y = 0 };
-    for (agents.items) |*other| {
-        if (self == other) continue;
+    for (&agents.items) |*other_aslot| {
+        if (!other_aslot.alive) continue;
+        const other = &other_aslot.value;
+
+        if (self == &other_aslot.value) continue;
+
         const n = self.pos.subtract(other.pos);
         const sum_radii: f32 = @floatFromInt(agent_data.radius * 2);
         const dist: f32 = other.pos.subtract(self.pos).length();
@@ -225,10 +290,10 @@ fn calculateDriveForce(self: *Self, agent_data: AgentData) rl.Vector2 {
 pub fn update(
     self: *Self,
     alloc: std.mem.Allocator,
-    agents: *std.ArrayList(Self),
     env: *Environment,
     stats: *Stats,
     settings: Settings,
+    agent_id: usize,
     agent_data: AgentData,
     n_rows: i32,
     n_cols: i32,
@@ -236,7 +301,7 @@ pub fn update(
 ) !void {
     // get force components
     const drive_force = self.calculateDriveForce(agent_data);
-    const interactive_force = self.calculateInteractiveForce(agents, agent_data);
+    const interactive_force = self.calculateInteractiveForce(&env.agents, agent_data);
     const obstacle_force = self.calculateObstacleForce(env, agent_data);
     self.acc = drive_force
         .add(interactive_force)
@@ -250,7 +315,7 @@ pub fn update(
     self.update_heatmap(stats, settings, n_rows, n_cols);
 
     // process node
-    try self.processCurrentNode(alloc, nodes);
+    try self.processCurrentNode(alloc, agent_id, &env.agents, agent_data, nodes);
 }
 
 pub fn update_heatmap(self: *Self, stats: *Stats, settings: Settings, n_rows: i32, n_cols: i32) void {
@@ -285,14 +350,9 @@ pub fn draw(self: *const Self, agent_data: AgentData) void {
         const norm_acc = self.acc.normalize().scale(m);
         rl.drawLineEx(self.pos, self.pos.add(norm_acc), 2, color.orange);
     }
-}
 
-pub fn delete(agents: *std.ArrayList(Self), num: i32) void {
-    for (0..@as(usize, @intCast(num))) |_| {
-        if (agents.items.len > 0) {
-            _ = agents.swapRemove(0);
-        } else {
-            return;
-        }
+    if (agent_data.show_targets) {
+        rl.drawCircleLinesV(self.target, @floatFromInt(agent_data.radius * 2), palette.env.red);
+        rl.drawLineV(self.pos, self.target, palette.env.red);
     }
 }

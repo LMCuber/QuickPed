@@ -35,12 +35,12 @@ pub fn loadNodes(self: *Self, alloc: std.mem.Allocator, path: []const u8, env: *
     try self.graph.loadNodes(alloc, path, env);
 }
 
-pub fn update(self: *Self, alloc: std.mem.Allocator, agents: *std.ArrayList(Agent)) !void {
-    try self.processSpawners(alloc, agents);
+pub fn update(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
+    try self.processSpawners(alloc, env);
 }
 
-pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, agents: *std.ArrayList(Agent)) !void {
-    try self.graph.processSpawners(alloc, agents);
+pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
+    try self.graph.processSpawners(alloc, env);
 }
 
 pub fn render(

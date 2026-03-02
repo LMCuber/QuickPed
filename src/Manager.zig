@@ -31,6 +31,10 @@ pub fn Manager(comptime T: type, comptime size: usize) type {
             };
         }
 
+        pub fn getLen(self: *Self) usize {
+            return self.free_indices.len - self.free_count;
+        }
+
         pub fn createItem(self: *Self, value: T) usize {
             var free_index: usize = undefined;
 

@@ -207,48 +207,53 @@ pub fn queueButton(bs: f32) bool {
 
     dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
 
-    // Draw 3 people standing in a queue (left to right, tallest at front)
-    const icon_col: u32 = 0xff_00_00_00;
-    const n_people: usize = 3;
-    const pad: f32 = 5.0;
-    const w = max[0] - min[0] - pad * 2.0;
-    const h = max[1] - min[1] - pad * 2.0;
-    const slot_w = w / @as(f32, @floatFromInt(n_people));
+    const pad: f32 = 7.0;
+    const left = min[0] + pad;
+    const right = max[0] - pad;
+    const top = min[1] + pad;
+    const bot = max[1] - pad;
+    const line_col: u32 = 0xff_50_50_50;
+    const thick: f32 = 2.0;
 
-    for (0..n_people) |i| {
-        // People get slightly smaller toward the back (right)
-        const scale = 1.0 - @as(f32, @floatFromInt(i)) * 0.12;
-        const cx = min[0] + pad + slot_w * (@as(f32, @floatFromInt(i)) + 0.5);
-        const body_h = h * scale;
-        const base_y = max[1] - pad;
-        const top_y = base_y - body_h;
+    // Snake path: 3 horizontal rows connected by short verticals on alternating sides
+    const n_rows: usize = 3;
+    const row_h = (bot - top) / @as(f32, @floatFromInt(n_rows));
+    const ys = [3]f32{
+        top + row_h * 0.5,
+        top + row_h * 1.5,
+        top + row_h * 2.5,
+    };
 
-        // Head
-        const head_r = slot_w * 0.18 * scale;
-        const head_cy = top_y + head_r;
-        dl.addCircleFilled(.{ .p = .{ cx, head_cy }, .r = head_r, .col = icon_col });
+    // Horizontal segments
+    for (0..n_rows) |i| {
+        const even = i % 2 == 0;
+        const x1: f32 = if (even) left else right;
+        const x2: f32 = if (even) right else left;
+        dl.addLine(.{ .p1 = .{ x1, ys[i] }, .p2 = .{ x2, ys[i] }, .col = line_col, .thickness = thick });
+    }
 
-        // Body
-        const shoulder_y = head_cy + head_r + 1.0;
-        const body_bot_y = base_y - body_h * 0.25; // legs start here
-        dl.addRectFilled(.{
-            .pmin = .{ cx - slot_w * 0.15 * scale, shoulder_y },
-            .pmax = .{ cx + slot_w * 0.15 * scale, body_bot_y },
-            .col = icon_col,
-        });
+    // Vertical connectors
+    // row 0 -> row 1: right side
+    dl.addLine(.{ .p1 = .{ right, ys[0] }, .p2 = .{ right, ys[1] }, .col = line_col, .thickness = thick });
+    // row 1 -> row 2: left side
+    dl.addLine(.{ .p1 = .{ left, ys[1] }, .p2 = .{ left, ys[2] }, .col = line_col, .thickness = thick });
 
-        // Legs (two thin rects)
-        const leg_w = slot_w * 0.09 * scale;
-        dl.addRectFilled(.{
-            .pmin = .{ cx - leg_w * 2.0, body_bot_y },
-            .pmax = .{ cx - leg_w * 0.5, base_y },
-            .col = icon_col,
-        });
-        dl.addRectFilled(.{
-            .pmin = .{ cx + leg_w * 0.5, body_bot_y },
-            .pmax = .{ cx + leg_w * 2.0, base_y },
-            .col = icon_col,
-        });
+    // People dots along the snake
+    const dot_r: f32 = 3.5;
+    const dot_col: u32 = 0xff_20_80_e0;
+
+    // Place dots evenly: 2 per row
+    const positions = [6][2]f32{
+        .{ left + (right - left) * 0.2, ys[0] },
+        .{ left + (right - left) * 0.6, ys[0] },
+        .{ left + (right - left) * 0.8, ys[1] },
+        .{ left + (right - left) * 0.4, ys[1] },
+        .{ left + (right - left) * 0.2, ys[2] },
+        .{ left + (right - left) * 0.6, ys[2] },
+    };
+
+    for (positions) |p| {
+        dl.addCircleFilled(.{ .p = p, .r = dot_r, .col = dot_col });
     }
 
     return clicked;

@@ -364,15 +364,22 @@ pub const SpawnerNode = struct {
     pub fn update(
         self: *SpawnerNode,
         alloc: std.mem.Allocator,
-        agents: *std.ArrayList(Agent),
+        agents: *Environment.AgentManager,
         graph: *Graph,
         node_id: usize,
     ) !void {
         const time: f64 = commons.getTimeMillis();
         if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {
             const pos: rl.Vector2 = self.getSpawner().randomSpawnPos();
-            const a = try Agent.init(alloc, pos, node_id, graph);
-            try agents.append(a);
+            const a = try Agent.init(
+                alloc,
+                pos,
+                node_id,
+                graph,
+                agents.getNextIndex(),
+                agents,
+            );
+            _ = agents.createItem(a);
 
             // reset last spawn
             self.last_spawn = commons.getTimeMillis();

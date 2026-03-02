@@ -68,13 +68,13 @@ pub fn addConnection(
     });
 }
 
-pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, agents: *std.ArrayList(Agent)) !void {
+pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
     for (&self.nodes.items, 0..) |*nslot, i| {
         if (!nslot.alive) continue;
         switch (nslot.value.kind) {
             .spawner => |*spawner| try spawner.update(
                 alloc,
-                agents,
+                &env.agents,
                 self,
                 i,
             ),

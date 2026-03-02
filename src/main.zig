@@ -80,8 +80,6 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
-    var agents = std.ArrayList(Agent).init(allocator);
-    defer agents.deinit();
 
     // environmental objects
     var env: Environment = Environment.init(allocator);
@@ -157,13 +155,14 @@ pub fn main() !void {
 
                 // update the agents
                 if (!sim_data.paused) {
-                    for (agents.items) |*agent| {
-                        try agent.update(
+                    for (&env.agents.items, 0..) |*aslot, i| {
+                        if (!aslot.alive) continue;
+                        try aslot.value.update(
                             allocator,
-                            &agents,
                             &env,
                             &stats,
                             settings,
+                            i,
                             agent_data,
                             n_rows,
                             n_cols,
@@ -171,11 +170,10 @@ pub fn main() !void {
                         );
                     }
                     // cleanup to be deleted agents
-                    var i: usize = agents.items.len;
-                    while (i > 0) {
-                        i -= 1;
-                        if (agents.items[i].marked) {
-                            _ = agents.swapRemove(i);
+                    for (&env.agents.items, 0..) |*aslot, i| {
+                        if (!aslot.alive) continue;
+                        if (aslot.value.marked) {
+                            env.agents.deleteItem(i);
                         }
                     }
                 }
@@ -214,17 +212,18 @@ pub fn main() !void {
                 // render all the entities
                 for (&env.entities.items) |*eslot| {
                     if (!eslot.alive) continue;
-                    eslot.value.draw();
+                    eslot.value.draw(agent_data);
                 }
 
                 // render the in-progress selected entity
                 if (current_entity) |*ent| {
-                    ent.draw();
+                    ent.draw(agent_data);
                 }
 
                 // render all pedestrians
-                for (agents.items) |*agent| {
-                    agent.draw(agent_data);
+                for (&env.agents.items) |*aslot| {
+                    if (!aslot.alive) continue;
+                    aslot.value.draw(agent_data);
                 }
             }
 
@@ -249,13 +248,13 @@ pub fn main() !void {
 
                     const fps: f32 = @floatFromInt(rl.getFPS());
                     const frametime: f32 = if (fps > 0) 1000.0 / fps else 0.0;
-                    z.text("FPS: {d:.1} | {d:.2} ms frame | peds: {}", .{ fps, frametime, agents.items.len });
+                    z.text("FPS: {d:.1} | {d:.2} ms frame | peds: {}", .{ fps, frametime, env.agents.getLen() });
 
                     // sim data header
                     sim_data.render(&commons.camera, commons.camera_default);
 
                     // agent data header
-                    try agent_data.render(&agents);
+                    try agent_data.render(&env.agents);
 
                     // ENVIRONMENTAL BUTTONS --------------------------------------------
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
@@ -308,7 +307,7 @@ pub fn main() !void {
                     // ------------------------------------------------------------------
 
                     // statistics header
-                    try stats.render(&agents, sim_data.paused);
+                    try stats.render(&env.agents, sim_data.paused);
 
                     // process new popups if placing entity gave .confirm signal
                     if (confirm_current) {
@@ -392,7 +391,7 @@ pub fn main() !void {
 
                     try node_editor.render(allocator, &env);
                     if (!sim_data.paused) {
-                        try node_editor.update(allocator, &agents);
+                        try node_editor.update(allocator, &env);
                     }
                 }
             }
