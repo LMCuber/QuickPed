@@ -88,10 +88,9 @@ pub fn getNextNodeId(self: *Self, alloc: std.mem.Allocator, current_node_id: usi
 
     // get correct port ID from current node
     const current_title: [*c]const u8 = switch (current_node.kind) {
-        .spawner => |s| s.output_slots[0].title,
-        .area => |a| a.output_slots[0].title,
         .fork => |f| f.getOutputSlotTitle(),
         .sink => null,
+        inline else => |kind| kind.output_slots[0].title,
     };
 
     // construct current (output) slot

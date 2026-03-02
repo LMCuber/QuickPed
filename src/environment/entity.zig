@@ -4,6 +4,7 @@ const Contour = @import("Contour.zig");
 const Spawner = @import("Spawner.zig");
 const Area = @import("Area.zig");
 const Revolver = @import("Revolver.zig");
+const Queue = @import("Queue.zig");
 const Environment = @import("Environment.zig");
 const Manager = @import("../Manager.zig").Manager;
 const commons = @import("../commons.zig");
@@ -19,6 +20,7 @@ pub const EntitySnapshot = struct {
         spawner: Spawner.SpawnerSnapshot,
         area: Area.AreaSnapshot,
         revolver: Revolver.RevolverSnapshot,
+        queue: Queue.QueueSnapshot,
     };
 };
 
@@ -32,6 +34,7 @@ pub const Entity = struct {
         spawner: Spawner,
         area: Area,
         revolver: Revolver,
+        queue: Queue,
     };
 
     pub const EntityAction = enum {
@@ -123,6 +126,17 @@ pub const Entity = struct {
         };
     }
 
+    pub fn initQueue(allocator: std.mem.Allocator, id: usize) !Entity {
+        const queue = Queue.init();
+        const name = try std.fmt.allocPrintZ(allocator, "Queue{}", .{id});
+        return .{
+            .name = name,
+            .kind = .{
+                .queue = queue,
+            },
+        };
+    }
+
     pub fn deinit(self: *Entity, allocator: std.mem.Allocator) void {
         allocator.free(self.name);
         switch (self.kind) {
@@ -152,6 +166,7 @@ pub const Entity = struct {
                 .spawner => |ss| .{ .spawner = Spawner.fromSnapshot(ss) },
                 .area => |as| .{ .area = Area.fromSnapshot(as) },
                 .revolver => |rs| .{ .revolver = Revolver.fromSnapshot(rs) },
+                .queue => |qs| .{ .queue = Queue.fromSnapshot(qs) },
             },
         };
     }

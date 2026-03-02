@@ -184,6 +184,76 @@ pub fn revolverButton(bs: f32) bool {
     return clicked;
 }
 
+pub fn queueButton(bs: f32) bool {
+    const clicked = z.invisibleButton("##queue", .{ .w = bs, .h = bs });
+    const min = z.getItemRectMin();
+    const max = z.getItemRectMax();
+    const dl = z.getWindowDrawList();
+
+    const hovered = z.isItemHovered(.{});
+    if (hovered) {
+        _ = z.beginTooltip();
+        z.text("Queue", .{});
+        z.endTooltip();
+    }
+    const active = z.isItemActive();
+
+    const bg_col: u32 = if (active)
+        palette.active
+    else if (hovered)
+        palette.hover
+    else
+        palette.default;
+
+    dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
+
+    // Draw 3 people standing in a queue (left to right, tallest at front)
+    const icon_col: u32 = 0xff_00_00_00;
+    const n_people: usize = 3;
+    const pad: f32 = 5.0;
+    const w = max[0] - min[0] - pad * 2.0;
+    const h = max[1] - min[1] - pad * 2.0;
+    const slot_w = w / @as(f32, @floatFromInt(n_people));
+
+    for (0..n_people) |i| {
+        // People get slightly smaller toward the back (right)
+        const scale = 1.0 - @as(f32, @floatFromInt(i)) * 0.12;
+        const cx = min[0] + pad + slot_w * (@as(f32, @floatFromInt(i)) + 0.5);
+        const body_h = h * scale;
+        const base_y = max[1] - pad;
+        const top_y = base_y - body_h;
+
+        // Head
+        const head_r = slot_w * 0.18 * scale;
+        const head_cy = top_y + head_r;
+        dl.addCircleFilled(.{ .p = .{ cx, head_cy }, .r = head_r, .col = icon_col });
+
+        // Body
+        const shoulder_y = head_cy + head_r + 1.0;
+        const body_bot_y = base_y - body_h * 0.25; // legs start here
+        dl.addRectFilled(.{
+            .pmin = .{ cx - slot_w * 0.15 * scale, shoulder_y },
+            .pmax = .{ cx + slot_w * 0.15 * scale, body_bot_y },
+            .col = icon_col,
+        });
+
+        // Legs (two thin rects)
+        const leg_w = slot_w * 0.09 * scale;
+        dl.addRectFilled(.{
+            .pmin = .{ cx - leg_w * 2.0, body_bot_y },
+            .pmax = .{ cx - leg_w * 0.5, base_y },
+            .col = icon_col,
+        });
+        dl.addRectFilled(.{
+            .pmin = .{ cx + leg_w * 0.5, body_bot_y },
+            .pmax = .{ cx + leg_w * 2.0, base_y },
+            .col = icon_col,
+        });
+    }
+
+    return clicked;
+}
+
 pub fn clearButton() bool {
     z.pushStyleColor4f(.{ .idx = .button, .c = .{ 0.55, 0.2, 0.32, 1 } });
     z.pushStyleColor4f(.{ .idx = .button_hovered, .c = .{ 0.65, 0.3, 0.4, 2 } });

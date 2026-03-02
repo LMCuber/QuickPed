@@ -259,35 +259,41 @@ pub fn main() !void {
 
                     // ENVIRONMENTAL BUTTONS --------------------------------------------
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
-                        const bs: i32 = 50;
-
-                        const next_id: usize = env.entities.free_count - 1;
+                        const button_size: i32 = 50;
+                        const next_id: usize = env.entities.getNextIndex();
 
                         // contour
-                        if (EB.contourButton(bs)) {
+                        if (EB.contourButton(button_size)) {
                             resetCurrentEntity(allocator, &current_entity);
                             current_entity = try entity.Entity.initContour(allocator, next_id);
                         }
 
                         // // spawner
                         z.sameLine(.{});
-                        if (EB.spawnerButton(bs)) {
+                        if (EB.spawnerButton(button_size)) {
                             resetCurrentEntity(allocator, &current_entity);
                             current_entity = try entity.Entity.initSpawner(allocator, next_id);
                         }
 
                         // area
                         z.sameLine(.{});
-                        if (EB.areaButton(bs)) {
+                        if (EB.areaButton(button_size)) {
                             resetCurrentEntity(allocator, &current_entity);
                             current_entity = try entity.Entity.initArea(allocator, next_id);
                         }
 
-                        // revolver button
+                        // revolver
                         z.sameLine(.{});
-                        if (EB.revolverButton(bs)) {
+                        if (EB.revolverButton(button_size)) {
                             resetCurrentEntity(allocator, &current_entity);
                             current_entity = try entity.Entity.initRevolver(allocator, next_id);
+                        }
+
+                        // queue
+                        z.sameLine(.{});
+                        if (EB.queueButton(button_size)) {
+                            resetCurrentEntity(allocator, &current_entity);
+                            current_entity = try entity.Entity.initQueue(allocator, next_id);
                         }
 
                         // reset
@@ -349,6 +355,7 @@ pub fn main() !void {
                             switch (ent.kind) {
                                 .area => |*a| a.confirm(),
                                 .revolver => |*r| r.confirm(),
+                                .queue => |*q| q.confirm(),
                                 else => {},
                             }
 

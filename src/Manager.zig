@@ -17,10 +17,7 @@ pub fn Manager(comptime T: type, comptime size: usize) type {
         pub fn init() Self {
             var items: [size]Slot = undefined;
             for (&items) |*slot| {
-                slot.* = Slot{
-                    .value = undefined,
-                    .alive = false,
-                };
+                slot.alive = false;
             }
 
             var free_indices: [size]usize = undefined;
@@ -51,6 +48,10 @@ pub fn Manager(comptime T: type, comptime size: usize) type {
             }
 
             return free_index;
+        }
+
+        pub fn getNextIndex(self: *Self) usize {
+            return self.free_indices[self.free_count - 1];
         }
 
         pub fn getItem(self: *Self, index: usize) *T {
