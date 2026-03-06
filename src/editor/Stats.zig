@@ -4,6 +4,7 @@ const z = @import("zgui");
 const implot = @import("implot");
 const Agent = @import("../Agent.zig");
 const commons = @import("../commons.zig");
+const Environment = @import("../environment/Environment.zig");
 const rl = @import("raylib");
 
 render_checks: struct {
@@ -64,10 +65,11 @@ fn maxItemBetweenInterval(
     return if (max == 0) (@as(T, 1)) else (max);
 }
 
-fn getNumWaitingAgents(agents: *std.ArrayList(Agent)) f64 {
+fn getNumWaitingAgents(agents: *Environment.AgentManager) f64 {
     var count: f64 = 0;
-    for (agents.items) |agent| {
-        if (agent.waiting) {
+    for (&agents.items) |*aslot| {
+        if (!aslot.alive) continue;
+        if (aslot.value.wait.waiting) {
             count += 1.0;
         }
     }
@@ -80,7 +82,7 @@ pub fn decay_map(self: *Self) void {
     }
 }
 
-pub fn render(self: *Self, agents: *std.ArrayList(Agent), paused: bool) !void {
+pub fn render(self: *Self, agents: *Environment.AgentManager, paused: bool) !void {
     if (z.collapsingHeader("Statistics", .{ .default_open = false })) {
         _ = z.checkbox("Graph", .{ .v = &self.render_checks.graph });
         z.sameLine(.{});
@@ -96,7 +98,7 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent), paused: bool) !void {
                 if (time - self.last_update >= @as(f64, @floatFromInt(self.update_interval))) {
                     // make a new point pair
                     try self.x_data.append(rl.getTime());
-                    try self.num_agents.append(@floatFromInt(agents.items.len));
+                    try self.num_agents.append(@floatFromInt(agents.getLen()));
                     try self.num_waiting_agents.append(getNumWaitingAgents(agents));
 
                     // reset last update

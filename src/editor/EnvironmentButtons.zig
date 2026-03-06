@@ -184,6 +184,82 @@ pub fn revolverButton(bs: f32) bool {
     return clicked;
 }
 
+pub fn queueButton(bs: f32) bool {
+    const clicked = z.invisibleButton("##queue", .{ .w = bs, .h = bs });
+    const min = z.getItemRectMin();
+    const max = z.getItemRectMax();
+    const dl = z.getWindowDrawList();
+
+    const hovered = z.isItemHovered(.{});
+    if (hovered) {
+        _ = z.beginTooltip();
+        z.text("Queue", .{});
+        z.endTooltip();
+    }
+    const active = z.isItemActive();
+
+    const bg_col: u32 = if (active)
+        palette.active
+    else if (hovered)
+        palette.hover
+    else
+        palette.default;
+
+    dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
+
+    const pad: f32 = 7.0;
+    const left = min[0] + pad;
+    const right = max[0] - pad;
+    const top = min[1] + pad;
+    const bot = max[1] - pad;
+    // const line_col: u32 = 0xff_50_50_50;
+    const line_col: u32 = 0xff_4F_86_C8;
+    const thick: f32 = 2.0;
+
+    // Snake path: 3 horizontal rows connected by short verticals on alternating sides
+    const n_rows: usize = 3;
+    const row_h = (bot - top) / @as(f32, @floatFromInt(n_rows));
+    const ys = [3]f32{
+        top + row_h * 0.5,
+        top + row_h * 1.5,
+        top + row_h * 2.5,
+    };
+
+    // Horizontal segments
+    for (0..n_rows) |i| {
+        const even = i % 2 == 0;
+        const x1: f32 = if (even) left else right;
+        const x2: f32 = if (even) right else left;
+        dl.addLine(.{ .p1 = .{ x1, ys[i] }, .p2 = .{ x2, ys[i] }, .col = line_col, .thickness = thick });
+    }
+
+    // Vertical connectors
+    // row 0 -> row 1: right side
+    dl.addLine(.{ .p1 = .{ right, ys[0] }, .p2 = .{ right, ys[1] }, .col = line_col, .thickness = thick });
+    // row 1 -> row 2: left side
+    dl.addLine(.{ .p1 = .{ left, ys[1] }, .p2 = .{ left, ys[2] }, .col = line_col, .thickness = thick });
+
+    // People dots along the snake
+    const dot_r: f32 = 3.5;
+    const dot_col: u32 = 0xff_92_C85C;
+
+    // Place dots evenly: 2 per row
+    const positions = [6][2]f32{
+        .{ left + (right - left) * 0.2, ys[0] },
+        .{ left + (right - left) * 0.6, ys[0] },
+        .{ left + (right - left) * 0.8, ys[1] },
+        .{ left + (right - left) * 0.4, ys[1] },
+        .{ left + (right - left) * 0.2, ys[2] },
+        .{ left + (right - left) * 0.6, ys[2] },
+    };
+
+    for (positions) |p| {
+        dl.addCircleFilled(.{ .p = p, .r = dot_r, .col = dot_col });
+    }
+
+    return clicked;
+}
+
 pub fn clearButton() bool {
     z.pushStyleColor4f(.{ .idx = .button, .c = .{ 0.55, 0.2, 0.32, 1 } });
     z.pushStyleColor4f(.{ .idx = .button_hovered, .c = .{ 0.65, 0.3, 0.4, 2 } });

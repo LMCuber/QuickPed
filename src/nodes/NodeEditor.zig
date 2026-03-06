@@ -9,6 +9,7 @@ const Graph = @import("Graph.zig");
 const Spawner = @import("../environment/Spawner.zig");
 const entity = @import("../environment/entity.zig");
 const Area = @import("../environment/Area.zig");
+const Queue = @import("../environment/Queue.zig");
 const Environment = @import("../environment/Environment.zig");
 const Agent = @import("../Agent.zig");
 const imnodes = @import("imnodesez");
@@ -34,14 +35,18 @@ pub fn loadNodes(self: *Self, alloc: std.mem.Allocator, path: []const u8, env: *
     try self.graph.loadNodes(alloc, path, env);
 }
 
-pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, agents: *std.ArrayList(Agent)) !void {
-    try self.graph.processSpawners(alloc, agents);
+pub fn update(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
+    try self.processSpawners(alloc, env);
+}
+
+pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
+    try self.graph.processSpawners(alloc, env);
 }
 
 pub fn render(
     self: *Self,
     allocator: std.mem.Allocator,
-    entities: *std.ArrayList(entity.Entity),
+    env: *Environment,
 ) !void {
     if (rl.isKeyPressed(.key_space)) {
         self.active = !self.active;
@@ -73,19 +78,20 @@ pub fn render(
 
                 // check if there are any spawners
                 var first_spawner: ?*Spawner = null;
-                for (entities.items) |*ent| {
-                    switch (ent.kind) {
+                for (&env.entities.items) |*eslot| {
+                    if (!eslot.alive) continue;
+                    switch (eslot.value.kind) {
                         .spawner => |*spawner| {
                             first_spawner = spawner;
                             break;
                         },
-                        inline else => {},
+                        else => {},
                     }
                 }
                 if (z.menuItem("Spawner", .{ .enabled = first_spawner != null })) {
                     if (first_spawner) |_| {
                         try self.graph.addNode(node.Node.initSpawner(
-                            entities,
+                            env,
                             1_000,
                         ));
                     }
@@ -93,19 +99,20 @@ pub fn render(
 
                 // check if there are any areas
                 var first_area: ?*Area = null;
-                for (entities.items) |*ent| {
-                    switch (ent.kind) {
+                for (&env.entities.items) |*eslot| {
+                    if (!eslot.alive) continue;
+                    switch (eslot.value.kind) {
                         .area => |*area| {
                             first_area = area;
                             break;
                         },
-                        inline else => {},
+                        else => {},
                     }
                 }
                 if (z.menuItem("Area", .{ .enabled = first_area != null })) {
                     if (first_area != null) {
                         try self.graph.addNode(node.Node.initArea(
-                            entities,
+                            env,
                             .{ .constant = .{
                                 .wait = 1000,
                             } },
@@ -113,35 +120,59 @@ pub fn render(
                     }
                 }
 
-                // // fork node
-                if (z.menuItem("Fork", .{})) {
-                    try self.graph.addNode(node.Node.initFork());
+                // check if there are any queues
+                var first_queue: ?*Queue = null;
+                for (&env.entities.items) |*eslot| {
+                    if (!eslot.alive) continue;
+                    switch (eslot.value.kind) {
+                        .queue => |*queue| {
+                            first_queue = queue;
+                            break;
+                        },
+                        else => {},
+                    }
+                }
+                if (z.menuItem("Queue", .{ .enabled = first_queue != null })) {
+                    if (first_queue != null) {
+                        try self.graph.addNode(node.Node.initQueue(
+                            env,
+                            .{ .constant = .{
+                                .wait = 1000,
+                            } },
+                        ));
+                    }
                 }
 
-                // sink node
-                if (z.menuItem("Sink", .{})) {
-                    try self.graph.addNode(node.Node.initSink());
-                }
+                // fork node
+                // if (z.menuItem("Fork", .{})) {
+                //     try self.graph.addNode(node.Node.initFork());
+                // }
+
+                // // sink node
+                // if (z.menuItem("Sink", .{})) {
+                //     try self.graph.addNode(node.Node.initSink());
+                // }
             }
         }
 
         var selected_node: ?*node.Node = null;
 
-        // render entire graph using imnodes
-        for (self.graph.nodes.items) |*n| {
-            const node_state = n.update();
+        // update and draw entire graph using imnodes
+        for (&self.graph.nodes.items) |*nslot| {
+            if (!nslot.alive) continue;
+            const node_state = nslot.value.update();
             if (node_state == .selected) {
-                selected_node = n;
+                selected_node = &nslot.value;
             }
-            n.draw();
+            nslot.value.draw();
         }
 
         // user wants to delete the currently selected node
-        if (selected_node) |n| {
-            if (rl.isKeyReleased(.key_d)) {
-                try self.graph.deleteNode(allocator, n);
-            }
-        }
+        // if (selected_node) |n| {
+        //     if (rl.isKeyReleased(.key_d)) {
+        //         try self.graph.deleteNode(allocator, n);
+        //     }
+        // }
 
         // create new connections
         var new_conn: node.NewConnection = .{};
@@ -153,15 +184,19 @@ pub fn render(
             output_node_ptr_ptr,
             &new_conn.output_slot_title,
         )) {
+            // scan which node id the ptrs correspond to
+            const input_node_id = self.graph.nodes.scan(new_conn.input_node.?).?;
+            const output_node_id = self.graph.nodes.scan(new_conn.output_node.?).?;
+
             // construct the in- and output the slots involved (see composite key)
             const input_slot: node.Slot = try node.Slot.init(
                 allocator,
-                new_conn.input_node.?.id,
+                input_node_id,
                 new_conn.input_slot_title,
             );
             const output_slot: node.Slot = try node.Slot.init(
                 allocator,
-                new_conn.output_node.?.id,
+                output_node_id,
                 new_conn.output_slot_title,
             );
 
@@ -171,10 +206,11 @@ pub fn render(
 
         // render existing connections
         for (self.graph.connections.items) |*conn| {
-            // cast the *Node pointer types to *anyopaque because C++ wants that;
+            // cast the *Node pointer types to *anyopaque because C++ wants that
             // they're otherwise the same thing
-            const input_node_ptr: *anyopaque = @ptrCast(conn.input_slot.getNode(&self.graph.nodes));
-            const output_node_ptr: *anyopaque = @ptrCast(conn.output_slot.getNode(&self.graph.nodes));
+            const input_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.getItem(conn.input_slot.node_id));
+            const output_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.getItem(conn.output_slot.node_id));
+
             _ = imnodes.ez.connection(
                 input_node_ptr,
                 conn.input_slot.title,

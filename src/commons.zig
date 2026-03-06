@@ -5,7 +5,13 @@ const Settings = @import("Settings.zig");
 
 pub var prng = std.Random.DefaultPrng.init(47);
 pub var rng = prng.random();
-pub var camera: *rl.Camera2D = undefined;
+pub const camera_default = rl.Camera2D{
+    .target = .{ .x = 0, .y = 0 },
+    .offset = .{ .x = 0, .y = 0 },
+    .rotation = 0.0,
+    .zoom = 1.0,
+};
+pub var camera = camera_default;
 
 pub fn editorCapturingMouse(settings: Settings) bool {
     const mouse: rl.Vector2 = rl.getMousePosition();
@@ -74,4 +80,8 @@ pub fn dupeCStr(allocator: std.mem.Allocator, cstr: [*c]const u8) ![:0]u8 {
     var len: usize = 0;
     while (cstr[len] != 0) : (len += 1) {}
     return try allocator.dupeZ(u8, cstr[0..len]);
+}
+
+pub fn tst() void {
+    std.debug.print("{}\n", .{rl.getRandomValue(100, 999)});
 }

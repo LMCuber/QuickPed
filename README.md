@@ -6,7 +6,15 @@ To view the paper we have written on this subject: [overleaf link](https://www.o
 * Go to the [backlog](#project-backlog) to see the planned features.
 * Go to [my previous Python implementation](https://www.github.com/lmcuber/agentbasedmodel) without a node editor for some spaghetti code
 
-## Why
+## Competitors
+As far as my eyes can see, these are the main industry defining _DES_ software:
+
+### AnyLogic
+Is very powerful, but to unlock that power, you have to code a lot of `Java`
+
+### FlexSim
+
+### Simio
 
 
 # Previews
@@ -27,6 +35,7 @@ Later Zig versions are not guaranteed to build correctly.
 - [ ] Statistics
     - [x] Showing number of (waiting) pedestrians
     - [x] Heatmap showing bottlenecks during simulation
+- [ ] Calamity simulation
 - [ ] Advanced environmental objects
     - [ ] queues
     - [x] revolving doors

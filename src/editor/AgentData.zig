@@ -4,6 +4,7 @@ const commons = @import("../commons.zig");
 const z = @import("zgui");
 const Agent = @import("../Agent.zig");
 const AgentData = @import("../editor/AgentData.zig");
+const Environment = @import("../environment/Environment.zig");
 const Contour = @import("../environment/Contour.zig");
 
 // lifetime
@@ -18,6 +19,7 @@ b_ped: f32 = 4,
 a_ob: f32 = 2.0,
 b_ob: f32 = 4,
 show_vectors: bool = false,
+show_targets: bool = false,
 
 const default_data = Self.init();
 
@@ -25,13 +27,12 @@ pub fn init() Self {
     return .{};
 }
 
-pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
+pub fn render(self: *Self, agents: *Environment.AgentManager) !void {
     if (z.collapsingHeader("Agent", .{ .default_open = false })) {
         if (z.button("delete", .{})) {
-            Agent.delete(
-                agents,
-                self.num_to_place,
-            );
+            for (0..@intCast(self.num_to_place)) |i| {
+                agents.deleteItem(i);
+            }
         }
 
         z.separatorText("Properties");
@@ -104,6 +105,7 @@ pub fn render(self: *Self, agents: *std.ArrayList(Agent)) !void {
         }
 
         _ = z.checkbox("show vectors", .{ .v = &self.show_vectors });
+        _ = z.checkbox("show targets", .{ .v = &self.show_targets });
         z.newLine();
     }
 }

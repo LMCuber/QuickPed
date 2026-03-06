@@ -11,6 +11,10 @@ pub const Vec2 = extern struct {
     pub fn init(x: f32, y: f32) Vec2 {
         return .{ .x = x, .y = y };
     }
+
+    pub fn equals(self: Vec2, other: Vec2) bool {
+        return self.x == other.x and self.y == other.y;
+    }
 };
 
 //=============================================================================

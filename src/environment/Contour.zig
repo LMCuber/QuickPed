@@ -8,21 +8,16 @@ const Entity = @import("entity.zig").Entity;
 const SimData = @import("../editor/SimData.zig");
 const Settings = @import("../Settings.zig");
 
-contour_id: i32,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 points: std.ArrayList(rl.Vector2),
 placed: bool = false,
 
-pub var next_id: i32 = 0;
-
 pub const ContourSnapshot = struct {
-    contour_id: i32,
     points: []rl.Vector2,
 };
 
 pub fn init(allocator: std.mem.Allocator) !Self {
     return .{
-        .contour_id = nextId(),
         .points = std.ArrayList(rl.Vector2).init(allocator),
     };
 }
@@ -33,7 +28,6 @@ pub fn deinit(self: *Self) void {
 
 pub fn getSnapshot(self: Self) ContourSnapshot {
     return .{
-        .contour_id = self.contour_id,
         .points = self.points.items,
     };
 }
@@ -44,15 +38,9 @@ pub fn fromSnapshot(allocator: std.mem.Allocator, snap: ContourSnapshot) !Self {
         try points.append(point);
     }
     return .{
-        .contour_id = snap.contour_id,
         .points = points,
         .placed = true,
     };
-}
-
-pub fn nextId() i32 {
-    next_id += 1;
-    return next_id - 1;
 }
 
 pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.EntityAction {
