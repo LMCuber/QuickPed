@@ -212,7 +212,8 @@ pub fn queueButton(bs: f32) bool {
     const right = max[0] - pad;
     const top = min[1] + pad;
     const bot = max[1] - pad;
-    const line_col: u32 = 0xff_50_50_50;
+    // const line_col: u32 = 0xff_50_50_50;
+    const line_col: u32 = 0xff_4F_86_C8;
     const thick: f32 = 2.0;
 
     // Snake path: 3 horizontal rows connected by short verticals on alternating sides
@@ -240,7 +241,7 @@ pub fn queueButton(bs: f32) bool {
 
     // People dots along the snake
     const dot_r: f32 = 3.5;
-    const dot_col: u32 = 0xff_20_80_e0;
+    const dot_col: u32 = 0xff_92_C85C;
 
     // Place dots evenly: 2 per row
     const positions = [6][2]f32{

@@ -8,6 +8,7 @@ const rl = @import("raylib");
 const commons = @import("commons.zig");
 const color = @import("color.zig");
 const palette = @import("palette.zig");
+const Agent = @import("Agent.zig");
 const AgentData = @import("editor/AgentData.zig");
 const Contour = @import("environment/Contour.zig");
 const Revolver = @import("environment/Revolver.zig");
@@ -29,15 +30,26 @@ acc: rl.Vector2 = .{ .x = 0, .y = 0 },
 
 graph: *Graph,
 current_node_id: ?usize = null,
-wait: i32 = 0,
-last_wait: f64 = 0,
-waiting: bool = false,
 marked: bool = false, // marked to delete later
 
-current_payload: ?union(enum) {
+wait: WaitPayload,
+
+payload: ?union(enum) {
     area: AreaPayload,
     queue: QueuePayload,
 },
+
+pub const WaitPayload = struct {
+    waiting: bool = false,
+    wait: i32 = 0,
+    last_wait: f64 = 0,
+
+    pub fn setWait(self: *WaitPayload, wait: i32) void {
+        self.waiting = true;
+        self.wait = wait;
+        self.last_wait = commons.getTimeMillis();
+    }
+};
 
 pub const AreaPayload = struct {
     obj: *Area,
@@ -45,8 +57,8 @@ pub const AreaPayload = struct {
 
 pub const QueuePayload = struct {
     obj: *Queue,
-    target_agent: ?usize,
-    is_last: bool = false,
+    spot_index: usize,
+    stationary: bool = false,
 };
 
 // FUNCTIONS
@@ -64,7 +76,8 @@ pub fn init(
         .target = .{ .x = 100, .y = 100 },
         .col = col,
         .graph = graph,
-        .current_payload = null,
+        .wait = .{},
+        .payload = null,
     };
     obj.current_node_id = spawner_node_id;
     try obj.traverseFromCurrent(alloc, agent_id, agents, &graph.nodes);
@@ -89,13 +102,12 @@ pub fn traverseFromCurrent(
         switch (next_node.kind) {
             .spawner => unreachable,
             .area => |*area_node| {
-                self.current_payload = .{
+                self.payload = .{
                     .area = .{
                         .obj = area_node.getArea(),
                     },
                 };
-                self.target = self.current_payload.?.area.obj.getPos();
-                self.waiting = false;
+                self.target = self.payload.?.area.obj.getPos();
             },
             .sink => self.marked = true, // next is sink, so destroy outselves
             .fork => {
@@ -104,15 +116,15 @@ pub fn traverseFromCurrent(
             },
             .queue => |*queue_node| {
                 self.current_node_id = next_node_id;
-                // make sure the queue knows about the new agent
-                const target_agent: ?usize = try queue_node.getQueue().registerNewAgent(agent_id);
-                // set in payload the queue object and the
-                self.current_payload = .{
+                self.payload = .{
                     .queue = .{
                         .obj = queue_node.getQueue(),
-                        .target_agent = target_agent,
+                        .spot_index = queue_node.getQueue().getWaitingSpotIndex(),
                     },
                 };
+                self.target = queue_node.getQueue().getWaitingSpotFromIndex(
+                    self.payload.?.queue.spot_index,
+                );
             },
         }
     } else {
@@ -132,7 +144,7 @@ pub fn getBehindVector(
     // will only be called on agents that are NOT on the front of the queue
     // (ones which have valid prev_agent_ids)
 
-    const queue_obj: *Queue = self.current_payload.?.queue.obj;
+    const queue_obj: *Queue = self.payload.?.queue.obj;
     const prev_agent_id: usize = queue_obj.getPreviousAgentId(agent_id).?;
     const prev_prev_agent: ?usize = queue_obj.getPreviousAgentId(prev_agent_id);
 
@@ -143,15 +155,13 @@ pub fn getBehindVector(
     } else {
         // the prev prev is none, so the queue is only 2 long.
         // Calculate direction using queue.pos
-        std.debug.print("{}\n", .{agents.getItem(prev_agent_id).target.subtract(queue_obj.pos).normalize()});
-
         direction = agents.getItem(prev_agent_id).target.subtract(queue_obj.pos).normalize();
     }
     return self.target.add(direction.?.scale(queue_obj.getPadding(agent_data)));
 }
 
 /// every frame, processCurrentNode checks what node we are on currently, and then
-/// checks (for example) if we need to start waiting because we entered radius of waiting area
+/// checks (for example) if we need to start waiting because we entered radius of a waiting area
 pub fn processCurrentNode(
     self: *Self,
     alloc: std.mem.Allocator,
@@ -161,33 +171,65 @@ pub fn processCurrentNode(
     nodes: *Graph.NodeManager,
 ) !void {
     const current_node: *node.Node = nodes.getItem(self.current_node_id.?);
+    const time: f64 = commons.getTimeMillis();
 
     switch (current_node.kind) {
         .area => |*area_node| {
-            const area_payload = self.current_payload.?.area;
+            const area_payload = self.payload.?.area;
             // check should start waiting
-            if (!self.waiting) {
+            if (!self.wait.waiting) {
                 // start waiting if in bounds
                 if (rl.checkCollisionPointRec(self.pos, area_payload.obj.rect)) {
-                    self.wait = area_node.getWaitTime();
-                    self.waiting = true;
-                    self.last_wait = commons.getTimeMillis();
+                    self.wait.setWait(area_node.getWaitTime());
                 }
             } else {
                 // is already waiting; check if waited long enough in the area
-                const time: f64 = commons.getTimeMillis();
-                if (time - self.last_wait >= @as(f64, @floatFromInt(self.wait))) {
+                if (time - self.wait.last_wait >= @as(f64, @floatFromInt(self.wait.wait))) {
                     // waited long enough. continue
+                    self.wait.waiting = false;
                     try self.traverseFromCurrent(alloc, agent_id, agents, nodes);
                 }
             }
         },
-        .queue => {
-            // if target agent exists, then follow that. Otherwise follow queue pos
-            if (self.current_payload.?.queue.target_agent) |target_agent_id| {
-                self.target = agents.getItem(target_agent_id).getBehindVector(agent_id, agents, agent_data);
-            } else {
-                self.target = self.current_payload.?.queue.obj.getTarget(agent_data);
+        .queue => |queue_node| {
+            const q: *Agent.QueuePayload = &self.payload.?.queue;
+
+            // "waiting" means in the queue
+            if (self.wait.waiting) {
+                // is waiting
+                if (q.spot_index == 0) {
+                    // is at front
+                    if (time - self.wait.last_wait >= @as(f64, @floatFromInt(self.wait.wait))) {
+                        if (q.stationary) {
+                            // can only dispatch if it is stationary
+                            q.obj.freeIndex(q.spot_index);
+                            self.wait.waiting = false;
+                            try self.traverseFromCurrent(alloc, agent_id, agents, nodes);
+                        }
+                    }
+                }
+            }
+
+            // stationary -> queue, but queue -X> stationary
+
+            // is not stationary
+            if (!q.stationary) {
+                if (self.pos.distance(self.target) <= @as(f32, @floatFromInt(agent_data.radius))) {
+                    self.wait.setWait(queue_node.getWaitTime());
+                    q.stationary = true;
+                }
+            }
+
+            // regardless of waiting or not
+            if (q.spot_index != 0 and q.obj.isFree(q.spot_index - 1)) {
+                // scoot up since one in front is free
+                q.obj.freeIndex(q.spot_index);
+                q.spot_index -= 1;
+                q.obj.occupyIndex(q.spot_index);
+
+                // if its at front of queue now because of shift, init waiting variables
+                self.target = q.obj.getWaitingSpotFromIndex(q.spot_index);
+                q.stationary = false;
             }
         },
         else => {},
@@ -332,13 +374,23 @@ pub fn update_heatmap(self: *Self, stats: *Stats, settings: Settings, n_rows: i3
 pub fn draw(self: *const Self, agent_data: AgentData) void {
     // render sphere
     const f_radius: f32 = @floatFromInt(agent_data.radius);
-    if (self.waiting) {
-        // waiting pedestrians have reddish color
+
+    if (self.wait.waiting) {
         rl.drawCircleV(self.pos, f_radius, color.hexToColor(color.fromPalette(.clay)));
     } else {
         rl.drawCircleV(self.pos, f_radius, self.col);
     }
-    rl.drawCircleLinesV(self.pos, f_radius, color.white);
+
+    if (self.payload) |payload| {
+        switch (payload) {
+            .queue => |q| {
+                if (q.stationary) {
+                    rl.drawCircleV(self.pos, 2, palette.env.black);
+                }
+            },
+            else => {},
+        }
+    }
 
     if (agent_data.show_vectors) {
         const m: u32 = 12;

@@ -132,7 +132,9 @@ pub fn main() !void {
                     for (&env.entities.items) |*eslot| {
                         if (eslot.alive) {
                             _ = try eslot.value.update(
+                                allocator,
                                 dt,
+                                agent_data,
                                 sim_data,
                                 settings,
                             );
@@ -142,7 +144,7 @@ pub fn main() !void {
 
                 // update selected entity
                 if (current_entity) |*ent| {
-                    const action = try ent.update(dt, sim_data, settings);
+                    const action = try ent.update(allocator, dt, agent_data, sim_data, settings);
                     switch (action) {
                         .cancelled, .none => {},
                         .placed => {
@@ -354,7 +356,7 @@ pub fn main() !void {
                             switch (ent.kind) {
                                 .area => |*a| a.confirm(),
                                 .revolver => |*r| r.confirm(),
-                                .queue => |*q| q.confirm(),
+                                .queue => |*q| try q.confirm(allocator, agent_data),
                                 else => {},
                             }
 

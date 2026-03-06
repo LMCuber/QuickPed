@@ -157,7 +157,7 @@ pub fn render(
 
         var selected_node: ?*node.Node = null;
 
-        // render entire graph using imnodes
+        // update and draw entire graph using imnodes
         for (&self.graph.nodes.items) |*nslot| {
             if (!nslot.alive) continue;
             const node_state = nslot.value.update();

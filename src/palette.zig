@@ -9,8 +9,9 @@ pub const env = struct {
     pub const light_blue = rl.Color{ .r = 16, .g = 41, .b = 65, .a = 255 };
     pub const light_blue_t = rl.Color{ .r = 16, .g = 41, .b = 65, .a = 180 };
     pub const red = rl.Color{ .r = 184, .g = 60, .b = 70, .a = 255 };
-    pub const green = rl.Color{ .r = 80, .g = 166, .b = 80, .a = 255 };
+    pub const green = rl.Color{ .r = 116, .g = 185, .b = 100, .a = 255 };
     pub const orange = rl.Color{ .r = 235, .g = 150, .b = 38, .a = 255 };
+    pub const orange_t = rl.Color{ .r = 235, .g = 150, .b = 38, .a = 180 };
 };
 
 pub fn iden(col: rl.Color) u32 {

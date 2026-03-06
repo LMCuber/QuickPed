@@ -71,9 +71,17 @@ pub const Entity = struct {
         return buf[0..pos :0];
     }
 
-    pub fn update(self: *Entity, dt: f32, sim_data: SimData, settings: Settings) !EntityAction {
+    pub fn update(
+        self: *Entity,
+        alloc: std.mem.Allocator,
+        dt: f32,
+        agent_data: AgentData,
+        sim_data: SimData,
+        settings: Settings,
+    ) !EntityAction {
         switch (self.kind) {
             .revolver => |*r| return r.update(dt, sim_data, settings),
+            .queue => |*r| return r.update(alloc, dt, agent_data, sim_data, settings),
             inline else => |*kind| return kind.update(sim_data, settings),
         }
     }

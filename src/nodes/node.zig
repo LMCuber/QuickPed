@@ -551,15 +551,11 @@ pub const QueueNode = struct {
         };
     }
 
-    // pub fn getPos(self: *AreaNode) rl.Vector2 {
-    //     return self.getArea().getPos();
-    // }
-
-    // pub fn getWaitTime(self: AreaNode) i32 {
-    //     return switch (self.wait) {
-    //         inline else => |kind| kind.get(),
-    //     };
-    // }
+    pub fn getWaitTime(self: QueueNode) i32 {
+        return switch (self.wait) {
+            inline else => |kind| kind.get(),
+        };
+    }
 
     pub fn getQueue(self: *QueueNode) *Queue {
         return &self.env.entities.getItem(self.env.queues.items[@intCast(self.queue_index)]).kind.queue;

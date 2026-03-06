@@ -42,7 +42,8 @@ pub fn fromPalette(p: Palette) []const u8 {
 }
 
 pub fn getAgentColor() rl.Color {
-    const index: i32 = rl.getRandomValue(0, palette.len - 1);
+    var index: i32 = 1;
+    while (index == 1) index = rl.getRandomValue(0, palette.len - 1);
     const hex = palette[@as(usize, @intCast(index))];
     return hexToColor(hex);
 }
