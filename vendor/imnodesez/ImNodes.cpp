@@ -252,7 +252,7 @@ void BeginCanvas(CanvasState* canvas)
             {
                 ImVec2 mouseRel = ImVec2{ ImGui::GetMousePos().x - ImGui::GetWindowPos().x, ImGui::GetMousePos().y - ImGui::GetWindowPos().y };
                 float prevZoom = canvas->Zoom;
-                canvas->Zoom = ImClamp(canvas->Zoom + io.MouseWheel * canvas->Zoom / 16.f, 0.3f, 3.f);
+                canvas->Zoom = ImClamp(canvas->Zoom + io.MouseWheel * canvas->Zoom / 16.f, 0.3f, 2.f);
                 float zoomFactor = (prevZoom - canvas->Zoom) / prevZoom;
                 canvas->Offset += (mouseRel - canvas->Offset) * zoomFactor;
             }

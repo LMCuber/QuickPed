@@ -15,8 +15,10 @@ const Settings = @import("../Settings.zig");
 const Agent = @import("../Agent.zig");
 const imnodes = @import("imnodesez");
 
-active: bool = false,
 graph: Graph,
+
+active: bool = false,
+showing_keybinds: bool = false,
 
 pub fn init(allocator: std.mem.Allocator) Self {
     return .{
@@ -61,9 +63,18 @@ pub fn render(
 
     if (z.begin("Node editor", .{ .flags = .{ .no_scrollbar = true, .no_scroll_with_mouse = true } })) {
         // tutorial
-        z.text("[a] to add node", .{});
-        z.text("[d] to delete node", .{});
-        z.text("[c] to recenter", .{});
+        if (rl.isKeyReleased(.key_i)) {
+            self.showing_keybinds = !self.showing_keybinds;
+        }
+        if (self.showing_keybinds) {
+            z.text("[a] to add node", .{});
+            z.text("[d] to delete node", .{});
+            z.text("[c] to recenter", .{});
+            z.text("double click to delete link", .{});
+            z.text("[i] to hide keybinds", .{});
+        } else {
+            z.text("[i] to show keybinds", .{});
+        }
 
         imnodes.ez.beginCanvas();
         defer imnodes.ez.endCanvas();
@@ -212,18 +223,23 @@ pub fn render(
         }
 
         // render existing connections
-        for (self.graph.connections.items) |*conn| {
-            // cast the *Node pointer types to *anyopaque because C++ wants that
-            // they're otherwise the same thing
+        var i = self.graph.connections.items.len;
+        while (i > 0) {
+            i -= 1;
+            var conn = self.graph.connections.items[i];
             const input_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.getItem(conn.input_slot.node_id));
             const output_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.getItem(conn.output_slot.node_id));
 
-            _ = imnodes.ez.connection(
+            const double_clicked: bool = !imnodes.ez.connection(
                 input_node_ptr,
                 conn.input_slot.title,
                 output_node_ptr,
                 conn.output_slot.title,
             );
+            if (double_clicked) {
+                conn.deinit(allocator);
+                _ = self.graph.connections.swapRemove(i);
+            }
         }
     }
     z.end();

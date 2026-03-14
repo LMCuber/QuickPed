@@ -1,17 +1,30 @@
 const Self = @This();
 const std = @import("std");
 const commons = @import("../commons.zig");
+const palette = @import("../palette.zig");
 const z = @import("zgui");
 const rl = @import("raylib");
 
 grid_size: i32 = 2 << 4,
+scale: i32 = 32, // this many pixels is 1 meter in simulation
 paused: bool = false,
 
 pub fn init() Self {
     return .{};
 }
 
-pub fn render(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) void {
+pub fn render(self: *Self) void {
+    const start: rl.Vector2 = .{ .x = 32, .y = 32 };
+    const end: rl.Vector2 = start.add(.{ .x = @floatFromInt(self.scale), .y = 0 });
+    const o: rl.Vector2 = .{ .x = 0, .y = 4 };
+    const thick: i32 = 2;
+    rl.drawLineEx(start, end, thick, palette.env.white);
+    rl.drawLineEx(start.subtract(o), start.add(o), thick, palette.env.white);
+    rl.drawLineEx(end.subtract(o), end.add(o), thick, palette.env.white);
+    rl.drawText("1m", @intFromFloat(start.add(end.subtract(start).scale(0.5)).x), start.y + 12, 18, palette.env.white);
+}
+
+pub fn update_ui(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) void {
     if (z.collapsingHeader("Simulation", .{ .default_open = false })) {
         if (z.button("recenter", .{})) {
             camera.target = camera_default.target;
@@ -21,7 +34,10 @@ pub fn render(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) vo
         }
         z.sameLine(.{});
         _ = z.checkbox("paused", .{ .v = &self.paused });
-        // _ = z.sliderInt("grid size", .{ .v = &self.grid_size, .min = 10, .max = 100 });
+        // _ = z.sliderInt("grid size", .{ .v = &self.grid_size, .min = 10, .max = 100 });]
+        z.setNextItemWidth(120);
+        z.sameLine(.{});
+        _ = z.inputInt("scale", .{ .v = &self.scale });
         z.newLine();
     }
 }

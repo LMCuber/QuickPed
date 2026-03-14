@@ -1,8 +1,8 @@
 {
   "num_to_place": 10,
-  "speed": 2e0,
+  "speed": 1.4900000095367432e0,
   "relaxation": 1e1,
-  "radius": 8,
+  "radius": 2.5e-1,
   "a_ped": 7.999999821186066e-2,
   "b_ped": 4e0,
   "a_ob": 2e0,

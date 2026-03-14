@@ -23,14 +23,12 @@ pub const QueueSnapshot = struct {
     padding: i32,
 };
 
-pub fn init(allocator: std.mem.Allocator, agent_data: AgentData) !Self {
-    var ret: Self = .{
+pub fn init(allocator: std.mem.Allocator) !Self {
+    return .{
         .points = std.ArrayList(rl.Vector2).init(allocator),
         .waiting_spots = std.ArrayList(rl.Vector2).init(allocator),
         .occupied_spots = std.ArrayList(bool).init(allocator),
     };
-    try ret.calculatePoints(allocator, agent_data);
-    return ret;
 }
 
 pub fn deinit(self: *Self) void {
@@ -46,7 +44,12 @@ pub fn getSnapshot(self: Self) QueueSnapshot {
     };
 }
 
-pub fn fromSnapshot(allocator: std.mem.Allocator, snap: QueueSnapshot, agent_data: AgentData) !Self {
+pub fn fromSnapshot(
+    allocator: std.mem.Allocator,
+    snap: QueueSnapshot,
+    sim_data: SimData,
+    agent_data: AgentData,
+) !Self {
     // repopulate points (nothing sneaky)
     var points = std.ArrayList(rl.Vector2).init(allocator);
     for (snap.points) |point| {
@@ -64,7 +67,7 @@ pub fn fromSnapshot(allocator: std.mem.Allocator, snap: QueueSnapshot, agent_dat
         .placed = true,
         .padding = snap.padding,
     };
-    try ret.calculatePoints(allocator, agent_data);
+    try ret.calculatePoints(allocator, sim_data, agent_data);
 
     return ret;
 }
@@ -86,7 +89,7 @@ pub fn update(
         // finish points with keypress
         if (rl.isKeyPressed(.key_enter)) {
             self.placed = true;
-            try self.calculatePoints(alloc, agent_data);
+            try self.calculatePoints(alloc, sim_data, agent_data);
             return .confirm;
         }
         return .none;
@@ -94,14 +97,14 @@ pub fn update(
     return .none;
 }
 
-fn getDistBetweenSpots(self: *Self, agent_data: AgentData) f32 {
-    return @floatFromInt((agent_data.radius * 2 + self.padding));
+fn getDistBetweenSpots(self: *Self, sim_data: SimData, agent_data: AgentData) f32 {
+    return agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2 + @as(f32, @floatFromInt(self.padding));
 }
 
 ///
 /// populates self.waiting_spots AND self.occupied_spots in-place
 ///
-fn calculatePoints(self: *Self, alloc: std.mem.Allocator, agent_data: AgentData) !void {
+fn calculatePoints(self: *Self, alloc: std.mem.Allocator, sim_data: SimData, agent_data: AgentData) !void {
     self.waiting_spots.clearRetainingCapacity();
 
     // calculate total length and cumulative distances
@@ -113,7 +116,7 @@ fn calculatePoints(self: *Self, alloc: std.mem.Allocator, agent_data: AgentData)
         try cum_distances.append(prev_cum_dist + point.subtract(self.points.items[i - 1]).length());
     }
     const total_length: f32 = cum_distances.getLast();
-    const step_size: f32 = self.getDistBetweenSpots(agent_data);
+    const step_size: f32 = self.getDistBetweenSpots(sim_data, agent_data);
 
     // find the correct part
     var i: usize = 0;
@@ -163,15 +166,15 @@ pub fn occupyIndex(self: *Self, index: usize) void {
     self.occupied_spots.items[index] = true;
 }
 
-pub fn confirm(self: *Self, alloc: std.mem.Allocator, agent_data: AgentData) !void {
+pub fn confirm(self: *Self, alloc: std.mem.Allocator, sim_data: SimData, agent_data: AgentData) !void {
     const w: f32 = 100;
     z.setNextItemWidth(w);
     if (z.sliderInt("padding", .{ .v = &self.padding, .min = 0, .max = 64 })) {
-        try self.calculatePoints(alloc, agent_data);
+        try self.calculatePoints(alloc, sim_data, agent_data);
     }
 }
 
-pub fn draw(self: Self, agent_data: AgentData) void {
+pub fn draw(self: Self, sim_data: SimData, agent_data: AgentData) void {
     const line_width = 2;
     const col = if (self.placed) (palette.env.orange) else (palette.env.orange_t);
     if (self.points.items.len == 0) {
@@ -193,9 +196,9 @@ pub fn draw(self: Self, agent_data: AgentData) void {
         for (self.waiting_spots.items, 0..) |waiting_spot, i| {
             const circle_rad =
                 if (i == 0)
-                    @as(f32, @floatFromInt(agent_data.radius))
+                    agent_data.radius * @as(f32, @floatFromInt(sim_data.scale))
                 else
-                    @as(f32, @floatFromInt(agent_data.radius)) * 0.7;
+                    agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 0.7;
             const circle_col = if (i == 0) palette.env.dark_green else palette.env.green;
             rl.drawCircleV(waiting_spot, circle_rad, circle_col);
         }

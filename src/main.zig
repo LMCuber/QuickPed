@@ -99,7 +99,7 @@ pub fn main() !void {
     var node_editor = NodeEditor.init(allocator);
     defer node_editor.deinit(allocator);
 
-    try env.loadScene(allocator, "data/scene.json", agent_data);
+    try env.loadScene(allocator, "data/scene.json", sim_data, agent_data);
     try node_editor.loadNodes(allocator, "data/nodes.json", &env);
 
     // commons.camera shenanigans
@@ -161,6 +161,7 @@ pub fn main() !void {
                             &env,
                             &stats,
                             settings,
+                            sim_data,
                             i,
                             agent_data,
                             n_rows,
@@ -211,19 +212,22 @@ pub fn main() !void {
                 // render all the entities
                 for (&env.entities.items) |*eslot| {
                     if (!eslot.alive) continue;
-                    eslot.value.draw(agent_data);
+                    eslot.value.draw(sim_data, agent_data);
                 }
 
                 // render the in-progress selected entity
                 if (current_entity) |*ent| {
-                    ent.draw(agent_data);
+                    ent.draw(sim_data, agent_data);
                 }
 
                 // render all pedestrians
                 for (&env.agents.items) |*aslot| {
                     if (!aslot.alive) continue;
-                    aslot.value.draw(agent_data);
+                    aslot.value.draw(sim_data, agent_data);
                 }
+
+                // render sim data misc. things
+                sim_data.render();
             }
 
             // IMGUI
@@ -239,7 +243,7 @@ pub fn main() !void {
                     });
                     z.setNextWindowSize(.{
                         .w = @floatFromInt(settings.tab_width),
-                        .h = @floatFromInt(settings.height),
+                        .h = @as(f32, @floatFromInt(settings.height)),
                     });
                     _ = z.begin("Settings", .{});
 
@@ -250,10 +254,10 @@ pub fn main() !void {
                     z.text("FPS: {d:.1} | {d:.2} ms frame | peds: {}", .{ fps, frametime, env.agents.getLen() });
 
                     // sim data header
-                    sim_data.render(&commons.camera, commons.camera_default);
+                    sim_data.update_ui(&commons.camera, commons.camera_default);
 
                     // agent data header
-                    try agent_data.render(&env.agents);
+                    try agent_data.update_ui(&env.agents);
 
                     // ENVIRONMENTAL BUTTONS --------------------------------------------
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
@@ -291,7 +295,7 @@ pub fn main() !void {
                         z.sameLine(.{});
                         if (EB.queueButton(button_size)) {
                             resetCurrentEntity(allocator, &current_entity);
-                            current_entity = try entity.Entity.initQueue(allocator, next_id, agent_data);
+                            current_entity = try entity.Entity.initQueue(allocator, next_id);
                         }
 
                         // reset
@@ -353,7 +357,7 @@ pub fn main() !void {
                             switch (ent.kind) {
                                 .area => |*a| a.confirm(),
                                 .revolver => |*r| r.confirm(),
-                                .queue => |*q| try q.confirm(allocator, agent_data),
+                                .queue => |*q| try q.confirm(allocator, sim_data, agent_data),
                                 else => {},
                             }
 

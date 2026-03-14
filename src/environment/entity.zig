@@ -135,8 +135,8 @@ pub const Entity = struct {
         };
     }
 
-    pub fn initQueue(allocator: std.mem.Allocator, id: usize, agent_data: AgentData) !Entity {
-        const queue = try Queue.init(allocator, agent_data);
+    pub fn initQueue(allocator: std.mem.Allocator, id: usize) !Entity {
+        const queue = try Queue.init(allocator);
         const name = try std.fmt.allocPrintZ(allocator, "Queue{}", .{id});
         return .{
             .name = name,
@@ -168,7 +168,7 @@ pub const Entity = struct {
         };
     }
 
-    pub fn fromSnapshot(allocator: std.mem.Allocator, snap: EntitySnapshot, agent_data: AgentData) !Entity {
+    pub fn fromSnapshot(allocator: std.mem.Allocator, snap: EntitySnapshot, sim_data: SimData, agent_data: AgentData) !Entity {
         return .{
             .name = try allocator.dupeZ(u8, snap.name),
             .kind = switch (snap.kind) {
@@ -176,14 +176,14 @@ pub const Entity = struct {
                 .spawner => |ss| .{ .spawner = Spawner.fromSnapshot(ss) },
                 .area => |as| .{ .area = Area.fromSnapshot(as) },
                 .revolver => |rs| .{ .revolver = Revolver.fromSnapshot(rs) },
-                .queue => |qs| .{ .queue = try Queue.fromSnapshot(allocator, qs, agent_data) },
+                .queue => |qs| .{ .queue = try Queue.fromSnapshot(allocator, qs, sim_data, agent_data) },
             },
         };
     }
 
-    pub fn draw(self: *Entity, agent_data: AgentData) void {
+    pub fn draw(self: *Entity, sim_data: SimData, agent_data: AgentData) void {
         switch (self.kind) {
-            .queue => |*q| q.draw(agent_data),
+            .queue => |*q| q.draw(sim_data, agent_data),
             inline else => |*kind| kind.draw(),
         }
     }

@@ -1,4 +1,5 @@
 {
   "grid_size": 32,
+  "scale": 32,
   "paused": false
 }

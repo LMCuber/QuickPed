@@ -2,6 +2,7 @@ const Self = @This();
 
 const std = @import("std");
 const entity = @import("entity.zig");
+const SimData = @import("../editor/SimData.zig");
 const AgentData = @import("../editor/AgentData.zig");
 const Contour = @import("Contour.zig");
 const Spawner = @import("Spawner.zig");
@@ -84,6 +85,7 @@ pub fn loadScene(
     self: *Self,
     allocator: std.mem.Allocator,
     path: []const u8,
+    sim_data: SimData,
     agent_data: AgentData,
 ) !void {
     const json = try commons.readFile(allocator, path);
@@ -115,7 +117,7 @@ pub fn loadScene(
 
     // repopulate entities from saved snapshots
     for (scene.entities) |snap| {
-        try self.createEntity(try entity.Entity.fromSnapshot(allocator, snap, agent_data));
+        try self.createEntity(try entity.Entity.fromSnapshot(allocator, snap, sim_data, agent_data));
     }
 }
 

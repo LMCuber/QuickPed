@@ -151,13 +151,9 @@ pub fn render(self: *Self, agents: *Environment.AgentManager, paused: bool) !voi
             z.separatorText("Heatmap");
 
             // exponential decay for all grid items
-            if (!paused) self.decay_map();
-
-            // change palette
-            z.setNextItemWidth(90);
-            _ = z.inputInt("palette", .{ .v = &self.current_heatmap_index });
-            self.current_heatmap_index = @min(self.current_heatmap_index, @typeInfo(implot.Colormap).Enum.fields.len - 1);
-            self.current_heatmap_index = @max(0, self.current_heatmap_index);
+            if (!paused) {
+                self.decay_map();
+            }
 
             // plot
             if (implot.beginPlot("Agents", -1.0, 0.0, implot.Flags.none)) {
@@ -173,6 +169,18 @@ pub fn render(self: *Self, agents: *Environment.AgentManager, paused: bool) !voi
 
                 implot.plotHeatmap(f32, "heatmap", self.heatmap, @intCast(self.n_rows), @intCast(self.n_cols), 0, 0, null, 0, 0, 1, 1, .{});
             }
+
+            // change palette
+            z.setNextItemWidth(90);
+            _ = z.inputInt("palette", .{ .v = &self.current_heatmap_index });
+            self.current_heatmap_index = @min(self.current_heatmap_index, @typeInfo(implot.Colormap).Enum.fields.len - 1);
+            self.current_heatmap_index = @max(0, self.current_heatmap_index);
+
+            // decay
+            _ = z.sliderFloat("decay", .{ .v = &self.decay, .min = 0.001, .max = 0.01 });
+
+            // padding
+            z.newLine();
         }
     }
 }

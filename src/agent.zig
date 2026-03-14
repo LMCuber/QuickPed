@@ -9,6 +9,7 @@ const commons = @import("commons.zig");
 const color = @import("color.zig");
 const palette = @import("palette.zig");
 const Agent = @import("Agent.zig");
+const SimData = @import("editor/SimData.zig");
 const AgentData = @import("editor/AgentData.zig");
 const Contour = @import("environment/Contour.zig");
 const Revolver = @import("environment/Revolver.zig");
@@ -166,6 +167,7 @@ pub fn processCurrentNode(
     self: *Self,
     alloc: std.mem.Allocator,
     agent_id: usize,
+    sim_data: SimData,
     agent_data: AgentData,
     nodes: *Graph.NodeManager,
     env: *Environment,
@@ -217,7 +219,7 @@ pub fn processCurrentNode(
 
             // is not stationary
             if (!q.stationary) {
-                if (self.pos.distance(self.target) <= @as(f32, @floatFromInt(agent_data.radius))) {
+                if (self.pos.distance(self.target) <= agent_data.radius * @as(f32, @floatFromInt(sim_data.scale))) {
                     self.wait.setWait(queue_node.getWaitTime());
                     q.stationary = true;
                 }
@@ -243,6 +245,7 @@ fn obstacleForceFromTwoVectors(
     self: *Self,
     A: rl.Vector2,
     B: rl.Vector2,
+    sim_data: SimData,
     agent_data: AgentData,
 ) rl.Vector2 {
     const AB = B.subtract(A);
@@ -256,7 +259,7 @@ fn obstacleForceFromTwoVectors(
     const dist = D.length();
     const n = D.normalize();
 
-    const radius_float: f32 = @floatFromInt(agent_data.radius);
+    const radius_float: f32 = agent_data.radius * @as(f32, @floatFromInt(sim_data.scale));
     const exp_term: f32 = std.math.exp((radius_float - dist) / agent_data.b_ob);
     const f_ob = n.scale(agent_data.a_ob * exp_term);
     return f_ob;
@@ -265,6 +268,7 @@ fn obstacleForceFromTwoVectors(
 fn calculateObstacleForce(
     self: *Self,
     env: *Environment,
+    sim_data: SimData,
     agent_data: AgentData,
 ) rl.Vector2 {
     var force: rl.Vector2 = .{ .x = 0, .y = 0 };
@@ -279,7 +283,7 @@ fn calculateObstacleForce(
             const A: rl.Vector2 = contour.points.items[i];
             const B: rl.Vector2 = contour.points.items[i + 1];
 
-            const f_ob: rl.Vector2 = self.obstacleForceFromTwoVectors(A, B, agent_data);
+            const f_ob: rl.Vector2 = self.obstacleForceFromTwoVectors(A, B, sim_data, agent_data);
             force = force.add(f_ob);
         }
     }
@@ -294,7 +298,7 @@ fn calculateObstacleForce(
             const A: rl.Vector2 = revolver.pos;
             const AB: rl.Vector2 = revolver.getRotatedVector(a);
             const B: rl.Vector2 = A.add(AB);
-            const f_rev = self.obstacleForceFromTwoVectors(A, B, agent_data);
+            const f_rev = self.obstacleForceFromTwoVectors(A, B, sim_data, agent_data);
             force = force.add(f_rev);
         }
     }
@@ -305,6 +309,7 @@ fn calculateObstacleForce(
 fn calculateInteractiveForce(
     self: *Self,
     agents: *Environment.AgentManager,
+    sim_data: SimData,
     agent_data: AgentData,
 ) rl.Vector2 {
     var force: rl.Vector2 = .{ .x = 0, .y = 0 };
@@ -315,7 +320,7 @@ fn calculateInteractiveForce(
         if (self == &other_aslot.value) continue;
 
         const n = self.pos.subtract(other.pos);
-        const sum_radii: f32 = @floatFromInt(agent_data.radius * 2);
+        const sum_radii: f32 = agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2.0;
         const dist: f32 = other.pos.subtract(self.pos).length();
         const exp_term: f32 = std.math.exp((sum_radii - dist) / agent_data.b_ped);
         const f_ped = n.scale(agent_data.a_ped * exp_term);
@@ -324,11 +329,12 @@ fn calculateInteractiveForce(
     return force;
 }
 
-fn calculateDriveForce(self: *Self, agent_data: AgentData) rl.Vector2 {
-    const e = self.target.subtract(self.pos).normalize();
-    const v0_vec = e.scale(agent_data.speed);
-    const f = v0_vec.subtract(self.vel)
-        .scale(1 / agent_data.relaxation);
+fn calculateDriveForce(self: *Self, sim_data: SimData, agent_data: AgentData) rl.Vector2 {
+    const e: rl.Vector2 = self.target.subtract(self.pos).normalize();
+    var speed_in_pixels: f32 = @as(f32, @floatFromInt(sim_data.scale)) * agent_data.speed;
+    speed_in_pixels *= (1.0 / 60.0);
+    const v0_vec: rl.Vector2 = e.scale(speed_in_pixels);
+    const f = v0_vec.subtract(self.vel).scale(1 / agent_data.relaxation);
     return f;
 }
 
@@ -338,6 +344,7 @@ pub fn update(
     env: *Environment,
     stats: *Stats,
     settings: Settings,
+    sim_data: SimData,
     agent_id: usize,
     agent_data: AgentData,
     n_rows: i32,
@@ -345,9 +352,9 @@ pub fn update(
     nodes: *Graph.NodeManager,
 ) !void {
     // get force components
-    const drive_force = self.calculateDriveForce(agent_data);
-    const interactive_force = self.calculateInteractiveForce(&env.agents, agent_data);
-    const obstacle_force = self.calculateObstacleForce(env, agent_data);
+    const drive_force = self.calculateDriveForce(sim_data, agent_data);
+    const interactive_force = self.calculateInteractiveForce(&env.agents, sim_data, agent_data);
+    const obstacle_force = self.calculateObstacleForce(env, sim_data, agent_data);
     self.acc = drive_force
         .add(interactive_force)
         .add(obstacle_force);
@@ -363,6 +370,7 @@ pub fn update(
     try self.processCurrentNode(
         alloc,
         agent_id,
+        sim_data,
         agent_data,
         nodes,
         env,
@@ -380,9 +388,9 @@ pub fn update_heatmap(self: *Self, stats: *Stats, settings: Settings, n_rows: i3
     stats.add_to_heatmap(int_x, int_y);
 }
 
-pub fn draw(self: *const Self, agent_data: AgentData) void {
+pub fn draw(self: *Self, sim_data: SimData, agent_data: AgentData) void {
     // render sphere
-    const f_radius: f32 = @floatFromInt(agent_data.radius);
+    const f_radius: f32 = agent_data.radius * @as(f32, @floatFromInt(sim_data.scale));
 
     if (self.wait.waiting) {
         rl.drawCircleV(self.pos, f_radius, color.hexToColor(color.fromPalette(.clay)));
@@ -413,7 +421,7 @@ pub fn draw(self: *const Self, agent_data: AgentData) void {
     }
 
     if (agent_data.show_targets) {
-        rl.drawCircleLinesV(self.target, @floatFromInt(agent_data.radius * 2), palette.env.red);
+        rl.drawCircleLinesV(self.target, agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2.0, palette.env.red);
         rl.drawLineV(self.pos, self.target, palette.env.red);
     }
 }

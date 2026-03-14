@@ -11,9 +11,9 @@ const Contour = @import("../environment/Contour.zig");
 num_to_place: i32 = 10,
 
 // properties
-speed: f32 = 2.0,
+speed: f32 = 1.3, // in m/s
 relaxation: f32 = 10,
-radius: i32 = 8,
+radius: f32 = 0.25, // in m
 a_ped: f32 = 0.08,
 b_ped: f32 = 4,
 a_ob: f32 = 2.0,
@@ -27,7 +27,7 @@ pub fn init() Self {
     return .{};
 }
 
-pub fn render(self: *Self, agents: *Environment.AgentManager) !void {
+pub fn update_ui(self: *Self, agents: *Environment.AgentManager) !void {
     if (z.collapsingHeader("Agent", .{ .default_open = false })) {
         if (z.button("delete", .{})) {
             for (0..@intCast(self.num_to_place)) |i| {
@@ -37,13 +37,13 @@ pub fn render(self: *Self, agents: *Environment.AgentManager) !void {
 
         z.separatorText("Properties");
 
-        _ = z.sliderFloat("##speed", .{ .v = &self.speed, .min = 0.1, .max = 10.0 });
+        _ = z.sliderFloat("##speed", .{ .v = &self.speed, .min = 0.3, .max = 3.0 });
         z.sameLine(.{});
         _ = z.text("speed", .{});
         if (z.isItemHovered(.{})) {
             _ = z.beginTooltip();
             defer z.endTooltip();
-            _ = z.text("Speed of the agents", .{});
+            _ = z.text("Agent speed in m/s", .{});
         }
 
         _ = z.sliderFloat("##tau", .{ .v = &self.relaxation, .min = 1, .max = 30 });
@@ -55,7 +55,7 @@ pub fn render(self: *Self, agents: *Environment.AgentManager) !void {
             _ = z.text("Relaxation time: how fast the agents adjust to their desired force of movement", .{});
         }
 
-        _ = z.sliderInt("##radius", .{ .v = &self.radius, .min = 2, .max = 16 });
+        _ = z.sliderFloat("##radius", .{ .v = &self.radius, .min = 2, .max = 16 });
         z.sameLine(.{});
         _ = z.text("radius", .{});
         if (z.isItemHovered(.{})) {

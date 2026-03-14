@@ -20,6 +20,9 @@ pub const Wait = union(enum) {
         }
     };
     pub const Normal = struct {
+        pub const mu_text: [:0]const u8 = "m";
+        pub const sigma_text: [:0]const u8 = "s";
+
         mu: i32 = 1000,
         sigma: i32 = 500,
 

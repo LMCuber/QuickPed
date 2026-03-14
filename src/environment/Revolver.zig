@@ -68,7 +68,14 @@ pub fn confirm(self: *Self) void {
     z.setNextItemWidth(w);
     _ = z.inputInt("length", .{ .v = &self.length });
     z.setNextItemWidth(w);
-    _ = z.inputInt("speed ", .{ .v = &self.speed });
+    _ = z.inputInt("##speed", .{ .v = &self.speed });
+    z.sameLine(.{});
+    _ = z.text("speed", .{});
+    if (z.isItemHovered(.{})) {
+        _ = z.beginTooltip();
+        defer z.endTooltip();
+        _ = z.text("in degrees/second", .{});
+    }
     _ = z.checkbox("clockwise", .{ .v = &self.clockwise });
 }
 

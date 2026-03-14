@@ -502,9 +502,9 @@ pub const AreaNode = struct {
             },
             .normal => |*normal| {
                 setNextItemWidth(node_width);
-                _ = z.inputInt("mu", .{ .v = &normal.mu });
+                _ = z.inputInt(utils.Wait.Normal.mu_text, .{ .v = &normal.mu });
                 setNextItemWidth(node_width);
-                _ = z.inputInt("sigma", .{ .v = &normal.sigma });
+                _ = z.inputInt(utils.Wait.Normal.sigma_text, .{ .v = &normal.sigma });
             },
         }
 
@@ -626,9 +626,9 @@ pub const QueueNode = struct {
             },
             .normal => |*normal| {
                 setNextItemWidth(node_width);
-                _ = z.inputInt("mu", .{ .v = &normal.mu });
+                _ = z.inputInt(utils.Wait.Normal.mu_text, .{ .v = &normal.mu });
                 setNextItemWidth(node_width);
-                _ = z.inputInt("sigma", .{ .v = &normal.sigma });
+                _ = z.inputInt(utils.Wait.Normal.sigma_text, .{ .v = &normal.sigma });
             },
         }
 
