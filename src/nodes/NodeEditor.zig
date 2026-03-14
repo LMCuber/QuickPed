@@ -161,6 +161,10 @@ pub fn render(
                     }
                 }
 
+                if (z.menuItem("Queue Fork", .{})) {
+                    try self.graph.addNode(node.Node.initQueueFork());
+                }
+
                 // fork node
                 if (z.menuItem("Fork", .{})) {
                     try self.graph.addNode(node.Node.initFork());

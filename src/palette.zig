@@ -13,6 +13,7 @@ pub const env = struct {
     pub const dark_green = rl.Color{ .r = 16, .g = 145, .b = 29, .a = 255 };
     pub const orange = rl.Color{ .r = 235, .g = 150, .b = 38, .a = 255 };
     pub const orange_t = rl.Color{ .r = 235, .g = 150, .b = 38, .a = 180 };
+    pub const light_orange = rl.Color{ .r = 235, .g = 191, .b = 102, .a = 255 };
 };
 
 pub fn iden(col: rl.Color) u32 {

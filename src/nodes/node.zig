@@ -32,6 +32,7 @@ pub const NodeSnapshot = struct {
         area: AreaNodeSnapshot,
         fork: ForkNodeSnapshot,
         queue: QueueNodeSnapshot,
+        queue_fork: QueueForkNodeSnapshot,
     };
 };
 
@@ -46,6 +47,7 @@ pub const Node = struct {
         area: AreaNode,
         fork: ForkNode,
         queue: QueueNode,
+        queue_fork: QueueForkNode,
     };
 
     pub const NodeState = enum {
@@ -82,6 +84,7 @@ pub const Node = struct {
                 .area => |sk| .{ .area = AreaNode.fromSnapshot(sk, env) },
                 .fork => |sk| .{ .fork = ForkNode.fromSnapshot(sk) },
                 .queue => |qk| .{ .queue = QueueNode.fromSnapshot(qk, env) },
+                .queue_fork => |qf| .{ .queue_fork = QueueForkNode.fromSnapshot(qf) },
             },
         };
     }
@@ -129,6 +132,14 @@ pub const Node = struct {
                     .env = env,
                     .wait = wait,
                 },
+            },
+        };
+    }
+
+    pub fn initQueueFork() Node {
+        return .{
+            .kind = .{
+                .queue_fork = .{ .selection = .random },
             },
         };
     }
@@ -720,6 +731,64 @@ pub const ForkNode = struct {
             if (z.inputFloat("##fork-output-nodes", .{ .v = &self.values[i], .cfmt = "%.2f" })) {
                 // input changed
             }
+        }
+
+        // output slots
+        imnodes.ez.outputSlots(&self.output_slots);
+    }
+};
+
+const QueueForkNodeSelection = enum {
+    pub const zeroSepItems: [:0]const u8 = "shortest\x00closest\x00uniform\x00";
+
+    shortest,
+    closest,
+    random,
+};
+
+pub const QueueForkNodeSnapshot = struct {
+    selection: QueueForkNodeSelection,
+};
+
+pub const QueueForkNode = struct {
+    input_slots: [1]imnodes.ez.SlotInfo = .{
+        .{ .title = "in", .kind = -1 },
+    },
+    output_slots: [1]imnodes.ez.SlotInfo = .{
+        .{ .title = "out", .kind = 1 },
+    },
+    selection: QueueForkNodeSelection,
+    selection_type: i32 = 0,
+
+    pub fn getSnapshot(self: QueueForkNode) QueueForkNodeSnapshot {
+        return .{ .selection = self.selection };
+    }
+
+    pub fn fromSnapshot(snap: QueueForkNodeSnapshot) QueueForkNode {
+        return .{ .selection = snap.selection };
+    }
+
+    pub fn draw(self: *QueueForkNode, parent: *Node) void {
+        // style setup
+        const node_width: f32 = 110;
+        imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.light_orange));
+        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, palette.lighten(palette.env.light_orange));
+        defer imnodes.ez.popStyleColor(2);
+
+        // init node
+        _ = imnodes.ez.beginNode(parent, "Queue Fork", &parent.pos, &parent.selected);
+        defer imnodes.ez.endNode();
+
+        // input slots
+        imnodes.ez.inputSlots(&self.input_slots);
+
+        // selection type
+        {
+            setNextItemWidth(node_width);
+            _ = z.combo("##queue_fork-selection-type", .{
+                .current_item = &self.selection_type,
+                .items_separated_by_zeros = QueueForkNodeSelection.zeroSepItems,
+            });
         }
 
         // output slots

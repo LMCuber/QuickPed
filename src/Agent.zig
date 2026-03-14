@@ -129,6 +129,7 @@ pub fn traverseFromCurrent(
                     self.payload.?.queue.spot_index,
                 );
             },
+            else => {},
         }
     } else {
         // the spawner is standalone, so just kill the agent
