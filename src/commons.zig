@@ -3,7 +3,7 @@ const rl = @import("raylib");
 const SimData = @import("editor/SimData.zig");
 const Settings = @import("Settings.zig");
 
-pub var prng = std.Random.DefaultPrng.init(47);
+pub var prng: std.Random.Xoshiro256 = std.Random.DefaultPrng.init(47);
 pub var rng = prng.random();
 pub const camera_default = rl.Camera2D{
     .target = .{ .x = 0, .y = 0 },
@@ -23,11 +23,13 @@ pub fn roundN(value: i32, n: i32) i32 {
     return @divTrunc(value + @divTrunc(n, 2), n) * n;
 }
 
+///
+/// gets the mouse position while taking scrolling into considersation.
+/// basically the position of the map you are hovering above, relative to the topleft of the map
+/// (inc. by target, since scrolling right = negative target, so actual location is more to the left)
+///
 pub fn mousePos() rl.Vector2 {
-    return .{
-        .x = rl.getMousePosition().x + camera.target.x,
-        .y = rl.getMousePosition().y + camera.target.y,
-    };
+    return rl.getScreenToWorld2D(rl.getMousePosition(), camera);
 }
 
 pub fn roundMousePos(sim_data: SimData) rl.Vector2 {

@@ -12,11 +12,11 @@ tab_height: i32 = 0,
 
 pub fn init() Self {
     var ret: Self = .{
-        .sim_width = 1080,
-        .sim_height = 800,
+        .width = rl.getMonitorWidth(rl.getCurrentMonitor()),
+        .height = rl.getMonitorHeight(rl.getCurrentMonitor()),
     };
-    ret.tab_width = @intFromFloat(@as(f32, @floatFromInt(ret.sim_width)) * 0.3);
-    ret.width = ret.sim_width + ret.tab_width;
-    ret.height = ret.sim_height;
+    ret.tab_width = @intFromFloat(@as(f32, @floatFromInt(ret.width)) * 0.24);
+    ret.sim_width = ret.width - ret.tab_width;
+    ret.sim_height = ret.height;
     return ret;
 }

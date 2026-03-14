@@ -52,11 +52,11 @@ pub const WaitPayload = struct {
 };
 
 pub const AreaPayload = struct {
-    obj: *Area,
+    area_index: usize,
 };
 
 pub const QueuePayload = struct {
-    obj: *Queue,
+    queue_index: usize,
     spot_index: usize,
     stationary: bool = false,
 };
@@ -68,7 +68,7 @@ pub fn init(
     spawner_node_id: usize,
     graph: *Graph,
     agent_id: usize,
-    agents: *Environment.AgentManager,
+    env: *Environment,
 ) !Self {
     const col: rl.Color = color.getAgentColor();
     var obj: Self = .{
@@ -80,7 +80,7 @@ pub fn init(
         .payload = null,
     };
     obj.current_node_id = spawner_node_id;
-    try obj.traverseFromCurrent(alloc, agent_id, agents, &graph.nodes);
+    try obj.traverseFromCurrent(alloc, agent_id, &graph.nodes, env);
     return obj;
 }
 
@@ -88,8 +88,8 @@ pub fn traverseFromCurrent(
     self: *Self,
     alloc: std.mem.Allocator,
     agent_id: usize,
-    agents: *Environment.AgentManager,
     nodes: *Graph.NodeManager,
+    env: *Environment,
 ) !void {
     // get the next node from graph and then process it
     if (try self.graph.getNextNodeId(alloc, self.current_node_id.?)) |next_node_id| {
@@ -104,21 +104,23 @@ pub fn traverseFromCurrent(
             .area => |*area_node| {
                 self.payload = .{
                     .area = .{
-                        .obj = area_node.getArea(),
+                        .area_index = @intCast(area_node.area_index),
                     },
                 };
-                self.target = self.payload.?.area.obj.getPos();
+                const a: Self.AreaPayload = self.payload.?.area;
+                const a_obj: Area = env.entities.getItem(env.areas.items[a.area_index]).kind.area;
+                self.target = a_obj.getPos();
             },
             .sink => self.marked = true, // next is sink, so destroy outselves
             .fork => {
                 self.current_node_id = next_node_id;
-                try self.traverseFromCurrent(alloc, agent_id, agents, nodes);
+                try self.traverseFromCurrent(alloc, agent_id, nodes, env);
             },
             .queue => |*queue_node| {
                 self.current_node_id = next_node_id;
                 self.payload = .{
                     .queue = .{
-                        .obj = queue_node.getQueue(),
+                        .queue_index = @intCast(queue_node.queue_index),
                         .spot_index = queue_node.getQueue().getWaitingSpotIndex(),
                     },
                 };
@@ -129,8 +131,6 @@ pub fn traverseFromCurrent(
         }
     } else {
         // the spawner is standalone, so just kill the agent
-        // this works for both a dangling Spawner & Area
-        // but have different effects
         self.marked = true;
     }
 }
@@ -166,9 +166,9 @@ pub fn processCurrentNode(
     self: *Self,
     alloc: std.mem.Allocator,
     agent_id: usize,
-    agents: *Environment.AgentManager,
     agent_data: AgentData,
     nodes: *Graph.NodeManager,
+    env: *Environment,
 ) !void {
     const current_node: *node.Node = nodes.getItem(self.current_node_id.?);
     const time: f64 = commons.getTimeMillis();
@@ -176,10 +176,12 @@ pub fn processCurrentNode(
     switch (current_node.kind) {
         .area => |*area_node| {
             const area_payload = self.payload.?.area;
+            const a_obj: *Area = &env.entities.getItem(env.areas.items[area_payload.area_index]).kind.area;
+
             // check should start waiting
             if (!self.wait.waiting) {
                 // start waiting if in bounds
-                if (rl.checkCollisionPointRec(self.pos, area_payload.obj.rect)) {
+                if (rl.checkCollisionPointRec(self.pos, a_obj.rect)) {
                     self.wait.setWait(area_node.getWaitTime());
                 }
             } else {
@@ -187,12 +189,13 @@ pub fn processCurrentNode(
                 if (time - self.wait.last_wait >= @as(f64, @floatFromInt(self.wait.wait))) {
                     // waited long enough. continue
                     self.wait.waiting = false;
-                    try self.traverseFromCurrent(alloc, agent_id, agents, nodes);
+                    try self.traverseFromCurrent(alloc, agent_id, nodes, env);
                 }
             }
         },
         .queue => |queue_node| {
-            const q: *Agent.QueuePayload = &self.payload.?.queue;
+            const q: *Self.QueuePayload = &self.payload.?.queue;
+            var q_obj: *Queue = &env.entities.getItem(env.queues.items[q.queue_index]).kind.queue;
 
             // "waiting" means in the queue
             if (self.wait.waiting) {
@@ -202,15 +205,15 @@ pub fn processCurrentNode(
                     if (time - self.wait.last_wait >= @as(f64, @floatFromInt(self.wait.wait))) {
                         if (q.stationary) {
                             // can only dispatch if it is stationary
-                            q.obj.freeIndex(q.spot_index);
+                            q_obj.freeIndex(q.spot_index);
                             self.wait.waiting = false;
-                            try self.traverseFromCurrent(alloc, agent_id, agents, nodes);
+                            try self.traverseFromCurrent(alloc, agent_id, nodes, env);
                         }
                     }
                 }
             }
 
-            // stationary -> queue, but queue -X> stationary
+            // stationary -> in queue, but in queue -X> stationary
 
             // is not stationary
             if (!q.stationary) {
@@ -221,14 +224,14 @@ pub fn processCurrentNode(
             }
 
             // regardless of waiting or not
-            if (q.spot_index != 0 and q.obj.isFree(q.spot_index - 1)) {
+            if (q.spot_index != 0 and q_obj.isFree(q.spot_index - 1)) {
                 // scoot up since one in front is free
-                q.obj.freeIndex(q.spot_index);
+                q_obj.freeIndex(q.spot_index);
                 q.spot_index -= 1;
-                q.obj.occupyIndex(q.spot_index);
+                q_obj.occupyIndex(q.spot_index);
 
                 // if its at front of queue now because of shift, init waiting variables
-                self.target = q.obj.getWaitingSpotFromIndex(q.spot_index);
+                self.target = q_obj.getWaitingSpotFromIndex(q.spot_index);
                 q.stationary = false;
             }
         },
@@ -357,7 +360,13 @@ pub fn update(
     self.update_heatmap(stats, settings, n_rows, n_cols);
 
     // process node
-    try self.processCurrentNode(alloc, agent_id, &env.agents, agent_data, nodes);
+    try self.processCurrentNode(
+        alloc,
+        agent_id,
+        agent_data,
+        nodes,
+        env,
+    );
 }
 
 pub fn update_heatmap(self: *Self, stats: *Stats, settings: Settings, n_rows: i32, n_cols: i32) void {

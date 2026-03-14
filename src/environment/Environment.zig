@@ -2,6 +2,7 @@ const Self = @This();
 
 const std = @import("std");
 const entity = @import("entity.zig");
+const AgentData = @import("../editor/AgentData.zig");
 const Contour = @import("Contour.zig");
 const Spawner = @import("Spawner.zig");
 const Area = @import("Area.zig");
@@ -79,7 +80,12 @@ pub fn clearEntities(self: *Self, alloc: std.mem.Allocator) void {
 //
 // HALF-AI CODE
 //
-pub fn loadScene(self: *Self, allocator: std.mem.Allocator, path: []const u8) !void {
+pub fn loadScene(
+    self: *Self,
+    allocator: std.mem.Allocator,
+    path: []const u8,
+    agent_data: AgentData,
+) !void {
     const json = try commons.readFile(allocator, path);
     defer allocator.free(json);
 
@@ -109,7 +115,7 @@ pub fn loadScene(self: *Self, allocator: std.mem.Allocator, path: []const u8) !v
 
     // repopulate entities from saved snapshots
     for (scene.entities) |snap| {
-        try self.createEntity(try entity.Entity.fromSnapshot(allocator, snap));
+        try self.createEntity(try entity.Entity.fromSnapshot(allocator, snap, agent_data));
     }
 }
 

@@ -133,21 +133,21 @@ pub const Node = struct {
         };
     }
 
-    // pub fn initFork() Node {
-    //     return .{
-    //         .kind = .{
-    //             .fork = .{},
-    //         },
-    //     };
-    // }
+    pub fn initFork() Node {
+        return .{
+            .kind = .{
+                .fork = .{},
+            },
+        };
+    }
 
-    // pub fn initSink() Node {
-    //     return .{
-    //         .kind = .{
-    //             .sink = .{},
-    //         },
-    //     };
-    // }
+    pub fn initSink() Node {
+        return .{
+            .kind = .{
+                .sink = .{},
+            },
+        };
+    }
 };
 
 // slot is identified by composite key: (node_ptr, title)
@@ -364,9 +364,9 @@ pub const SpawnerNode = struct {
     pub fn update(
         self: *SpawnerNode,
         alloc: std.mem.Allocator,
-        agents: *Environment.AgentManager,
         graph: *Graph,
         node_id: usize,
+        env: *Environment,
     ) !void {
         const time: f64 = commons.getTimeMillis();
         if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {
@@ -376,10 +376,10 @@ pub const SpawnerNode = struct {
                 pos,
                 node_id,
                 graph,
-                agents.getNextIndex(),
-                agents,
+                env.agents.getNextIndex(),
+                env,
             );
-            _ = agents.createItem(a);
+            _ = env.agents.createItem(a);
 
             // reset last spawn
             self.last_spawn = commons.getTimeMillis();

@@ -31,7 +31,6 @@ const EB = @import("editor/EnvironmentButtons.zig");
 const Stats = @import("editor/Stats.zig");
 const NodeEditor = @import("nodes/NodeEditor.zig");
 
-const settings = Settings.init();
 var sim_data = SimData.init();
 var agent_data = AgentData.init();
 
@@ -40,11 +39,9 @@ var ctx: ?*imnodes.ez.Context = null;
 // main
 pub fn main() !void {
     rl.setConfigFlags(.{ .vsync_hint = true });
-    rl.initWindow(
-        settings.width,
-        settings.height,
-        "QuickPed",
-    );
+    rl.initWindow(1, 1, "QuickPed");
+    const settings = Settings.init();
+    rl.initWindow(settings.width, settings.height, "QuickPed");
 
     defer rl.closeWindow();
     rl.setTargetFPS(rl.getMonitorRefreshRate(0));
@@ -102,7 +99,7 @@ pub fn main() !void {
     var node_editor = NodeEditor.init(allocator);
     defer node_editor.deinit(allocator);
 
-    try env.loadScene(allocator, "data/scene.json");
+    try env.loadScene(allocator, "data/scene.json", agent_data);
     try node_editor.loadNodes(allocator, "data/nodes.json", &env);
 
     // commons.camera shenanigans
@@ -193,7 +190,7 @@ pub fn main() !void {
                 defer rl.endMode2D();
 
                 rl.drawRectangleRec(sim_rect, palette.env.dark_blue);
-                renderGrid();
+                renderGrid(settings);
 
                 if (!capture) {
                     const mouse_position: rl.Vector2 = rl.getMousePosition();
@@ -294,7 +291,7 @@ pub fn main() !void {
                         z.sameLine(.{});
                         if (EB.queueButton(button_size)) {
                             resetCurrentEntity(allocator, &current_entity);
-                            current_entity = try entity.Entity.initQueue(allocator, next_id);
+                            current_entity = try entity.Entity.initQueue(allocator, next_id, agent_data);
                         }
 
                         // reset
@@ -327,7 +324,7 @@ pub fn main() !void {
                         if (current_entity) |*ent| {
                             const node_width: i32 = 130;
 
-                            ent.name_edit_buf = .{0} ** 256;
+                            // ent.name_edit_buf = .{0} ** 256;
                             z.setNextItemWidth(node_width);
                             var name_str: [:0]const u8 = "";
                             if (z.inputText("name", .{ .buf = &ent.name_edit_buf })) {
@@ -352,7 +349,7 @@ pub fn main() !void {
                             }
                             z.newLine();
 
-                            // render the needed widget buttons
+                            // render the needed confirm widget buttons
                             switch (ent.kind) {
                                 .area => |*a| a.confirm(),
                                 .revolver => |*r| r.confirm(),
@@ -391,7 +388,7 @@ pub fn main() !void {
                         .h = @floatFromInt(settings.height),
                     });
 
-                    try node_editor.render(allocator, &env);
+                    try node_editor.render(allocator, settings, &env);
                     if (!sim_data.paused) {
                         try node_editor.update(allocator, &env);
                     }
@@ -421,7 +418,7 @@ pub fn resetCurrentEntity(alloc: std.mem.Allocator, current_entity: *?entity.Ent
     }
 }
 
-pub fn renderGrid() void {
+pub fn renderGrid(settings: Settings) void {
     const num_hor_blocks = @divTrunc(settings.sim_width, sim_data.grid_size);
     const col = palette.env.light_blue;
     for (0..@as(usize, @intCast(num_hor_blocks))) |i| {
@@ -435,7 +432,8 @@ pub fn renderGrid() void {
             col,
         );
     }
-    const num_ver_blocks = @divExact(settings.sim_height, sim_data.grid_size);
+
+    const num_ver_blocks = @divTrunc(settings.sim_height, sim_data.grid_size);
     for (0..@as(usize, @intCast(num_ver_blocks))) |i| {
         const i_i32: i32 = @intCast(i);
         const grid_pos = i_i32 * sim_data.grid_size;

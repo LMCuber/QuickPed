@@ -11,6 +11,7 @@ const entity = @import("../environment/entity.zig");
 const Area = @import("../environment/Area.zig");
 const Queue = @import("../environment/Queue.zig");
 const Environment = @import("../environment/Environment.zig");
+const Settings = @import("../Settings.zig");
 const Agent = @import("../Agent.zig");
 const imnodes = @import("imnodesez");
 
@@ -46,11 +47,17 @@ pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment)
 pub fn render(
     self: *Self,
     allocator: std.mem.Allocator,
+    settings: Settings,
     env: *Environment,
 ) !void {
     if (rl.isKeyPressed(.key_space)) {
         self.active = !self.active;
     }
+
+    z.setNextWindowSize(.{
+        .w = @floatFromInt(settings.width),
+        .h = @floatFromInt(settings.height),
+    });
 
     if (z.begin("Node editor", .{ .flags = .{ .no_scrollbar = true, .no_scroll_with_mouse = true } })) {
         // tutorial
@@ -144,37 +151,37 @@ pub fn render(
                 }
 
                 // fork node
-                // if (z.menuItem("Fork", .{})) {
-                //     try self.graph.addNode(node.Node.initFork());
-                // }
+                if (z.menuItem("Fork", .{})) {
+                    try self.graph.addNode(node.Node.initFork());
+                }
 
-                // // sink node
-                // if (z.menuItem("Sink", .{})) {
-                //     try self.graph.addNode(node.Node.initSink());
-                // }
+                // sink node
+                if (z.menuItem("Sink", .{})) {
+                    try self.graph.addNode(node.Node.initSink());
+                }
             }
         }
 
-        var selected_node: ?*node.Node = null;
+        var selected_node_id: ?usize = null;
 
         // update and draw entire graph using imnodes
-        for (&self.graph.nodes.items) |*nslot| {
+        for (&self.graph.nodes.items, 0..) |*nslot, i| {
             if (!nslot.alive) continue;
             const node_state = nslot.value.update();
             if (node_state == .selected) {
-                selected_node = &nslot.value;
+                selected_node_id = i;
             }
             nslot.value.draw();
         }
 
         // user wants to delete the currently selected node
-        // if (selected_node) |n| {
-        //     if (rl.isKeyReleased(.key_d)) {
-        //         try self.graph.deleteNode(allocator, n);
-        //     }
-        // }
+        if (selected_node_id) |node_id| {
+            if (rl.isKeyReleased(.key_d)) {
+                try self.graph.deleteNode(allocator, node_id);
+            }
+        }
 
-        // create new connections
+        // create new conns by passing an empty dummy connections struct to be populated with values
         var new_conn: node.NewConnection = .{};
         const input_node_ptr_ptr: *?*anyopaque = @ptrCast(&new_conn.input_node);
         const output_node_ptr_ptr: *?*anyopaque = @ptrCast(&new_conn.output_node);

@@ -8,5 +8,5 @@
   "a_ob": 2e0,
   "b_ob": 4e0,
   "show_vectors": false,
-  "show_targets": true
+  "show_targets": false
 }

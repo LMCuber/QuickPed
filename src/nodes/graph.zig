@@ -41,20 +41,19 @@ pub fn addNode(self: *Self, n: node.Node) !void {
     imnodes.autoPositionNode(self.nodes.getItem(new_index));
 }
 
-pub fn deleteNode(self: *Self, alloc: std.mem.Allocator, n: *node.Node) !void {
-    // delete the connections and the node itself
-    for (self.connections.items, 0..) |*conn, i| {
-        if (conn.input_slot.node_id == n.id or conn.output_slot.node_id == n.id) {
-            // dealloc and delete the connection
-            self.connections.items[i].deinit(alloc);
+pub fn deleteNode(self: *Self, alloc: std.mem.Allocator, node_id: usize) !void {
+    // delete the connections connecting to that node (output and input)
+    var i: usize = self.connections.items.len;
+    while (i > 0) {
+        i -= 1;
+        var conn = self.connections.items[i];
+        if (conn.output_slot.node_id == node_id or conn.input_slot.node_id == node_id) {
+            conn.deinit(alloc);
             _ = self.connections.swapRemove(i);
-
-            // delete the nodes on the endpoints of the connection
-            self.nodes.deleteItem(self.connections.items[i].input_slot.node_id);
-            self.nodes.deleteItem(self.connections.items[i].output_slot.node_id);
-            break;
         }
     }
+    // delete the node
+    self.nodes.deleteItem(node_id);
 }
 
 pub fn addConnection(
@@ -74,9 +73,9 @@ pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment)
         switch (nslot.value.kind) {
             .spawner => |*spawner| try spawner.update(
                 alloc,
-                &env.agents,
                 self,
                 i,
+                env,
             ),
             else => {},
         }

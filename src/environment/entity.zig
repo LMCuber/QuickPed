@@ -27,7 +27,7 @@ pub const EntitySnapshot = struct {
 
 pub const Entity = struct {
     name: [:0]const u8,
-    name_edit_buf: [256:0]u8 = undefined,
+    name_edit_buf: [256:0]u8 = .{0} ** 256,
     kind: Kind,
 
     const Kind = union(enum) {
@@ -135,8 +135,8 @@ pub const Entity = struct {
         };
     }
 
-    pub fn initQueue(allocator: std.mem.Allocator, id: usize) !Entity {
-        const queue = try Queue.init(allocator);
+    pub fn initQueue(allocator: std.mem.Allocator, id: usize, agent_data: AgentData) !Entity {
+        const queue = try Queue.init(allocator, agent_data);
         const name = try std.fmt.allocPrintZ(allocator, "Queue{}", .{id});
         return .{
             .name = name,
@@ -168,7 +168,7 @@ pub const Entity = struct {
         };
     }
 
-    pub fn fromSnapshot(allocator: std.mem.Allocator, snap: EntitySnapshot) !Entity {
+    pub fn fromSnapshot(allocator: std.mem.Allocator, snap: EntitySnapshot, agent_data: AgentData) !Entity {
         return .{
             .name = try allocator.dupeZ(u8, snap.name),
             .kind = switch (snap.kind) {
@@ -176,7 +176,7 @@ pub const Entity = struct {
                 .spawner => |ss| .{ .spawner = Spawner.fromSnapshot(ss) },
                 .area => |as| .{ .area = Area.fromSnapshot(as) },
                 .revolver => |rs| .{ .revolver = Revolver.fromSnapshot(rs) },
-                .queue => |qs| .{ .queue = try Queue.fromSnapshot(allocator, qs) },
+                .queue => |qs| .{ .queue = try Queue.fromSnapshot(allocator, qs, agent_data) },
             },
         };
     }

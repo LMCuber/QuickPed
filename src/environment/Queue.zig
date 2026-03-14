@@ -10,24 +10,27 @@ const SimData = @import("../editor/SimData.zig");
 const AgentData = @import("../editor/AgentData.zig");
 const Settings = @import("../Settings.zig");
 
-pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 points: std.ArrayList(rl.Vector2),
 waiting_spots: std.ArrayList(rl.Vector2),
 occupied_spots: std.ArrayList(bool),
+//
+pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 padding: i32 = 4,
 placed: bool = false,
 
 pub const QueueSnapshot = struct {
     points: []rl.Vector2,
-    waiting_spots: []rl.Vector2,
+    padding: i32,
 };
 
-pub fn init(allocator: std.mem.Allocator) !Self {
-    return .{
+pub fn init(allocator: std.mem.Allocator, agent_data: AgentData) !Self {
+    var ret: Self = .{
         .points = std.ArrayList(rl.Vector2).init(allocator),
         .waiting_spots = std.ArrayList(rl.Vector2).init(allocator),
         .occupied_spots = std.ArrayList(bool).init(allocator),
     };
+    try ret.calculatePoints(allocator, agent_data);
+    return ret;
 }
 
 pub fn deinit(self: *Self) void {
@@ -39,27 +42,31 @@ pub fn deinit(self: *Self) void {
 pub fn getSnapshot(self: Self) QueueSnapshot {
     return .{
         .points = self.points.items,
-        .waiting_spots = self.waiting_spots.items,
+        .padding = self.padding,
     };
 }
 
-pub fn fromSnapshot(allocator: std.mem.Allocator, snap: QueueSnapshot) !Self {
+pub fn fromSnapshot(allocator: std.mem.Allocator, snap: QueueSnapshot, agent_data: AgentData) !Self {
+    // repopulate points (nothing sneaky)
     var points = std.ArrayList(rl.Vector2).init(allocator);
     for (snap.points) |point| {
         try points.append(point);
     }
-    var waiting_spots = std.ArrayList(rl.Vector2).init(allocator);
-    for (snap.waiting_spots) |spot| {
-        try waiting_spots.append(spot);
-    }
+    // waiting spots and occupied spots begin empty but get populated by calcPoints
+    const waiting_spots = std.ArrayList(rl.Vector2).init(allocator);
     var occupied_spots = std.ArrayList(bool).init(allocator);
     try occupied_spots.appendNTimes(false, waiting_spots.items.len);
-    return .{
-        .points = points,
-        .waiting_spots = waiting_spots,
+
+    var ret: Self = .{
         .occupied_spots = occupied_spots,
+        .waiting_spots = waiting_spots,
+        .points = points,
         .placed = true,
+        .padding = snap.padding,
     };
+    try ret.calculatePoints(allocator, agent_data);
+
+    return ret;
 }
 
 pub fn update(
@@ -91,6 +98,9 @@ fn getDistBetweenSpots(self: *Self, agent_data: AgentData) f32 {
     return @floatFromInt((agent_data.radius * 2 + self.padding));
 }
 
+///
+/// populates self.waiting_spots AND self.occupied_spots in-place
+///
 fn calculatePoints(self: *Self, alloc: std.mem.Allocator, agent_data: AgentData) !void {
     self.waiting_spots.clearRetainingCapacity();
 
@@ -180,8 +190,14 @@ pub fn draw(self: Self, agent_data: AgentData) void {
         }
 
         // render the waiting spots
-        for (self.waiting_spots.items) |waiting_spot| {
-            rl.drawCircleV(waiting_spot, @as(f32, @floatFromInt(agent_data.radius)) * 0.7, palette.env.green);
+        for (self.waiting_spots.items, 0..) |waiting_spot, i| {
+            const circle_rad =
+                if (i == 0)
+                    @as(f32, @floatFromInt(agent_data.radius))
+                else
+                    @as(f32, @floatFromInt(agent_data.radius)) * 0.7;
+            const circle_col = if (i == 0) palette.env.dark_green else palette.env.green;
+            rl.drawCircleV(waiting_spot, circle_rad, circle_col);
         }
     }
 }
