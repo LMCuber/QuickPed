@@ -110,7 +110,7 @@ pub fn traverseFromCurrent(
                     },
                 };
                 const a: Self.AreaPayload = self.payload.?.area;
-                const a_obj: Area = env.entities.getItem(env.areas.items[a.area_index]).kind.area;
+                const a_obj: *Area = &env.entities.getItem(env.areas.items[a.area_index]).kind.area;
                 self.target = a_obj.getPos();
             },
             .sink => self.marked = true, // next is sink, so destroy ourselves
@@ -163,8 +163,8 @@ pub fn getBehindVector(
     return self.target.add(direction.?.scale(queue_obj.getPadding(agent_data)));
 }
 
-/// every frame, processCurrentNode checks what node we are on currently, and then
-/// checks (for example) if we need to start waiting because we entered radius of a waiting area
+/// every frame, processCurrentNode checks what node we are on currently
+/// and then (for example) checks if we need to start waiting because we entered radius of a waiting area
 pub fn processCurrentNode(
     self: *Self,
     alloc: std.mem.Allocator,
@@ -218,6 +218,7 @@ pub fn processCurrentNode(
             }
 
             // stationary -> in queue, but in queue -X> stationary
+            // ^^^ wow Leo is so smart for using predicate logic in his comments look at him
 
             // is not stationary
             if (!q.stationary) {

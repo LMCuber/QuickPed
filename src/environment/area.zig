@@ -56,6 +56,13 @@ pub const StandingData = struct {
     rect: rl.Rectangle = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
     anchored: bool = false,
 
+    pub fn getPos(self: StandingData) rl.Vector2 {
+        return .{
+            .x = self.rect.x + self.rect.width / 2,
+            .y = self.rect.y + self.rect.height / 2,
+        };
+    }
+
     pub fn getSnapshot(self: StandingData) StandingDataSnapshot {
         return .{
             .rect = self.rect,
@@ -83,6 +90,17 @@ pub const SeatingData = struct {
     anchored: bool = false,
     num_cols: i32 = 1,
     num_rows: i32 = 1,
+
+    pub fn getPos(self: SeatingData) rl.Vector2 {
+        const row_index: f32 = @floatFromInt(rl.getRandomValue(1, self.num_rows));
+        const col_index: f32 = @floatFromInt(rl.getRandomValue(1, self.num_cols));
+        const seat_offset: rl.Vector2 = self.getSeatOffset(self.rect.width, self.rect.height);
+        const rel_seat_pos: rl.Vector2 = .{
+            .x = col_index * seat_offset.x,
+            .y = row_index * seat_offset.y,
+        };
+        return rel_seat_pos.add(.{ .x = self.rect.x, .y = self.rect.y });
+    }
 
     pub fn getSeatOffset(self: SeatingData, w: f32, h: f32) rl.Vector2 {
         return .{
@@ -115,15 +133,24 @@ pub const IndividualData = struct {
     };
 
     points: std.ArrayList(rl.Vector2),
+    free_indices: std.ArrayList(usize),
 
     pub fn init(alloc: std.mem.Allocator) !IndividualData {
         return .{
             .points = std.ArrayList(rl.Vector2).init(alloc),
+            .free_indices = std.ArrayList(usize).init(alloc),
         };
     }
 
     pub fn deinit(self: *IndividualData) void {
         self.points.deinit();
+        self.free_indices.deinit();
+    }
+
+    pub fn getPos(self: *IndividualData) rl.Vector2 {
+        const u: usize = @intCast(rl.getRandomValue(0, @intCast(self.free_indices.items.len - 1)));
+        const free_index: usize = self.free_indices.swapRemove(u);
+        return self.points.items[free_index];
     }
 
     pub fn getSnapshot(self: IndividualData) IndividualDataSnapshot {
@@ -137,7 +164,12 @@ pub const IndividualData = struct {
         for (snap.points) |point| {
             try points.append(point);
         }
+        var free_indices = std.ArrayList(usize).init(alloc);
+        for (0..points.items.len) |i| {
+            try free_indices.append(i);
+        }
         return .{
+            .free_indices = free_indices,
             .points = points,
         };
     }
@@ -219,8 +251,11 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.Entity
                     );
                 }
             },
-            .individual => {
+            .individual => |*data| {
                 if (rl.isKeyPressed(.key_enter)) {
+                    for (0..data.points.items.len) |i| {
+                        try data.free_indices.append(i);
+                    }
                     self.placed = true;
                     return .placed;
                 }
@@ -259,29 +294,19 @@ pub fn finishConfirm(self: *Self, alloc: std.mem.Allocator) !void {
     self.confirmed_init_popup = true;
 }
 
-pub fn getPos(self: Self) rl.Vector2 {
+pub fn getPos(self: *Self) rl.Vector2 {
     switch (self.style) {
-        .seating => |seat_data| {
-            const row_index: f32 = @floatFromInt(rl.getRandomValue(1, seat_data.num_rows));
-            const col_index: f32 = @floatFromInt(rl.getRandomValue(1, seat_data.num_cols));
-            const seat_offset: rl.Vector2 = seat_data.getSeatOffset(seat_data.rect.width, seat_data.rect.height);
-            const rel_seat_pos: rl.Vector2 = .{
-                .x = col_index * seat_offset.x,
-                .y = row_index * seat_offset.y,
-            };
-            return rel_seat_pos.add(.{ .x = seat_data.rect.x, .y = seat_data.rect.y });
-        },
-        else => return .{ .x = 100, .y = 100 },
+        inline else => |*data| return data.getPos(),
     }
 }
 
-pub fn checkCollision(self: Self, pos: rl.Vector2, _: rl.Vector2) bool {
+pub fn checkCollision(self: Self, pos: rl.Vector2, target: rl.Vector2) bool {
     switch (self.style) {
         inline .standing, .seating => |data| {
             return rl.checkCollisionPointRec(pos, data.rect);
         },
         .individual => {
-            return false;
+            return pos.distance(target) <= 12;
         },
     }
 }
