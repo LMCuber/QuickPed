@@ -43,6 +43,7 @@ pub const Entity = struct {
         placed,
         cancelled,
         confirm,
+        confirm_init,
     };
 
     //
@@ -151,6 +152,7 @@ pub const Entity = struct {
         switch (self.kind) {
             .contour => |*c| c.deinit(),
             .queue => |*q| q.deinit(),
+            .area => |*a| a.deinit(),
             else => {},
         }
     }
@@ -168,15 +170,15 @@ pub const Entity = struct {
         };
     }
 
-    pub fn fromSnapshot(allocator: std.mem.Allocator, snap: EntitySnapshot, sim_data: SimData, agent_data: AgentData) !Entity {
+    pub fn fromSnapshot(alloc: std.mem.Allocator, snap: EntitySnapshot, sim_data: SimData, agent_data: AgentData) !Entity {
         return .{
-            .name = try allocator.dupeZ(u8, snap.name),
+            .name = try alloc.dupeZ(u8, snap.name),
             .kind = switch (snap.kind) {
-                .contour => |cs| .{ .contour = try Contour.fromSnapshot(allocator, cs) },
+                .contour => |cs| .{ .contour = try Contour.fromSnapshot(alloc, cs) },
                 .spawner => |ss| .{ .spawner = Spawner.fromSnapshot(ss) },
-                .area => |as| .{ .area = Area.fromSnapshot(as) },
+                .area => |as| .{ .area = try Area.fromSnapshot(alloc, as) },
                 .revolver => |rs| .{ .revolver = Revolver.fromSnapshot(rs) },
-                .queue => |qs| .{ .queue = try Queue.fromSnapshot(allocator, qs, sim_data, agent_data) },
+                .queue => |qs| .{ .queue = try Queue.fromSnapshot(alloc, qs, sim_data, agent_data) },
             },
         };
     }

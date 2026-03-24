@@ -93,6 +93,7 @@ pub fn traverseFromCurrent(
     env: *Environment,
 ) !void {
     // get the next node from graph and then process it
+    // !! getNextNodeId() take into account the next of forks !!
     if (try self.graph.getNextNodeId(alloc, self.current_node_id.?)) |next_node_id| {
         // set current node to next by default (might be changed by e.g. fork)
         self.current_node_id = next_node_id;
@@ -112,11 +113,12 @@ pub fn traverseFromCurrent(
                 const a_obj: Area = env.entities.getItem(env.areas.items[a.area_index]).kind.area;
                 self.target = a_obj.getPos();
             },
-            .sink => self.marked = true, // next is sink, so destroy outselves
+            .sink => self.marked = true, // next is sink, so destroy ourselves
             .fork => {
                 self.current_node_id = next_node_id;
                 try self.traverseFromCurrent(alloc, agent_id, nodes, env);
             },
+            .queue_fork => unreachable,
             .queue => |*queue_node| {
                 self.current_node_id = next_node_id;
                 self.payload = .{
@@ -129,7 +131,6 @@ pub fn traverseFromCurrent(
                     self.payload.?.queue.spot_index,
                 );
             },
-            else => {},
         }
     } else {
         // the spawner is standalone, so just kill the agent
@@ -184,7 +185,7 @@ pub fn processCurrentNode(
             // check should start waiting
             if (!self.wait.waiting) {
                 // start waiting if in bounds
-                if (rl.checkCollisionPointRec(self.pos, a_obj.rect)) {
+                if (a_obj.checkCollision(self.pos, self.target)) {
                     self.wait.setWait(area_node.getWaitTime());
                 }
             } else {

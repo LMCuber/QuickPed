@@ -122,7 +122,7 @@ pub fn main() !void {
             rl.clearBackground(palette.env.black);
 
             // UPDATING =============================================
-            var confirm_current: bool = false;
+            var current_entity_action: entity.Entity.EntityAction = .none;
             {
                 if (!sim_data.paused) {
                     // update all placed entities
@@ -141,14 +141,19 @@ pub fn main() !void {
 
                 // update selected entity
                 if (current_entity) |*ent| {
-                    const action = try ent.update(allocator, dt, agent_data, sim_data, settings);
-                    switch (action) {
-                        .cancelled, .none => {},
+                    current_entity_action = try ent.update(
+                        allocator,
+                        dt,
+                        agent_data,
+                        sim_data,
+                        settings,
+                    );
+                    switch (current_entity_action) {
                         .placed => {
                             try env.createEntity(ent.*);
                             current_entity = null;
                         },
-                        .confirm => confirm_current = true,
+                        else => {},
                     }
                 }
 
@@ -185,7 +190,7 @@ pub fn main() !void {
                 capture = z.io.getWantCaptureMouse();
             }
 
-            // DRAWING =============================================
+            // raylib drawing =============================================
             {
                 rl.beginMode2D(commons.camera);
                 defer rl.endMode2D();
@@ -313,13 +318,23 @@ pub fn main() !void {
                     try stats.render(&env.agents, sim_data.paused);
 
                     // process new popups if placing entity gave .confirm signal
-                    if (confirm_current) {
-                        z.openPopup("Confirm", .{});
-                        confirm_current = false;
+                    switch (current_entity_action) {
+                        .confirm => {
+                            z.openPopup("Confirm", .{});
+                            current_entity_action = .none;
+                        },
+                        .confirm_init => {
+                            z.openPopup("Confirm init", .{});
+                            current_entity_action = .none;
+                        },
+                        else => {},
                     }
 
-                    // popups
+                    // POPUPS
+                    // confirm close popup
                     if (z.beginPopupModal("Confirm", .{ .flags = .{ .always_auto_resize = true } })) {
+                        defer z.endPopup();
+
                         // give focus the first time it appears
                         if (z.isWindowAppearing()) {
                             z.setKeyboardFocusHere(0);
@@ -378,8 +393,33 @@ pub fn main() !void {
 
                                 current_entity = null;
                             }
+                        } else unreachable;
+                    }
 
-                            z.endPopup();
+                    // confirm init popup
+                    if (z.beginPopupModal("Confirm init", .{ .flags = .{ .always_auto_resize = true } })) {
+                        defer z.endPopup();
+                        if (current_entity) |*ent| {
+                            // entity-specific widgets
+                            switch (ent.kind) {
+                                .area => |*a| a.confirmInit(),
+                                else => {},
+                            }
+
+                            // closing buttons
+                            if (z.button("cancel", .{})) {
+                                z.closeCurrentPopup();
+                                ent.deinit(allocator);
+                                current_entity = null;
+                            }
+                            z.sameLine(.{});
+                            if (z.button("confirm", .{})) {
+                                switch (ent.kind) {
+                                    .area => |*a| try a.finishConfirm(allocator),
+                                    else => unreachable,
+                                }
+                                z.closeCurrentPopup();
+                            }
                         } else unreachable;
                     }
                 }

@@ -755,7 +755,7 @@ pub const QueueForkNode = struct {
         .{ .title = "in", .kind = -1 },
     },
     output_slots: [1]imnodes.ez.SlotInfo = .{
-        .{ .title = "out", .kind = 1 },
+        .{ .title = "outs", .kind = 1 },
     },
     selection: QueueForkNodeSelection,
     selection_type: i32 = 0,
@@ -767,6 +767,40 @@ pub const QueueForkNode = struct {
     pub fn fromSnapshot(snap: QueueForkNodeSnapshot) QueueForkNode {
         return .{ .selection = snap.selection };
     }
+
+    // pub fn getOutputSlotTitle(self: QueueForkNode) [*c]const u8 {
+    //     switch (self.selection) {
+    //         .random => {
+    //             const r = rl.getRandomValue(0, );
+    //         },
+    //         else => unreachable,
+    //     }
+
+    //     var sum: f32 = 0;
+    //     for (self.values) |prob| {
+    //         sum += prob;
+    //     }
+
+    //     // if all-zeroes just in case
+    //     if (sum <= 0) {
+    //         return self.output_slots[0].title;
+    //     }
+
+    //     // add up until larger than cumulative
+    //     const r: f32 = commons.rand01() * sum;
+    //     var cum: f64 = 0;
+    //     var i: usize = 0;
+    //     for (self.values) |value| {
+    //         cum += value;
+    //         if (r < cum) {
+    //             return self.output_slots[i].title;
+    //         }
+    //         i += 1;
+    //     }
+
+    //     // fallback for floating-point precision issues
+    //     return self.output_slots[self.output_slots.len - 1].title;
+    // }
 
     pub fn draw(self: *QueueForkNode, parent: *Node) void {
         // style setup
