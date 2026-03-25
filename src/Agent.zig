@@ -105,17 +105,19 @@ pub fn traverseFromCurrent(
         switch (next_node.kind) {
             .spawner => unreachable,
             .area => |*area_node| {
+                const a_obj: *Area = area_node.getArea();
+
                 self.payload = .{
                     .area = .{
                         .area_index = @intCast(area_node.area_index),
                     },
                 };
-                switch (area_node.getArea().style) {
+                switch (a_obj.style) {
                     .individual => |*data| {
                         self.payload.?.area.seat_index = data.getSeatIndex();
                         self.target = data.getPosFromSeatIndex(self.payload.?.area.seat_index.?);
                     },
-                    inline else => self.target = area_node.getArea().getPos(),
+                    inline else => self.target = a_obj.getPos(),
                 }
             },
             .sink => self.marked = true, // next is sink, so destroy ourselves
@@ -198,6 +200,14 @@ pub fn processCurrentNode(
                 if (time - self.wait.last_wait >= @as(f64, @floatFromInt(self.wait.wait))) {
                     // waited long enough. continue
                     self.wait.waiting = false;
+
+                    // check if needs to release waiting spot
+                    switch (a_obj.style) {
+                        .individual => |*data| try data.freeSeatIndex(area_payload.seat_index.?),
+                        else => {},
+                    }
+
+                    // traverse to next
                     try self.traverseFromCurrent(alloc, agent_id, nodes, env);
                 }
             }

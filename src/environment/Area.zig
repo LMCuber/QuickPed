@@ -148,9 +148,14 @@ pub const IndividualData = struct {
     }
 
     pub fn getSeatIndex(self: *IndividualData) usize {
+        if (self.free_indices.items.len == 0) return 0;
         const u: usize = @intCast(rl.getRandomValue(0, @intCast(self.free_indices.items.len - 1)));
         const free_index: usize = self.free_indices.swapRemove(u);
         return free_index;
+    }
+
+    pub fn freeSeatIndex(self: *IndividualData, index: usize) !void {
+        try self.free_indices.append(index);
     }
 
     pub fn getPosFromSeatIndex(self: *IndividualData, index: usize) rl.Vector2 {
@@ -300,7 +305,7 @@ pub fn finishConfirm(self: *Self, alloc: std.mem.Allocator) !void {
 
 pub fn getPos(self: *Self) rl.Vector2 {
     switch (self.style) {
-        .individual => @compileError("must call getSeatIndex on .individual first"),
+        .individual => @panic("must call getSeatIndex on .individual first"),
         inline else => |*data| return data.getPos(),
     }
 }
