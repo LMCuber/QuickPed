@@ -54,6 +54,7 @@ pub const WaitPayload = struct {
 
 pub const AreaPayload = struct {
     area_index: usize,
+    seat_index: ?usize = null,
 };
 
 pub const QueuePayload = struct {
@@ -109,9 +110,13 @@ pub fn traverseFromCurrent(
                         .area_index = @intCast(area_node.area_index),
                     },
                 };
-                const a: Self.AreaPayload = self.payload.?.area;
-                const a_obj: *Area = &env.entities.getItem(env.areas.items[a.area_index]).kind.area;
-                self.target = a_obj.getPos();
+                switch (area_node.getArea().style) {
+                    .individual => |*data| {
+                        self.payload.?.area.seat_index = data.getSeatIndex();
+                        self.target = data.getPosFromSeatIndex(self.payload.?.area.seat_index.?);
+                    },
+                    inline else => self.target = area_node.getArea().getPos(),
+                }
             },
             .sink => self.marked = true, // next is sink, so destroy ourselves
             .fork => {
