@@ -147,10 +147,14 @@ pub const IndividualData = struct {
         self.free_indices.deinit();
     }
 
-    pub fn getPos(self: *IndividualData) rl.Vector2 {
+    pub fn getSeatIndex(self: *IndividualData) usize {
         const u: usize = @intCast(rl.getRandomValue(0, @intCast(self.free_indices.items.len - 1)));
         const free_index: usize = self.free_indices.swapRemove(u);
-        return self.points.items[free_index];
+        return free_index;
+    }
+
+    pub fn getPosFromSeatIndex(self: *IndividualData, index: usize) rl.Vector2 {
+        return self.points.items[index];
     }
 
     pub fn getSnapshot(self: IndividualData) IndividualDataSnapshot {
@@ -296,6 +300,7 @@ pub fn finishConfirm(self: *Self, alloc: std.mem.Allocator) !void {
 
 pub fn getPos(self: *Self) rl.Vector2 {
     switch (self.style) {
+        .individual => @compileError("must call getSeatIndex on .individual first"),
         inline else => |*data| return data.getPos(),
     }
 }
