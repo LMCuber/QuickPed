@@ -5,6 +5,8 @@ const palette = @import("../palette.zig");
 const z = @import("zgui");
 const rl = @import("raylib");
 
+environment_width: i32 = 0,
+environment_height: i32 = 0,
 grid_size: i32 = 2 << 4,
 scale: i32 = 32, // this many pixels is 1 meter in simulation
 paused: bool = false,
@@ -26,6 +28,9 @@ pub fn render(self: *Self) void {
 
 pub fn update_ui(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) void {
     if (z.collapsingHeader("Simulation", .{ .default_open = false })) {
+        _ = z.inputInt("width", .{ .v = &self.environment_width });
+        _ = z.inputInt("height", .{ .v = &self.environment_height });
+
         if (z.button("recenter", .{})) {
             camera.target = camera_default.target;
             camera.offset = camera_default.offset;

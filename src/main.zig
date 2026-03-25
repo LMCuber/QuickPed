@@ -85,6 +85,10 @@ pub fn main() !void {
 
     // load saved data
     sim_data = try SimData.loadFromFile(allocator, "data/sim_data.json");
+    if (sim_data.environment_width == 0) {
+        sim_data.environment_width = settings.sim_width;
+        sim_data.environment_height = settings.sim_height;
+    }
     agent_data = try AgentData.loadFromFile(allocator, "data/agent_data.json");
 
     // stats
@@ -105,13 +109,6 @@ pub fn main() !void {
     // commons.camera shenanigans
     var prev_mouse_position = commons.mousePos();
     var capture = false;
-
-    const sim_rect: rl.Rectangle = .{
-        .x = 0,
-        .y = 0,
-        .width = @floatFromInt(settings.sim_width),
-        .height = @floatFromInt(settings.sim_height),
-    };
 
     // Main loop
     while (!rl.windowShouldClose()) {
@@ -195,8 +192,14 @@ pub fn main() !void {
                 rl.beginMode2D(commons.camera);
                 defer rl.endMode2D();
 
+                const sim_rect: rl.Rectangle = .{
+                    .x = 0,
+                    .y = 0,
+                    .width = @floatFromInt(sim_data.environment_width),
+                    .height = @floatFromInt(sim_data.environment_height),
+                };
                 rl.drawRectangleRec(sim_rect, palette.env.dark_blue);
-                renderGrid(settings);
+                renderGrid();
 
                 if (!capture) {
                     const mouse_position: rl.Vector2 = rl.getMousePosition();
@@ -469,8 +472,8 @@ pub fn resetCurrentEntity(alloc: std.mem.Allocator, current_entity: *?entity.Ent
     }
 }
 
-pub fn renderGrid(settings: Settings) void {
-    const num_hor_blocks = @divTrunc(settings.sim_width, sim_data.grid_size);
+pub fn renderGrid() void {
+    const num_hor_blocks = @divTrunc(sim_data.environment_width, sim_data.grid_size);
     const col = palette.env.navy;
     for (0..@as(usize, @intCast(num_hor_blocks))) |i| {
         const i_i32: i32 = @intCast(i);
@@ -479,19 +482,19 @@ pub fn renderGrid(settings: Settings) void {
             grid_pos,
             0,
             grid_pos,
-            settings.sim_height,
+            sim_data.environment_height,
             col,
         );
     }
 
-    const num_ver_blocks = @divTrunc(settings.sim_height, sim_data.grid_size);
+    const num_ver_blocks = @divTrunc(sim_data.environment_height, sim_data.grid_size);
     for (0..@as(usize, @intCast(num_ver_blocks))) |i| {
         const i_i32: i32 = @intCast(i);
         const grid_pos = i_i32 * sim_data.grid_size;
         rl.drawLine(
             0,
             grid_pos,
-            settings.sim_width,
+            sim_data.environment_width,
             grid_pos,
             col,
         );
