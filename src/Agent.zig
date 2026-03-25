@@ -14,6 +14,7 @@ const AgentData = @import("editor/AgentData.zig");
 const Contour = @import("environment/Contour.zig");
 const Revolver = @import("environment/Revolver.zig");
 const Area = @import("environment/Area.zig");
+const Portal = @import("environment/Portal.zig");
 const Queue = @import("environment/Queue.zig");
 const node = @import("nodes/node.zig");
 const Graph = @import("nodes/Graph.zig");
@@ -37,6 +38,7 @@ wait: WaitPayload,
 
 payload: ?union(enum) {
     area: AreaPayload,
+    portal: PortalPayload,
     queue: QueuePayload,
 },
 
@@ -55,6 +57,11 @@ pub const WaitPayload = struct {
 pub const AreaPayload = struct {
     area_index: usize,
     seat_index: ?usize = null,
+};
+
+pub const PortalPayload = struct {
+    portal_index: usize,
+    u: f32, // [0, 1]: the location in the spawn portal
 };
 
 pub const QueuePayload = struct {
@@ -120,6 +127,15 @@ pub fn traverseFromCurrent(
                     inline else => self.target = a_obj.getPos(),
                 }
             },
+            .portal => |*portal_node| {
+                self.payload = .{
+                    .portal = .{
+                        .portal_index = @intCast(portal_node.portal_index),
+                        .u = commons.rand01(),
+                    },
+                };
+                self.target = portal_node.getPortal().getSourcePosFromU(self.payload.?.portal.u);
+            },
             .sink => self.marked = true, // next is sink, so destroy ourselves
             .fork => {
                 self.current_node_id = next_node_id;
@@ -143,31 +159,6 @@ pub fn traverseFromCurrent(
         // the spawner is standalone, so just kill the agent
         self.marked = true;
     }
-}
-
-pub fn getBehindVector(
-    self: *Self,
-    agent_id: usize,
-    agents: *Environment.AgentManager,
-    agent_data: AgentData,
-) rl.Vector2 {
-    // will only be called on agents that are NOT on the front of the queue
-    // (ones which have valid prev_agent_ids)
-
-    const queue_obj: *Queue = self.payload.?.queue.obj;
-    const prev_agent_id: usize = queue_obj.getPreviousAgentId(agent_id).?;
-    const prev_prev_agent: ?usize = queue_obj.getPreviousAgentId(prev_agent_id);
-
-    var direction: ?rl.Vector2 = null;
-    if (prev_prev_agent) |prev_prev_agent_id| {
-        direction = agents.getItem(prev_agent_id).target
-            .subtract(agents.getItem(prev_prev_agent_id).target).normalize();
-    } else {
-        // the prev prev is none, so the queue is only 2 long.
-        // Calculate direction using queue.pos
-        direction = agents.getItem(prev_agent_id).target.subtract(queue_obj.pos).normalize();
-    }
-    return self.target.add(direction.?.scale(queue_obj.getPadding(agent_data)));
 }
 
 /// every frame, processCurrentNode checks what node we are on currently
@@ -210,6 +201,16 @@ pub fn processCurrentNode(
                     // traverse to next
                     try self.traverseFromCurrent(alloc, agent_id, nodes, env);
                 }
+            }
+        },
+        .portal => {
+            const portal_payload = self.payload.?.portal;
+            const p_obj: *Portal = &env.entities.getItem(env.portals.items[portal_payload.portal_index]).kind.portal;
+
+            // start waiting if in bounds
+            if (p_obj.checkCollision(self.pos)) {
+                self.pos = p_obj.getDestPos(portal_payload.u);
+                try self.traverseFromCurrent(alloc, agent_id, nodes, env);
             }
         },
         .queue => |queue_node| {
@@ -259,6 +260,31 @@ pub fn processCurrentNode(
     }
 }
 
+pub fn getBehindVector(
+    self: *Self,
+    agent_id: usize,
+    agents: *Environment.AgentManager,
+    agent_data: AgentData,
+) rl.Vector2 {
+    // will only be called on agents that are NOT on the front of the queue
+    // (ones which have valid prev_agent_ids)
+
+    const queue_obj: *Queue = self.payload.?.queue.obj;
+    const prev_agent_id: usize = queue_obj.getPreviousAgentId(agent_id).?;
+    const prev_prev_agent: ?usize = queue_obj.getPreviousAgentId(prev_agent_id);
+
+    var direction: ?rl.Vector2 = null;
+    if (prev_prev_agent) |prev_prev_agent_id| {
+        direction = agents.getItem(prev_agent_id).target
+            .subtract(agents.getItem(prev_prev_agent_id).target).normalize();
+    } else {
+        // the prev prev is none, so the queue is only 2 long.
+        // Calculate direction using queue.pos
+        direction = agents.getItem(prev_agent_id).target.subtract(queue_obj.pos).normalize();
+    }
+    return self.target.add(direction.?.scale(queue_obj.getPadding(agent_data)));
+}
+
 fn obstacleForceFromTwoVectors(
     self: *Self,
     A: rl.Vector2,
@@ -266,14 +292,7 @@ fn obstacleForceFromTwoVectors(
     sim_data: SimData,
     agent_data: AgentData,
 ) rl.Vector2 {
-    const AB = B.subtract(A);
-    const t: f32 = std.math.clamp(
-        self.pos.subtract(A).dotProduct(AB) / AB.dotProduct(AB),
-        0,
-        1,
-    );
-    const C = A.add(AB.scale(t));
-    const D = self.pos.subtract(C);
+    const D = commons.vecToLineSegment(self.pos, A, B);
     const dist = D.length();
     const n = D.normalize();
 

@@ -71,8 +71,6 @@ pub fn draw(self: Self) void {
     }
 }
 
-pub fn randomSpawnPos(self: Self) rl.Vector2 {
-    const diff: rl.Vector2 = self.points[1].subtract(self.points[0]);
-    const p: f32 = commons.rand01();
-    return self.points[0].add(diff.scale(p));
+pub fn getRandomSpawnPos(self: Self) rl.Vector2 {
+    return commons.getRandomPointBetweenVectors(self.points[0], self.points[1]);
 }

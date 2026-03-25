@@ -303,6 +303,13 @@ pub fn main() !void {
                             current_entity = try entity.Entity.initQueue(allocator, next_id);
                         }
 
+                        // portal
+                        z.sameLine(.{});
+                        if (EB.portalButton(button_size)) {
+                            resetCurrentEntity(allocator, &current_entity);
+                            current_entity = try entity.Entity.initPortal(allocator, next_id);
+                        }
+
                         // reset
                         z.separatorText("");
 
@@ -464,7 +471,7 @@ pub fn resetCurrentEntity(alloc: std.mem.Allocator, current_entity: *?entity.Ent
 
 pub fn renderGrid(settings: Settings) void {
     const num_hor_blocks = @divTrunc(settings.sim_width, sim_data.grid_size);
-    const col = palette.env.light_blue;
+    const col = palette.env.navy;
     for (0..@as(usize, @intCast(num_hor_blocks))) |i| {
         const i_i32: i32 = @intCast(i);
         const grid_pos = i_i32 * sim_data.grid_size;

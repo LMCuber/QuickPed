@@ -24,6 +24,7 @@ spawners: std.ArrayList(usize),
 areas: std.ArrayList(usize),
 revolvers: std.ArrayList(usize),
 queues: std.ArrayList(usize),
+portals: std.ArrayList(usize),
 
 const EnvironmentSnapshot = struct {
     version: []const u8,
@@ -39,6 +40,7 @@ pub fn init(alloc: std.mem.Allocator) Self {
         .areas = std.ArrayList(usize).init(alloc),
         .revolvers = std.ArrayList(usize).init(alloc),
         .queues = std.ArrayList(usize).init(alloc),
+        .portals = std.ArrayList(usize).init(alloc),
     };
 }
 
@@ -48,6 +50,7 @@ pub fn deinit(self: *Self) void {
     self.areas.deinit();
     self.revolvers.deinit();
     self.queues.deinit();
+    self.portals.deinit();
 }
 
 pub fn createEntity(self: *Self, ent: entity.Entity) !void {
@@ -60,6 +63,7 @@ pub fn createEntity(self: *Self, ent: entity.Entity) !void {
         .area => try self.areas.append(new_index),
         .revolver => try self.revolvers.append(new_index),
         .queue => try self.queues.append(new_index),
+        .portal => try self.portals.append(new_index),
     }
 }
 
@@ -76,6 +80,7 @@ pub fn clearEntities(self: *Self, alloc: std.mem.Allocator) void {
     self.spawners.clearRetainingCapacity();
     self.revolvers.clearRetainingCapacity();
     self.queues.clearRetainingCapacity();
+    self.portals.clearRetainingCapacity();
 }
 
 //

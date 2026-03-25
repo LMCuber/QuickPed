@@ -9,6 +9,7 @@ const utils = @import("utils.zig");
 const Spawner = @import("../environment/Spawner.zig");
 const Area = @import("../environment/Area.zig");
 const Queue = @import("../environment/Queue.zig");
+const Portal = @import("../environment/Portal.zig");
 const Agent = @import("../Agent.zig");
 const Graph = @import("Graph.zig");
 const commons = @import("../commons.zig");
@@ -30,6 +31,7 @@ pub const NodeSnapshot = struct {
         spawner: SpawnerNodeSnapshot,
         sink: SinkNodeSnapshot,
         area: AreaNodeSnapshot,
+        portal: PortalNodeSnapshot,
         fork: ForkNodeSnapshot,
         queue: QueueNodeSnapshot,
         queue_fork: QueueForkNodeSnapshot,
@@ -45,6 +47,7 @@ pub const Node = struct {
         spawner: SpawnerNode,
         sink: SinkNode,
         area: AreaNode,
+        portal: PortalNode,
         fork: ForkNode,
         queue: QueueNode,
         queue_fork: QueueForkNode,
@@ -82,6 +85,7 @@ pub const Node = struct {
                 .sink => |sk| .{ .sink = SinkNode.fromSnapshot(sk) },
                 .spawner => |sk| .{ .spawner = SpawnerNode.fromSnapshot(sk, env) },
                 .area => |sk| .{ .area = AreaNode.fromSnapshot(sk, env) },
+                .portal => |ps| .{ .portal = PortalNode.fromSnapshot(ps, env) },
                 .fork => |sk| .{ .fork = ForkNode.fromSnapshot(sk) },
                 .queue => |qk| .{ .queue = QueueNode.fromSnapshot(qk, env) },
                 .queue_fork => |qf| .{ .queue_fork = QueueForkNode.fromSnapshot(qf) },
@@ -91,9 +95,7 @@ pub const Node = struct {
 
     pub fn update(self: *Node) NodeState {
         // check if wants to delete
-        if (self.selected) {
-            return .selected;
-        }
+        if (self.selected) return .selected;
         return .none;
     }
 
@@ -123,6 +125,10 @@ pub const Node = struct {
                 },
             },
         };
+    }
+
+    pub fn initPortal(env: *Environment) Node {
+        return .{ .kind = .{ .portal = .{ .env = env } } };
     }
 
     pub fn initQueue(env: *Environment, wait: utils.Wait) Node {
@@ -379,9 +385,11 @@ pub const SpawnerNode = struct {
         node_id: usize,
         env: *Environment,
     ) !void {
+        // if (env.agents.getLen() > 0) return;
+
         const time: f64 = commons.getTimeMillis();
         if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {
-            const pos: rl.Vector2 = self.getSpawner().randomSpawnPos();
+            const pos: rl.Vector2 = self.getSpawner().getRandomSpawnPos();
             const a = try Agent.init(
                 alloc,
                 pos,
@@ -447,8 +455,8 @@ pub const AreaNode = struct {
     pub fn draw(self: *AreaNode, parent: *Node) void {
         const node_width: f32 = 120;
 
-        imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.light_blue));
-        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, palette.lighten(palette.env.light_blue));
+        imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.navy));
+        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, palette.lighten(palette.env.navy));
         defer imnodes.ez.popStyleColor(2);
 
         // start the node
@@ -518,8 +526,69 @@ pub const AreaNode = struct {
         // output slots
         imnodes.ez.outputSlots(&self.output_slots);
     }
+};
 
-    pub fn update(_: AreaNode, _: *std.ArrayList(Agent)) !void {}
+pub const PortalNodeSnapshot = struct {
+    portal_index: i32,
+};
+
+pub const PortalNode = struct {
+    env: *Environment,
+    // later converted to usize; needs to be i32 for imgui combo selector
+    portal_index: i32 = 0,
+
+    input_slots: [1]imnodes.ez.SlotInfo = .{
+        .{ .title = "in", .kind = -1 },
+    },
+    output_slots: [1]imnodes.ez.SlotInfo = .{
+        .{ .title = "out", .kind = 1 },
+    },
+
+    pub fn getSnapshot(self: PortalNode) PortalNodeSnapshot {
+        return .{ .portal_index = self.portal_index };
+    }
+
+    pub fn fromSnapshot(snap: PortalNodeSnapshot, env: *Environment) PortalNode {
+        return .{
+            .env = env,
+            .portal_index = snap.portal_index,
+        };
+    }
+
+    pub fn getPortal(self: *PortalNode) *Portal {
+        return &self.env.entities.getItem(self.env.portals.items[@intCast(self.portal_index)]).kind.portal;
+    }
+
+    pub fn draw(self: *PortalNode, parent: *Node) void {
+        // style setup
+        const node_width: f32 = 120;
+        imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.light_blue));
+        imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, palette.lighten(palette.env.light_blue));
+        defer imnodes.ez.popStyleColor(2);
+
+        // start the node
+        _ = imnodes.ez.beginNode(parent, "Portal", &parent.pos, &parent.selected);
+        defer imnodes.ez.endNode();
+
+        // input slots
+        imnodes.ez.inputSlots(&self.input_slots);
+
+        // portal selector
+        var buf: [2 << 11]u8 = undefined;
+        const names = entity.Entity.buildNameComboString(
+            .portal,
+            &self.env.entities,
+            &buf,
+        );
+        setNextItemWidth(node_width);
+        _ = z.combo("##portal-selector", .{
+            .current_item = &self.portal_index,
+            .items_separated_by_zeros = names,
+        });
+
+        // output slots
+        imnodes.ez.outputSlots(&self.output_slots);
+    }
 };
 
 pub const QueueNodeSnapshot = struct {
@@ -642,8 +711,6 @@ pub const QueueNode = struct {
         // output slots
         imnodes.ez.outputSlots(&self.output_slots);
     }
-
-    pub fn update(_: AreaNode, _: *std.ArrayList(Agent)) !void {}
 };
 
 pub const ForkNodeSnapshot = struct {

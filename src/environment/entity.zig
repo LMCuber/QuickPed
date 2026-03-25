@@ -5,6 +5,7 @@ const Spawner = @import("Spawner.zig");
 const Area = @import("Area.zig");
 const Revolver = @import("Revolver.zig");
 const Queue = @import("Queue.zig");
+const Portal = @import("Portal.zig");
 const Environment = @import("Environment.zig");
 const AgentData = @import("../editor/AgentData.zig");
 const Manager = @import("../Manager.zig").Manager;
@@ -22,6 +23,7 @@ pub const EntitySnapshot = struct {
         area: Area.AreaSnapshot,
         revolver: Revolver.RevolverSnapshot,
         queue: Queue.QueueSnapshot,
+        portal: Portal.PortalSnapshot,
     };
 };
 
@@ -30,12 +32,13 @@ pub const Entity = struct {
     name_edit_buf: [256:0]u8 = .{0} ** 256,
     kind: Kind,
 
-    const Kind = union(enum) {
+    pub const Kind = union(enum) {
         contour: Contour,
         spawner: Spawner,
         area: Area,
         revolver: Revolver,
         queue: Queue,
+        portal: Portal,
     };
 
     pub const EntityAction = enum {
@@ -147,6 +150,17 @@ pub const Entity = struct {
         };
     }
 
+    pub fn initPortal(allocator: std.mem.Allocator, id: usize) !Entity {
+        const portal = Portal.init();
+        const name = try std.fmt.allocPrintZ(allocator, "Portal{}", .{id});
+        return .{
+            .name = name,
+            .kind = .{
+                .portal = portal,
+            },
+        };
+    }
+
     pub fn deinit(self: *Entity, allocator: std.mem.Allocator) void {
         allocator.free(self.name);
         switch (self.kind) {
@@ -179,6 +193,7 @@ pub const Entity = struct {
                 .area => |as| .{ .area = try Area.fromSnapshot(alloc, as) },
                 .revolver => |rs| .{ .revolver = Revolver.fromSnapshot(rs) },
                 .queue => |qs| .{ .queue = try Queue.fromSnapshot(alloc, qs, sim_data, agent_data) },
+                .portal => |ps| .{ .portal = Portal.fromSnapshot(ps) },
             },
         };
     }

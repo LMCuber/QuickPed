@@ -5,6 +5,7 @@
 
 const Self = @This();
 const z = @import("zgui");
+const std = @import("std");
 
 const palette = struct {
     const default: u32 = 0xFF734b26;
@@ -180,6 +181,116 @@ pub fn revolverButton(bs: f32) bool {
     const thick: f32 = 4.0;
     dl.addLine(.{ .p1 = .{ min[0] + pad, min[1] + pad }, .p2 = .{ max[0] - pad, max[1] - pad }, .col = 0xff_00_00_00, .thickness = thick });
     dl.addLine(.{ .p1 = .{ min[0] + pad, max[1] - pad }, .p2 = .{ max[0] - pad, min[1] + pad }, .col = 0xff_00_00_00, .thickness = thick });
+
+    return clicked;
+}
+
+pub fn portalButton(bs: f32) bool {
+    const clicked = z.invisibleButton("##portal", .{ .w = bs, .h = bs });
+    const min = z.getItemRectMin();
+    const max = z.getItemRectMax();
+    const dl = z.getWindowDrawList();
+    const hovered = z.isItemHovered(.{});
+
+    if (hovered) {
+        _ = z.beginTooltip();
+        z.text("Portal", .{});
+        z.endTooltip();
+    }
+
+    const active = z.isItemActive();
+    const bg_col: u32 = if (active)
+        palette.active
+    else if (hovered)
+        palette.hover
+    else
+        palette.default;
+
+    dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
+
+    const pad: f32 = 6.0;
+    const left = min[0] + pad;
+    const right = max[0] - pad;
+    const top = min[1] + pad;
+    const bot = max[1] - pad;
+
+    const mid_y = (top + bot) * 0.5;
+    const half_w = (right - left) * 0.5;
+    const gap: f32 = 4.0;
+
+    const col_blue: u32 = 0xff_DB_98_34;
+    const col_orange: u32 = 0xff_22_7E_E6;
+
+    const thick: f32 = 2.0;
+
+    const lx = left + half_w * 0.5 - gap * 0.5;
+    const rx = left + half_w + half_w * 0.5 + gap * 0.5;
+
+    const ell_rx: f32 = half_w * 0.28;
+    const ell_ry: f32 = (bot - top) * 0.38;
+
+    const segments: u32 = 64; // key fix: high resolution
+    const step: f32 = (std.math.pi * 2.0) / @as(f32, @floatFromInt(segments));
+
+    // --- LEFT portal (blue) ---
+    {
+        var i: u32 = 0;
+        var a0: f32 = 0.0;
+
+        while (i < segments) : (i += 1) {
+            const a1 = a0 + step;
+
+            const x0 = lx + @cos(a0) * ell_rx;
+            const y0 = mid_y + @sin(a0) * ell_ry;
+            const x1 = lx + @cos(a1) * ell_rx;
+            const y1 = mid_y + @sin(a1) * ell_ry;
+
+            dl.addLine(.{
+                .p1 = .{ x0, y0 },
+                .p2 = .{ x1, y1 },
+                .col = col_blue,
+                .thickness = thick,
+            });
+
+            a0 = a1;
+        }
+    }
+
+    // --- RIGHT portal (orange) ---
+    {
+        var i: u32 = 0;
+        var a0: f32 = 0.0;
+
+        while (i < segments) : (i += 1) {
+            const a1 = a0 + step;
+
+            const x0 = rx + @cos(a0) * ell_rx;
+            const y0 = mid_y + @sin(a0) * ell_ry;
+            const x1 = rx + @cos(a1) * ell_rx;
+            const y1 = mid_y + @sin(a1) * ell_ry;
+
+            dl.addLine(.{
+                .p1 = .{ x0, y0 },
+                .p2 = .{ x1, y1 },
+                .col = col_orange,
+                .thickness = thick,
+            });
+
+            a0 = a1;
+        }
+    }
+
+    // --- Arrow into blue portal ---
+    const arr_y = mid_y;
+    const arr_x1 = left;
+    const arr_x2 = lx - ell_rx + 1.0;
+
+    dl.addLine(.{
+        .p1 = .{ arr_x1, arr_y },
+        .p2 = .{ arr_x2, arr_y },
+        .col = col_blue,
+        .thickness = thick,
+    });
 
     return clicked;
 }

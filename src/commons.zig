@@ -23,6 +23,24 @@ pub fn roundN(value: i32, n: i32) i32 {
     return @divTrunc(value + @divTrunc(n, 2), n) * n;
 }
 
+pub fn getRandomPointBetweenVectors(p1: rl.Vector2, p2: rl.Vector2) rl.Vector2 {
+    const diff: rl.Vector2 = p2.subtract(p1);
+    const p: f32 = rand01();
+    return p1.add(diff.scale(p));
+}
+
+pub fn vecToLineSegment(pos: rl.Vector2, A: rl.Vector2, B: rl.Vector2) rl.Vector2 {
+    const AB = B.subtract(A);
+    const t: f32 = std.math.clamp(
+        pos.subtract(A).dotProduct(AB) / AB.dotProduct(AB),
+        0,
+        1,
+    );
+    const C = A.add(AB.scale(t));
+    const D = pos.subtract(C);
+    return D;
+}
+
 ///
 /// gets the mouse position while taking scrolling into considersation.
 /// basically the position of the map you are hovering above, relative to the topleft of the map

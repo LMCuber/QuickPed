@@ -6,8 +6,9 @@ pub const env = struct {
     pub const white = rl.Color{ .r = 255, .g = 240, .b = 230, .a = 255 };
     pub const white_t = rl.Color{ .r = 255, .g = 240, .b = 230, .a = 180 };
     pub const dark_blue = rl.Color{ .r = 12, .g = 11, .b = 35, .a = 255 };
-    pub const light_blue = rl.Color{ .r = 16, .g = 41, .b = 65, .a = 255 };
-    pub const light_blue_t = rl.Color{ .r = 16, .g = 41, .b = 65, .a = 180 };
+    pub const navy = rl.Color{ .r = 16, .g = 41, .b = 65, .a = 255 };
+    pub const navy_t = rl.Color{ .r = 16, .g = 41, .b = 65, .a = 180 };
+    pub const light_blue = rl.Color{ .r = 34, .g = 152, .b = 219, .a = 255 };
     pub const red = rl.Color{ .r = 184, .g = 60, .b = 70, .a = 255 };
     pub const green = rl.Color{ .r = 116, .g = 185, .b = 100, .a = 255 };
     pub const dark_green = rl.Color{ .r = 16, .g = 145, .b = 29, .a = 255 };

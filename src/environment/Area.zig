@@ -330,11 +330,11 @@ pub fn draw(self: Self) void {
     switch (self.style) {
         inline .standing, .seating => |data| {
             const col = if (self.placed)
-                palette.env.light_blue_t
+                palette.env.navy_t
             else if (data.anchored)
                 color.navy_t
             else
-                color.light_blue;
+                color.navy;
             const size = 10;
             if (!data.anchored) {
                 // not placed topleft yet
@@ -342,7 +342,7 @@ pub fn draw(self: Self) void {
             } else {
                 // placed topleft
                 rl.drawRectangleRec(data.rect, col);
-                rl.drawRectangleLinesEx(data.rect, 4, palette.env.light_blue);
+                rl.drawRectangleLinesEx(data.rect, 4, palette.env.navy);
             }
         },
         else => {},
@@ -366,7 +366,7 @@ pub fn draw(self: Self) void {
         .individual => |*data| {
             const r: f32 = 14;
             for (data.points.items) |point| {
-                rl.drawCircleV(point, r, palette.env.light_blue_t);
+                rl.drawCircleV(point, r, palette.env.navy_t);
                 rl.drawCircleLinesV(point, r, if (self.placed) palette.env.white else palette.env.orange);
             }
             if (!self.placed) {
