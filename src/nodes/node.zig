@@ -331,7 +331,7 @@ pub const SpawnerNode = struct {
     }
 
     pub fn getSpawner(self: *SpawnerNode) *Spawner {
-        return &self.env.entities.getItem(self.env.spawners.items[@intCast(self.spawner_index)]).kind.spawner;
+        return &self.env.entities.get(self.env.spawners.items[@intCast(self.spawner_index)]).kind.spawner;
     }
 
     pub fn draw(
@@ -449,7 +449,7 @@ pub const AreaNode = struct {
     }
 
     pub fn getArea(self: *AreaNode) *Area {
-        return &self.env.entities.getItem(self.env.areas.items[@intCast(self.area_index)]).kind.area;
+        return &self.env.entities.get(self.env.areas.items[@intCast(self.area_index)]).kind.area;
     }
 
     pub fn draw(self: *AreaNode, parent: *Node) void {
@@ -556,7 +556,7 @@ pub const PortalNode = struct {
     }
 
     pub fn getPortal(self: *PortalNode) *Portal {
-        return &self.env.entities.getItem(self.env.portals.items[@intCast(self.portal_index)]).kind.portal;
+        return &self.env.entities.get(self.env.portals.items[@intCast(self.portal_index)]).kind.portal;
     }
 
     pub fn draw(self: *PortalNode, parent: *Node) void {
@@ -634,7 +634,7 @@ pub const QueueNode = struct {
     }
 
     pub fn getQueue(self: *QueueNode) *Queue {
-        return &self.env.entities.getItem(self.env.queues.items[@intCast(self.queue_index)]).kind.queue;
+        return &self.env.entities.get(self.env.queues.items[@intCast(self.queue_index)]).kind.queue;
     }
 
     pub fn draw(self: *QueueNode, parent: *Node) void {

@@ -2,6 +2,8 @@ const std = @import("std");
 const rl = @import("raylib");
 const SimData = @import("editor/SimData.zig");
 const Settings = @import("Settings.zig");
+const Environment = @import("environment/Environment.zig");
+const entity = @import("environment/entity.zig");
 
 pub var prng: std.Random.Xoshiro256 = std.Random.DefaultPrng.init(47);
 pub var rng = prng.random();
@@ -21,6 +23,14 @@ pub fn editorCapturingMouse(settings: Settings) bool {
 
 pub fn roundN(value: i32, n: i32) i32 {
     return @divTrunc(value + @divTrunc(n, 2), n) * n;
+}
+
+pub fn existsAnyObject(env: *Environment, comptime kind: std.meta.Tag(entity.Entity.Kind)) bool {
+    for (&env.entities.items) |*eslot| {
+        if (!eslot.alive) continue;
+        if (std.meta.activeTag(eslot.value.kind) == kind) return true;
+    }
+    return false;
 }
 
 pub fn getRandomPointBetweenVectors(p1: rl.Vector2, p2: rl.Vector2) rl.Vector2 {

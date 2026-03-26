@@ -94,9 +94,9 @@ pub fn main() !void {
     // stats
     const n_cols = 100;
     const n_rows = 100;
-    const buf = try allocator.alloc(f32, n_cols * n_rows);
-    defer allocator.free(buf);
-    var stats = Stats.init(allocator, buf, n_cols, n_rows);
+    const grid_buf = try allocator.alloc(f32, n_cols * n_rows);
+    defer allocator.free(grid_buf);
+    var stats = Stats.init(allocator, grid_buf, n_cols, n_rows);
     defer stats.deinit();
 
     // node editor
@@ -175,7 +175,7 @@ pub fn main() !void {
                     for (&env.agents.items, 0..) |*aslot, i| {
                         if (!aslot.alive) continue;
                         if (aslot.value.marked) {
-                            env.agents.deleteItem(i);
+                            env.agents.delete(i);
                         }
                     }
                 }
@@ -320,8 +320,44 @@ pub fn main() !void {
                         if (EB.clearButton()) {
                             env.clearEntities(allocator);
                         }
+
+                        // inspect button
+                        z.sameLine(.{});
+                        if (z.button("Inspect", .{})) {
+                            z.openPopup("Inspect", .{});
+                        }
                         z.newLine();
                     }
+                    // inspect popup
+                    if (z.beginPopupModal("Inspect", .{ .flags = .{ .always_auto_resize = true } })) {
+                        defer z.endPopup();
+
+                        // show the names of all entities
+                        inline for (comptime std.meta.tags(std.meta.Tag(entity.Entity.Kind))) |tag| {
+                            if (z.beginMenu(@tagName(tag), commons.existsAnyObject(&env, tag))) {
+                                for (&env.entities.items, 0..) |*eslot, i| {
+                                    if (eslot.alive) {
+                                        if (eslot.value.kind == tag) {
+                                            if (z.menuItem(eslot.value.name, .{ .enabled = true })) {
+                                                // delete object, but first delete all the nodes
+                                                //TODO:
+                                                env.entities.get(i).deinit(allocator);
+                                                env.entities.delete(i);
+                                                unreachable;
+                                            }
+                                        }
+                                    }
+                                }
+                                defer z.endMenu();
+                            }
+                        }
+                        z.newLine();
+
+                        if (z.button("cancel", .{})) {
+                            z.closeCurrentPopup();
+                        }
+                    }
+
                     // ------------------------------------------------------------------
 
                     // statistics header

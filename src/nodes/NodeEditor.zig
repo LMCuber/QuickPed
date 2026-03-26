@@ -13,6 +13,7 @@ const Queue = @import("../environment/Queue.zig");
 const Environment = @import("../environment/Environment.zig");
 const Settings = @import("../Settings.zig");
 const Agent = @import("../Agent.zig");
+const commons = @import("../commons.zig");
 const imnodes = @import("imnodesez");
 
 graph: Graph,
@@ -44,14 +45,6 @@ pub fn update(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
 
 pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
     try self.graph.processSpawners(alloc, env);
-}
-
-fn existsAnyObject(env: *Environment, comptime kind: std.meta.Tag(entity.Entity.Kind)) bool {
-    for (&env.entities.items) |*eslot| {
-        if (!eslot.alive) continue;
-        if (std.meta.activeTag(eslot.value.kind) == kind) return true;
-    }
-    return false;
 }
 
 pub fn render(
@@ -102,14 +95,14 @@ pub fn render(
             if (z.beginMenu("Add node", true)) {
                 defer z.endMenu();
 
-                if (z.menuItem("Spawner", .{ .enabled = existsAnyObject(env, .spawner) })) {
+                if (z.menuItem("Spawner", .{ .enabled = commons.existsAnyObject(env, .spawner) })) {
                     try self.graph.addNode(node.Node.initSpawner(
                         env,
                         1_000,
                     ));
                 }
 
-                if (z.menuItem("Area", .{ .enabled = existsAnyObject(env, .area) })) {
+                if (z.menuItem("Area", .{ .enabled = commons.existsAnyObject(env, .area) })) {
                     try self.graph.addNode(node.Node.initArea(
                         env,
                         .{ .constant = .{
@@ -118,7 +111,7 @@ pub fn render(
                     ));
                 }
 
-                if (z.menuItem("Queue", .{ .enabled = existsAnyObject(env, .queue) })) {
+                if (z.menuItem("Queue", .{ .enabled = commons.existsAnyObject(env, .queue) })) {
                     try self.graph.addNode(node.Node.initQueue(
                         env,
                         .{ .constant = .{
@@ -145,7 +138,7 @@ pub fn render(
                 if (z.beginMenu("other", true)) {
                     defer z.endMenu();
 
-                    if (z.menuItem("Portal", .{ .enabled = existsAnyObject(env, .portal) })) {
+                    if (z.menuItem("Portal", .{ .enabled = commons.existsAnyObject(env, .portal) })) {
                         try self.graph.addNode(node.Node.initPortal(env));
                     }
                 }
@@ -207,8 +200,8 @@ pub fn render(
         while (i > 0) {
             i -= 1;
             var conn = self.graph.connections.items[i];
-            const input_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.getItem(conn.input_slot.node_id));
-            const output_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.getItem(conn.output_slot.node_id));
+            const input_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.get(conn.input_slot.node_id));
+            const output_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.get(conn.output_slot.node_id));
 
             const double_clicked: bool = !imnodes.ez.connection(
                 input_node_ptr,

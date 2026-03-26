@@ -38,7 +38,7 @@ pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
 
 pub fn addNode(self: *Self, n: node.Node) !void {
     const new_index = self.nodes.createItem(n);
-    imnodes.autoPositionNode(self.nodes.getItem(new_index));
+    imnodes.autoPositionNode(self.nodes.get(new_index));
 }
 
 pub fn deleteNode(self: *Self, alloc: std.mem.Allocator, node_id: usize) !void {
@@ -53,7 +53,7 @@ pub fn deleteNode(self: *Self, alloc: std.mem.Allocator, node_id: usize) !void {
         }
     }
     // delete the node
-    self.nodes.deleteItem(node_id);
+    self.nodes.delete(node_id);
 }
 
 pub fn addConnection(
@@ -83,7 +83,7 @@ pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment)
 }
 
 pub fn getNextNodeId(self: *Self, alloc: std.mem.Allocator, current_node_id: usize) !?usize {
-    const current_node: *node.Node = self.nodes.getItem(current_node_id);
+    const current_node: *node.Node = self.nodes.get(current_node_id);
 
     // get correct port ID from current node
     const current_title: [*c]const u8 = switch (current_node.kind) {

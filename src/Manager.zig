@@ -58,11 +58,11 @@ pub fn Manager(comptime T: type, comptime size: usize) type {
             return self.free_indices[self.free_count - 1];
         }
 
-        pub fn getItem(self: *Self, index: usize) *T {
+        pub fn get(self: *Self, index: usize) *T {
             return &self.items[index].value;
         }
 
-        pub fn deleteItem(self: *Self, index: usize) void {
+        pub fn delete(self: *Self, index: usize) void {
             // disable the item in the slots
             self.items[index].alive = false;
 

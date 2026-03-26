@@ -1,6 +1,6 @@
 {
   "environment_width": 2000,
-  "environment_height": 2000,
+  "environment_height": 1000,
   "grid_size": 32,
   "scale": 32,
   "paused": false

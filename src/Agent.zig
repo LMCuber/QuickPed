@@ -106,7 +106,7 @@ pub fn traverseFromCurrent(
         // set current node to next by default (might be changed by e.g. fork)
         self.current_node_id = next_node_id;
 
-        const next_node: *node.Node = nodes.getItem(next_node_id);
+        const next_node: *node.Node = nodes.get(next_node_id);
 
         // check what type of node the next found node is
         switch (next_node.kind) {
@@ -172,13 +172,13 @@ pub fn processCurrentNode(
     nodes: *Graph.NodeManager,
     env: *Environment,
 ) !void {
-    const current_node: *node.Node = nodes.getItem(self.current_node_id.?);
+    const current_node: *node.Node = nodes.get(self.current_node_id.?);
     const time: f64 = commons.getTimeMillis();
 
     switch (current_node.kind) {
         .area => |*area_node| {
             const area_payload = self.payload.?.area;
-            const a_obj: *Area = &env.entities.getItem(env.areas.items[area_payload.area_index]).kind.area;
+            const a_obj: *Area = &env.entities.get(env.areas.items[area_payload.area_index]).kind.area;
 
             // check should start waiting
             if (!self.wait.waiting) {
@@ -205,7 +205,7 @@ pub fn processCurrentNode(
         },
         .portal => {
             const portal_payload = self.payload.?.portal;
-            const p_obj: *Portal = &env.entities.getItem(env.portals.items[portal_payload.portal_index]).kind.portal;
+            const p_obj: *Portal = &env.entities.get(env.portals.items[portal_payload.portal_index]).kind.portal;
 
             // start waiting if in bounds
             if (p_obj.checkCollision(self.pos)) {
@@ -215,7 +215,7 @@ pub fn processCurrentNode(
         },
         .queue => |queue_node| {
             const q: *Self.QueuePayload = &self.payload.?.queue;
-            var q_obj: *Queue = &env.entities.getItem(env.queues.items[q.queue_index]).kind.queue;
+            var q_obj: *Queue = &env.entities.get(env.queues.items[q.queue_index]).kind.queue;
 
             // "waiting" means in the queue
             if (self.wait.waiting) {
@@ -275,12 +275,12 @@ pub fn getBehindVector(
 
     var direction: ?rl.Vector2 = null;
     if (prev_prev_agent) |prev_prev_agent_id| {
-        direction = agents.getItem(prev_agent_id).target
-            .subtract(agents.getItem(prev_prev_agent_id).target).normalize();
+        direction = agents.get(prev_agent_id).target
+            .subtract(agents.get(prev_prev_agent_id).target).normalize();
     } else {
         // the prev prev is none, so the queue is only 2 long.
         // Calculate direction using queue.pos
-        direction = agents.getItem(prev_agent_id).target.subtract(queue_obj.pos).normalize();
+        direction = agents.get(prev_agent_id).target.subtract(queue_obj.pos).normalize();
     }
     return self.target.add(direction.?.scale(queue_obj.getPadding(agent_data)));
 }
@@ -312,7 +312,7 @@ fn calculateObstacleForce(
 
     // iterate over all contour objects
     for (env.contours.items) |contour_id| {
-        const contour: Contour = env.entities.getItem(contour_id).kind.contour;
+        const contour: Contour = env.entities.get(contour_id).kind.contour;
 
         // iterate over all line segements in that contour
         for (0..contour.points.items.len) |i| {
@@ -327,7 +327,7 @@ fn calculateObstacleForce(
 
     // iterate over all the revolvers
     for (env.revolvers.items) |revolver_id| {
-        const revolver: Revolver = env.entities.getItem(revolver_id).kind.revolver;
+        const revolver: Revolver = env.entities.get(revolver_id).kind.revolver;
 
         // get 4 rotational symmetries
         for (0..4) |i| {
