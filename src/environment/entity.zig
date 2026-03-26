@@ -47,6 +47,7 @@ pub const Entity = struct {
         cancelled,
         confirm,
         confirm_init,
+        selected,
     };
 
     //

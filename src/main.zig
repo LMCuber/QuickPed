@@ -340,7 +340,7 @@ pub fn main() !void {
                                         if (eslot.value.kind == tag) {
                                             if (z.menuItem(eslot.value.name, .{ .enabled = true })) {
                                                 // delete object, but first delete all the nodes
-                                                //TODO:
+                                                node_editor.deleteEntity(i);
                                                 env.entities.get(i).deinit(allocator);
                                                 env.entities.delete(i);
                                                 unreachable;

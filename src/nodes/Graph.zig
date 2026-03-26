@@ -1,6 +1,7 @@
 const Self = @This();
 const std = @import("std");
 const Agent = @import("../Agent.zig");
+const entity = @import("../environment/entity.zig");
 const imnodes = @import("imnodesez");
 const commons = @import("../commons.zig");
 const node = @import("node.zig");
@@ -56,11 +57,24 @@ pub fn deleteNode(self: *Self, alloc: std.mem.Allocator, node_id: usize) !void {
     self.nodes.delete(node_id);
 }
 
-pub fn addConnection(
-    self: *Self,
-    output_slot: node.Slot,
-    input_slot: node.Slot,
-) !void {
+pub fn deleteEntity(self: *Self, ent_id: usize) void {
+    // delete all nodes with that entity id
+    for (&self.nodes.items, 0..) |*nslot, i| {
+        if (!nslot.alive) continue;
+        switch (nslot.value.kind) {
+            .area => |*area| {
+                if (area.area_index == @as(i32, @intCast(ent_id))) {
+                    self.nodes.delete(i);
+                }
+            },
+            else => {},
+        }
+    }
+
+    // delete all connections with those nodes
+}
+
+pub fn addConnection(self: *Self, output_slot: node.Slot, input_slot: node.Slot) !void {
     try self.connections.append(.{
         .output_slot = output_slot,
         .input_slot = input_slot,

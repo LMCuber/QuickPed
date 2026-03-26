@@ -10,6 +10,7 @@ const Settings = @import("../Settings.zig");
 const Agent = @import("../Agent.zig");
 
 points: [2]rl.Vector2 = undefined,
+rect: rl.Rectangle = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
 point_count: usize = 0,
 placed: bool = false,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
@@ -37,6 +38,13 @@ pub fn fromSnapshot(snap: SpawnerSnapshot) Self {
 }
 
 pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityAction {
+    const o = 5;
+    self.rect = .{
+        .x = @min(self.points[0].x, self.points[1].x) - o,
+        .y = @min(self.points[0].y, self.points[1].y) - o,
+        .width = @abs(self.points[0].x - self.points[1].x) + o * 2,
+        .height = @abs(self.points[0].y - self.points[1].y) + o * 2,
+    };
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
         // place new point
@@ -48,6 +56,12 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityA
             if (self.point_count == 2) {
                 self.placed = true;
                 return .confirm;
+            }
+        }
+    } else {
+        if (rl.checkCollisionPointRec(commons.mousePos(), self.rect)) {
+            if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left)) {
+                return .selected;
             }
         }
     }
@@ -68,6 +82,12 @@ pub fn draw(self: Self) void {
         rl.drawLineEx(self.points[0], self.points[1], thick, col);
     } else {
         unreachable;
+    }
+
+    if (self.placed) {
+        if (rl.checkCollisionPointRec(commons.mousePos(), self.rect)) {
+            rl.drawRectangleLinesEx(self.rect, 1, palette.env.orange);
+        }
     }
 }
 

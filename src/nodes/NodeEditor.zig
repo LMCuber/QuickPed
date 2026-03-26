@@ -35,6 +35,10 @@ pub fn saveNodes(self: *Self, alloc: std.mem.Allocator, path: []const u8) !void 
     try self.graph.saveNodes(alloc, path);
 }
 
+pub fn deleteEntity(self: *Self, ent_id: usize) void {
+    self.graph.deleteEntity(ent_id);
+}
+
 pub fn loadNodes(self: *Self, alloc: std.mem.Allocator, path: []const u8, env: *Environment) !void {
     try self.graph.loadNodes(alloc, path, env);
 }
@@ -72,6 +76,7 @@ pub fn render(
             z.text("[d] to delete node", .{});
             z.text("[c] to recenter", .{});
             z.text("double click to delete link", .{});
+            z.newLine();
             z.text("[i] to hide keybinds", .{});
         } else {
             z.text("[i] to show keybinds", .{});
