@@ -1,6 +1,7 @@
 const Self = @This();
 const std = @import("std");
 const rl = @import("raylib");
+const z = @import("zgui");
 const color = @import("../color.zig");
 const palette = @import("../palette.zig");
 const commons = @import("../commons.zig");
@@ -10,7 +11,6 @@ const Settings = @import("../Settings.zig");
 const Agent = @import("../Agent.zig");
 
 points: [2]rl.Vector2 = undefined,
-rect: rl.Rectangle = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
 point_count: usize = 0,
 placed: bool = false,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
@@ -37,14 +37,11 @@ pub fn fromSnapshot(snap: SpawnerSnapshot) Self {
     };
 }
 
+pub fn getRandomSpawnPos(self: Self) rl.Vector2 {
+    return commons.getRandomPointBetweenVectors(self.points[0], self.points[1]);
+}
+
 pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityAction {
-    const o = 5;
-    self.rect = .{
-        .x = @min(self.points[0].x, self.points[1].x) - o,
-        .y = @min(self.points[0].y, self.points[1].y) - o,
-        .width = @abs(self.points[0].x - self.points[1].x) + o * 2,
-        .height = @abs(self.points[0].y - self.points[1].y) + o * 2,
-    };
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
         // place new point
@@ -59,10 +56,8 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityA
             }
         }
     } else {
-        if (rl.checkCollisionPointRec(commons.mousePos(), self.rect)) {
-            if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left)) {
-                return .selected;
-            }
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left) and self.checkCollision()) {
+            return .selected;
         }
     }
     return .none;
@@ -85,12 +80,24 @@ pub fn draw(self: Self) void {
     }
 
     if (self.placed) {
-        if (rl.checkCollisionPointRec(commons.mousePos(), self.rect)) {
-            rl.drawRectangleLinesEx(self.rect, 1, palette.env.orange);
+        if (self.checkCollision()) {
+            rl.drawLineEx(self.points[0], self.points[1], 4, palette.env.orange);
         }
     }
 }
 
-pub fn getRandomSpawnPos(self: Self) rl.Vector2 {
-    return commons.getRandomPointBetweenVectors(self.points[0], self.points[1]);
+pub fn checkCollision(self: Self) bool {
+    return rl.checkCollisionPointLine(commons.mousePos(), self.points[0], self.points[1], 8);
+}
+
+pub fn confirm(self: *Self) void {
+    _ = z.inputFloat("p1 x", .{ .v = &self.points[0].x });
+    _ = z.inputFloat("p1 y", .{ .v = &self.points[0].y });
+    _ = z.inputFloat("p2 x", .{ .v = &self.points[1].x });
+    _ = z.inputFloat("p2 y", .{ .v = &self.points[1].y });
+}
+
+pub fn edit(self: *Self, name: [:0]const u8) void {
+    z.separatorText(name);
+    self.confirm();
 }

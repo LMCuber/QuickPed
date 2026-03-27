@@ -82,6 +82,7 @@ pub fn main() !void {
     var env: Environment = Environment.init(allocator);
     defer env.deinit();
     var current_entity: ?entity.Entity = null;
+    var selected_entity: ?usize = null;
 
     // load saved data
     sim_data = try SimData.loadFromFile(allocator, "data/sim_data.json");
@@ -123,20 +124,24 @@ pub fn main() !void {
             {
                 if (!sim_data.paused) {
                     // update all placed entities
-                    for (&env.entities.items) |*eslot| {
+                    for (&env.entities.items, 0..) |*eslot, i| {
                         if (eslot.alive) {
-                            _ = try eslot.value.update(
+                            const action = try eslot.value.update(
                                 allocator,
                                 dt,
                                 agent_data,
                                 sim_data,
                                 settings,
                             );
+                            switch (action) {
+                                .selected => selected_entity = i,
+                                else => {},
+                            }
                         }
                     }
                 }
 
-                // update selected entity
+                // update in-progress entity
                 if (current_entity) |*ent| {
                     current_entity_action = try ent.update(
                         allocator,
@@ -320,44 +325,15 @@ pub fn main() !void {
                         if (EB.clearButton()) {
                             env.clearEntities(allocator);
                         }
+                        z.newLine();
 
-                        // inspect button
-                        z.sameLine(.{});
-                        if (z.button("Inspect", .{})) {
-                            z.openPopup("Inspect", .{});
+                        // update the selected entity
+                        if (selected_entity) |ent_id| {
+                            var ent = env.entities.get(ent_id);
+                            ent.edit(ent.name);
                         }
                         z.newLine();
                     }
-                    // inspect popup
-                    if (z.beginPopupModal("Inspect", .{ .flags = .{ .always_auto_resize = true } })) {
-                        defer z.endPopup();
-
-                        // show the names of all entities
-                        inline for (comptime std.meta.tags(std.meta.Tag(entity.Entity.Kind))) |tag| {
-                            if (z.beginMenu(@tagName(tag), commons.existsAnyObject(&env, tag))) {
-                                for (&env.entities.items, 0..) |*eslot, i| {
-                                    if (eslot.alive) {
-                                        if (eslot.value.kind == tag) {
-                                            if (z.menuItem(eslot.value.name, .{ .enabled = true })) {
-                                                // delete object, but first delete all the nodes
-                                                node_editor.deleteEntity(i);
-                                                env.entities.get(i).deinit(allocator);
-                                                env.entities.delete(i);
-                                                unreachable;
-                                            }
-                                        }
-                                    }
-                                }
-                                defer z.endMenu();
-                            }
-                        }
-                        z.newLine();
-
-                        if (z.button("cancel", .{})) {
-                            z.closeCurrentPopup();
-                        }
-                    }
-
                     // ------------------------------------------------------------------
 
                     // statistics header
@@ -415,12 +391,7 @@ pub fn main() !void {
                             z.newLine();
 
                             // render the needed confirm widget buttons
-                            switch (ent.kind) {
-                                .area => |*a| a.confirm(),
-                                .revolver => |*r| r.confirm(),
-                                .queue => |*q| try q.confirm(allocator, sim_data, agent_data),
-                                else => {},
-                            }
+                            try ent.confirm(allocator, sim_data, agent_data);
 
                             z.newLine();
 

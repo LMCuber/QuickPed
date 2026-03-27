@@ -56,13 +56,34 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.Entity
             return .placed;
         }
         return .none;
+    } else {
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left) and self.checkCollision()) {
+            return .selected;
+        }
     }
     return .none;
 }
 
+pub fn checkCollision(self: Self) bool {
+    for (self.points.items, 0..) |point, i| {
+        if (i == self.points.items.len - 1) continue;
+        const next_point: rl.Vector2 = self.points.items[i + 1];
+        if (rl.checkCollisionPointLine(commons.mousePos(), point, next_point, 8)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 pub fn draw(self: Self) void {
     const line_width = 2;
-    const col = if (self.placed) (palette.env.white) else (color.white_t);
+    const col = if (self.placed and self.checkCollision())
+        palette.env.orange
+    else if (self.placed)
+        palette.env.white
+    else
+        color.white_t;
+
     if (self.points.items.len == 0) {
         // has placed nothing yet, so show white circle
         rl.drawCircleV(self.pos, 6, col);

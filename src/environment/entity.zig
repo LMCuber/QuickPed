@@ -205,4 +205,19 @@ pub const Entity = struct {
             inline else => |*kind| kind.draw(),
         }
     }
+
+    pub fn confirm(self: *Entity, alloc: std.mem.Allocator, sim_data: SimData, agent_data: AgentData) !void {
+        switch (self.kind) {
+            inline .area, .revolver, .spawner => |*k| k.confirm(),
+            .queue => |*q| try q.confirm(alloc, sim_data, agent_data),
+            else => {},
+        }
+    }
+
+    pub fn edit(self: *Entity, name: [:0]const u8) void {
+        switch (self.kind) {
+            .spawner => |*s| s.edit(name),
+            inline else => {},
+        }
+    }
 };
