@@ -137,11 +137,10 @@ pub fn traverseFromCurrent(
                 self.target = portal_node.getPortal().getSourcePosFromU(self.payload.?.portal.u);
             },
             .sink => self.marked = true, // next is sink, so destroy ourselves
-            .fork => {
+            inline .fork, .queue_fork => {
                 self.current_node_id = next_node_id;
                 try self.traverseFromCurrent(alloc, agent_id, nodes, env);
             },
-            .queue_fork => unreachable,
             .queue => |*queue_node| {
                 self.current_node_id = next_node_id;
                 self.payload = .{

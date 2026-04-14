@@ -46,7 +46,12 @@ pub fn fromSnapshot(snap: RevolverSnapshot) Self {
     };
 }
 
-pub fn update(self: *Self, dt: f32, sim_data: SimData, settings: Settings) !Entity.EntityAction {
+pub fn update(
+    self: *Self,
+    dt: f32,
+    sim_data: SimData,
+    settings: Settings,
+) !Entity.EntityAction {
     self.angle -= @as(f32, @floatFromInt(self.speed)) * dt *
         (if (self.clockwise) @as(f32, -1) else @as(f32, 1));
     if (self.angle >= 360) {

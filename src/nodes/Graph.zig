@@ -9,7 +9,7 @@ const Environment = @import("../environment/Environment.zig");
 const Manager = @import("../Manager.zig").Manager;
 
 pub const MAX_NODES: usize = 1024;
-pub const NodeManager = Manager(node.Node, MAX_NODES);
+pub const NodeManager: type = Manager(node.Node, MAX_NODES);
 
 allocator: std.mem.Allocator,
 nodes: NodeManager,
@@ -101,15 +101,14 @@ pub fn getNextNodeId(self: *Self, alloc: std.mem.Allocator, current_node_id: usi
 
     // get correct port ID from current node
     const current_title: [*c]const u8 = switch (current_node.kind) {
-        .fork => |f| f.getOutputSlotTitle(),
-        // .queue_fork => |qf| qf.getOutputSlotTitle(),
+        inline .fork => |f| f.getOutputSlotTitle(),
         .sink => null,
         inline else => |kind| kind.output_slots[0].title,
     };
 
     // construct current (output) slot
     // as a combination of (node_ptr, title)
-    // we need allocator since it needs to create a [:0] from a [*c]
+    // (we need allocator since it needs to create a [:0] from a [*c])
     var current_output_slot: node.Slot = try node.Slot.init(
         alloc,
         current_node_id,
@@ -117,11 +116,22 @@ pub fn getNextNodeId(self: *Self, alloc: std.mem.Allocator, current_node_id: usi
     );
     defer current_output_slot.deinit(alloc);
 
-    // find connection whose output slot is same as current node's output slot
-    for (self.connections.items) |*conn| {
-        if (current_output_slot.equals(conn.output_slot)) {
-            return conn.input_slot.node_id;
-        }
+    // all nodes except for the queue fork give a singular child node
+    switch (current_node.kind) {
+        .queue_fork => |*qf_node| return try qf_node.getQueueNodeId(
+            alloc,
+            current_output_slot,
+            &self.nodes,
+            &self.connections,
+        ),
+        else => {
+            // find connection whose output slot is same as current node's output slot
+            for (self.connections.items) |*conn| {
+                if (current_output_slot.equals(conn.output_slot)) {
+                    return conn.input_slot.node_id;
+                }
+            }
+        },
     }
 
     // no connection found

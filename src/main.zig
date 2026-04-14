@@ -119,7 +119,7 @@ pub fn main() !void {
             defer rl.endDrawing();
             rl.clearBackground(palette.env.black);
 
-            // UPDATING =============================================
+            // UPDATE =============================================
             var current_entity_action: entity.Entity.EntityAction = .none;
             {
                 if (!sim_data.paused) {
@@ -192,7 +192,7 @@ pub fn main() !void {
                 capture = z.io.getWantCaptureMouse();
             }
 
-            // raylib drawing =============================================
+            // RAYLIB DRAW =============================================
             {
                 rl.beginMode2D(commons.camera);
                 defer rl.endMode2D();
@@ -225,12 +225,20 @@ pub fn main() !void {
                 // render all the entities
                 for (&env.entities.items) |*eslot| {
                     if (!eslot.alive) continue;
-                    eslot.value.draw(sim_data, agent_data);
+                    eslot.value.draw(
+                        sim_data,
+                        agent_data,
+                        current_entity,
+                    );
                 }
 
                 // render the in-progress selected entity
                 if (current_entity) |*ent| {
-                    ent.draw(sim_data, agent_data);
+                    ent.draw(
+                        sim_data,
+                        agent_data,
+                        current_entity,
+                    );
                 }
 
                 // render all pedestrians
@@ -243,7 +251,7 @@ pub fn main() !void {
                 sim_data.render();
             }
 
-            // IMGUI
+            // IMGUI DRAW
             {
                 c.rlImGuiBegin();
                 defer c.rlImGuiEnd();
@@ -318,19 +326,11 @@ pub fn main() !void {
                             current_entity = try entity.Entity.initPortal(allocator, next_id);
                         }
 
-                        // reset
-                        z.separatorText("");
-
-                        // reset
-                        if (EB.clearButton()) {
-                            env.clearEntities(allocator);
-                        }
-                        z.newLine();
-
                         // update the selected entity
+                        z.newLine();
                         if (selected_entity) |ent_id| {
                             var ent = env.entities.get(ent_id);
-                            ent.edit(ent.name);
+                            ent.edit();
                         }
                         z.newLine();
                     }

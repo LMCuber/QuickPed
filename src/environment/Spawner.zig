@@ -78,7 +78,9 @@ pub fn draw(self: Self) void {
     } else {
         unreachable;
     }
+}
 
+pub fn hover(self: *Self) void {
     if (self.placed) {
         if (self.checkCollision()) {
             rl.drawLineEx(self.points[0], self.points[1], 4, palette.env.orange);
@@ -97,7 +99,6 @@ pub fn confirm(self: *Self) void {
     _ = z.inputFloat("p2 y", .{ .v = &self.points[1].y });
 }
 
-pub fn edit(self: *Self, name: [:0]const u8) void {
-    z.separatorText(name);
+pub fn edit(self: *Self) void {
     self.confirm();
 }

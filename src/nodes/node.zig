@@ -167,8 +167,7 @@ pub const Node = struct {
     }
 };
 
-// slot is identified by composite key: (node_ptr, title)
-// since title weakly identifies inside a node
+// slot is identified by composite key: node_index (FK), title (weak ID)
 pub const Slot = struct {
     node_id: usize,
     title: [:0]const u8,
@@ -762,14 +761,11 @@ pub const ForkNode = struct {
             i += 1;
         }
 
-        // fallback for floating-point precision issues
+        // default is last (in case of floating-point precision issues)
         return self.output_slots[self.output_slots.len - 1].title;
     }
 
-    pub fn draw(
-        self: *ForkNode,
-        parent: *Node,
-    ) void {
+    pub fn draw(self: *ForkNode, parent: *Node) void {
         // style setup
         const node_width: f32 = 70;
         imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.light_gray));
@@ -802,7 +798,7 @@ pub const ForkNode = struct {
 };
 
 const QueueForkNodeSelection = enum {
-    pub const zeroSepItems: [:0]const u8 = "shortest\x00closest\x00uniform\x00";
+    pub const zeroSepItems: [:0]const u8 = "shortest\x00closest\x00random\x00";
 
     shortest,
     closest,
@@ -811,6 +807,7 @@ const QueueForkNodeSelection = enum {
 
 pub const QueueForkNodeSnapshot = struct {
     selection: QueueForkNodeSelection,
+    selection_type: i32,
 };
 
 pub const QueueForkNode = struct {
@@ -824,46 +821,15 @@ pub const QueueForkNode = struct {
     selection_type: i32 = 0,
 
     pub fn getSnapshot(self: QueueForkNode) QueueForkNodeSnapshot {
-        return .{ .selection = self.selection };
+        return .{
+            .selection = self.selection,
+            .selection_type = self.selection_type,
+        };
     }
 
     pub fn fromSnapshot(snap: QueueForkNodeSnapshot) QueueForkNode {
-        return .{ .selection = snap.selection };
+        return .{ .selection = snap.selection, .selection_type = snap.selection_type };
     }
-
-    // pub fn getOutputSlotTitle(self: QueueForkNode) [*c]const u8 {
-    //     switch (self.selection) {
-    //         .random => {
-    //             const r = rl.getRandomValue(0, );
-    //         },
-    //         else => unreachable,
-    //     }
-
-    //     var sum: f32 = 0;
-    //     for (self.values) |prob| {
-    //         sum += prob;
-    //     }
-
-    //     // if all-zeroes just in case
-    //     if (sum <= 0) {
-    //         return self.output_slots[0].title;
-    //     }
-
-    //     // add up until larger than cumulative
-    //     const r: f32 = commons.rand01() * sum;
-    //     var cum: f64 = 0;
-    //     var i: usize = 0;
-    //     for (self.values) |value| {
-    //         cum += value;
-    //         if (r < cum) {
-    //             return self.output_slots[i].title;
-    //         }
-    //         i += 1;
-    //     }
-
-    //     // fallback for floating-point precision issues
-    //     return self.output_slots[self.output_slots.len - 1].title;
-    // }
 
     pub fn draw(self: *QueueForkNode, parent: *Node) void {
         // style setup
@@ -882,13 +848,61 @@ pub const QueueForkNode = struct {
         // selection type
         {
             setNextItemWidth(node_width);
-            _ = z.combo("##queue_fork-selection-type", .{
+            const changed: bool = z.combo("##queue_fork-selection-type", .{
                 .current_item = &self.selection_type,
                 .items_separated_by_zeros = QueueForkNodeSelection.zeroSepItems,
             });
+
+            if (changed) {
+                std.debug.print("{}\n", .{self.selection_type});
+                self.selection = switch (self.selection_type) {
+                    0 => .closest,
+                    1 => .shortest,
+                    2 => .random,
+                    else => unreachable,
+                };
+            }
         }
 
         // output slots
         imnodes.ez.outputSlots(&self.output_slots);
+    }
+
+    pub fn getQueueNodeId(
+        self: *QueueForkNode,
+        alloc: std.mem.Allocator,
+        output_slot: Slot,
+        nodes: *Graph.NodeManager,
+        conns: *std.ArrayList(Connection),
+    ) !?usize {
+        var queue_nodes = std.ArrayList(usize).init(alloc);
+        defer queue_nodes.deinit();
+
+        // find connection whose output slot is same as current node's output slot
+        // and save
+        for (conns.items) |*conn| {
+            // must also be a queue first
+            const connected_node: *Node = nodes.get(conn.input_slot.node_id);
+            switch (connected_node.kind) {
+                .queue => {
+                    if (output_slot.equals(conn.output_slot)) {
+                        try queue_nodes.append(conn.input_slot.node_id);
+                    }
+                },
+                else => continue,
+            }
+        }
+
+        // if no connections, return null
+        if (queue_nodes.items.len == 0) return null;
+
+        // now return a random queue from the selection, based on the selection criteria
+        return switch (self.selection) {
+            .random => {
+                const u: usize = @intCast(rl.getRandomValue(0, @intCast(queue_nodes.items.len - 1)));
+                return queue_nodes.items[u];
+            },
+            else => unreachable,
+        };
     }
 };

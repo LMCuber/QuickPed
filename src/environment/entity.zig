@@ -12,6 +12,7 @@ const Manager = @import("../Manager.zig").Manager;
 const commons = @import("../commons.zig");
 const std = @import("std");
 const rl = @import("raylib");
+const z = @import("zgui");
 
 pub const EntitySnapshot = struct {
     name: [:0]const u8,
@@ -199,7 +200,7 @@ pub const Entity = struct {
         };
     }
 
-    pub fn draw(self: *Entity, sim_data: SimData, agent_data: AgentData) void {
+    pub fn draw(self: *Entity, sim_data: SimData, agent_data: AgentData, _: ?Entity) void {
         switch (self.kind) {
             .queue => |*q| q.draw(sim_data, agent_data),
             inline else => |*kind| kind.draw(),
@@ -214,9 +215,13 @@ pub const Entity = struct {
         }
     }
 
-    pub fn edit(self: *Entity, name: [:0]const u8) void {
+    pub fn edit(self: *Entity) void {
+        // all entities
+        z.separatorText(self.name);
+
+        // specialization
         switch (self.kind) {
-            .spawner => |*s| s.edit(name),
+            .spawner => |*s| s.edit(),
             inline else => {},
         }
     }
