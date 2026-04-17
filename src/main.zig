@@ -118,6 +118,12 @@ pub fn main() !void {
             rl.beginDrawing();
             defer rl.endDrawing();
             rl.clearBackground(palette.env.black);
+            const sim_rect: rl.Rectangle = .{
+                .x = 0,
+                .y = 0,
+                .width = @floatFromInt(sim_data.environment_width),
+                .height = @floatFromInt(sim_data.environment_height),
+            };
 
             // UPDATE =============================================
             var current_entity_action: entity.Entity.EntityAction = .none;
@@ -152,6 +158,9 @@ pub fn main() !void {
                         else => {},
                     }
                 }
+
+                // rebuild the quadtree
+                try env.quadtree.rebuild(&env.agents, sim_rect);
 
                 // update the agents
                 if (!sim_data.paused) {
@@ -191,14 +200,12 @@ pub fn main() !void {
                 rl.beginMode2D(commons.camera);
                 defer rl.endMode2D();
 
-                const sim_rect: rl.Rectangle = .{
-                    .x = 0,
-                    .y = 0,
-                    .width = @floatFromInt(sim_data.environment_width),
-                    .height = @floatFromInt(sim_data.environment_height),
-                };
                 rl.drawRectangleRec(sim_rect, palette.env.dark_blue);
                 renderGrid();
+
+                if (sim_data.show_quadtree) {
+                    env.quadtree.render();
+                }
 
                 if (!capture) {
                     const mouse_position: rl.Vector2 = rl.getMousePosition();

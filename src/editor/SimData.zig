@@ -10,6 +10,7 @@ environment_height: i32 = 0,
 grid_size: i32 = 2 << 4,
 scale: i32 = 32, // this many pixels is 1 meter in simulation
 paused: bool = false,
+show_quadtree: bool = false,
 
 pub fn init() Self {
     return .{};
@@ -39,10 +40,11 @@ pub fn update_ui(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D)
         }
         z.sameLine(.{});
         _ = z.checkbox("paused", .{ .v = &self.paused });
-        // _ = z.sliderInt("grid size", .{ .v = &self.grid_size, .min = 10, .max = 100 });]
         z.setNextItemWidth(120);
-        z.sameLine(.{});
         _ = z.inputInt("scale", .{ .v = &self.scale });
+
+        _ = z.checkbox("show quadtree", .{ .v = &self.show_quadtree });
+
         z.newLine();
     }
 }

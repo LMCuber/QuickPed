@@ -10,6 +10,7 @@ const Area = @import("Area.zig");
 const Agent = @import("../Agent.zig");
 const Manager = @import("../Manager.zig").Manager;
 const Revolver = @import("Revolver.zig");
+const Quadtree = @import("../Quadtree.zig");
 const commons = @import("../commons.zig");
 
 pub const MAX_ENTITIES: usize = 1024;
@@ -25,6 +26,7 @@ areas: std.ArrayList(usize),
 revolvers: std.ArrayList(usize),
 queues: std.ArrayList(usize),
 portals: std.ArrayList(usize),
+quadtree: Quadtree,
 
 const EnvironmentSnapshot = struct {
     version: []const u8,
@@ -41,6 +43,7 @@ pub fn init(alloc: std.mem.Allocator) Self {
         .revolvers = std.ArrayList(usize).init(alloc),
         .queues = std.ArrayList(usize).init(alloc),
         .portals = std.ArrayList(usize).init(alloc),
+        .quadtree = Quadtree.init(alloc),
     };
 }
 
@@ -51,6 +54,7 @@ pub fn deinit(self: *Self) void {
     self.revolvers.deinit();
     self.queues.deinit();
     self.portals.deinit();
+    self.quadtree.deinit();
 }
 
 pub fn createEntity(self: *Self, ent: entity.Entity) !void {

@@ -379,7 +379,7 @@ pub const SpawnerNode = struct {
         node_id: usize,
         env: *Environment,
     ) !void {
-        // if (env.agents.getLen() > 0) return;
+        if (env.agents.getLen() >= 500) return; // limit for testing
 
         const time: f64 = commons.getTimeMillis();
         if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {

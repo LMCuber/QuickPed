@@ -23,6 +23,7 @@ const Manager = @import("Manager.zig").Manager;
 const entity = @import("environment/entity.zig");
 const Stats = @import("editor/Stats.zig");
 const Settings = @import("Settings.zig");
+const Quadtree = @import("Quadtree.zig");
 
 pos: rl.Vector2,
 target: rl.Vector2,
@@ -259,6 +260,16 @@ pub fn processCurrentNode(
     }
 }
 
+pub fn getAABB(self: *Self, agent_data: AgentData, sim_data: SimData) rl.Rectangle {
+    const r = agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2;
+    return .{
+        .x = self.pos.x - r,
+        .y = self.pos.y - r,
+        .width = r * 2,
+        .height = r * 2,
+    };
+}
+
 pub fn getBehindVector(self: *Self, agent_id: usize, agents: *Environment.AgentManager, agent_data: AgentData) rl.Vector2 {
     // will only be called on agents that are NOT on the front of the queue
     // (ones which have valid prev_agent_ids)
@@ -339,20 +350,25 @@ fn calculateObstacleForce(
 
 fn calculateInteractiveForce(
     self: *Self,
-    agents: *Environment.AgentManager,
+    alloc: std.mem.Allocator,
+    env: *Environment,
+    _: usize,
     sim_data: SimData,
     agent_data: AgentData,
-) rl.Vector2 {
+) !rl.Vector2 {
     var force: rl.Vector2 = .{ .x = 0, .y = 0 };
-    for (&agents.items) |*other_aslot| {
-        if (!other_aslot.alive) continue;
-        const other = &other_aslot.value;
 
-        if (self == &other_aslot.value) continue;
+    // get all close agents to check collision with
+    var other_points = std.ArrayList(rl.Vector2).init(alloc);
+    defer other_points.deinit();
+    try env.quadtree.query(self.pos, self.getAABB(agent_data, sim_data), &other_points);
 
-        const n = self.pos.subtract(other.pos);
+    for (other_points.items) |other_point| {
+        if (other_point.equals(self.pos) != 0) continue;
+
+        const n = self.pos.subtract(other_point);
         const sum_radii: f32 = agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2.0;
-        const dist: f32 = other.pos.subtract(self.pos).length();
+        const dist: f32 = other_point.subtract(self.pos).length();
         const exp_term: f32 = std.math.exp((sum_radii - dist) / agent_data.b_ped);
         const f_ped = n.scale(agent_data.a_ped * exp_term);
         force = force.add(f_ped);
@@ -384,7 +400,7 @@ pub fn update(
 ) !void {
     // get force components
     const drive_force = self.calculateDriveForce(sim_data, agent_data);
-    const interactive_force = self.calculateInteractiveForce(&env.agents, sim_data, agent_data);
+    const interactive_force = try self.calculateInteractiveForce(alloc, env, agent_id, sim_data, agent_data);
     const obstacle_force = self.calculateObstacleForce(env, sim_data, agent_data);
     self.acc = drive_force
         .add(interactive_force)
@@ -449,6 +465,9 @@ pub fn draw(self: *Self, sim_data: SimData, agent_data: AgentData) void {
         // render acceleration vector
         const norm_acc = self.acc.normalize().scale(m);
         rl.drawLineEx(self.pos, self.pos.add(norm_acc), 2, color.orange);
+
+        // render hitbox
+        rl.drawRectangleLinesEx(self.getAABB(agent_data, sim_data), 1, palette.env.hover);
     }
 
     if (agent_data.show_targets) {

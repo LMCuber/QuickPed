@@ -13,7 +13,7 @@ num_to_place: i32 = 10,
 // properties
 speed: f32 = 1.3, // in m/s
 relaxation: f32 = 10,
-radius: f32 = 0.25, // in m
+radius: f32 = 0.25, // in m!!!!!!!
 a_ped: f32 = 0.08,
 b_ped: f32 = 4,
 a_ob: f32 = 2.0,
