@@ -42,6 +42,15 @@ Later Zig versions are not guaranteed to build correctly.
 - [ ] *A\** pathfinding for the pedestrians
 - [ ] Quadtree for collisions
 
+## Node summary
+- *Sink* - ends the pedestrians
+- *Spawner* - location where new pedestrians are created
+- *Area* - a target location for pedestrians to walk to
+- *Portal* - a literal portal (used to simulate multiple floors of a building)
+- *Queue* - a FIFO queue
+- *Fork* - allows for probabilistic behavior of agent
+- *QueueFork* allows for probabilistic queue choosing based on a strategy
+
 ## Won't haves
 - _**Any type of scripting support**_<br>
 The project should maximize development time and ease of use. I might implement it later when I see that the base nodes in the editor aren't enough to express complex interactions that are complex enough.

@@ -174,6 +174,8 @@ pub fn confirm(self: *Self, alloc: std.mem.Allocator, sim_data: SimData, agent_d
     }
 }
 
+pub fn edit(_: *Self) void {}
+
 pub fn draw(self: Self, sim_data: SimData, agent_data: AgentData) void {
     const line_width = 2;
     const col = if (self.placed) (palette.env.orange) else (palette.env.orange_t);
@@ -196,9 +198,9 @@ pub fn draw(self: Self, sim_data: SimData, agent_data: AgentData) void {
         for (self.waiting_spots.items, 0..) |waiting_spot, i| {
             const circle_rad =
                 if (i == 0)
-                    agent_data.radius * @as(f32, @floatFromInt(sim_data.scale))
-                else
-                    agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 0.7;
+                agent_data.radius * @as(f32, @floatFromInt(sim_data.scale))
+            else
+                agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 0.7;
             const circle_col = if (i == 0) palette.env.dark_green else palette.env.green;
             rl.drawCircleV(waiting_spot, circle_rad, circle_col);
         }

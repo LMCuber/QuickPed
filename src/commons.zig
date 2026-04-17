@@ -5,6 +5,11 @@ const Settings = @import("Settings.zig");
 const Environment = @import("environment/Environment.zig");
 const entity = @import("environment/entity.zig");
 
+pub const Line = struct {
+    p1: rl.Vector2 = .{ .x = 0, .y = 0 },
+    p2: rl.Vector2 = .{ .x = 0, .y = 0 },
+};
+
 pub var prng: std.Random.Xoshiro256 = std.Random.DefaultPrng.init(47);
 pub var rng = prng.random();
 pub const camera_default = rl.Camera2D{

@@ -10,13 +10,13 @@ const SimData = @import("../editor/SimData.zig");
 const Settings = @import("../Settings.zig");
 const Agent = @import("../Agent.zig");
 
-points: [2]rl.Vector2 = undefined,
+points: commons.Line = .{},
 point_count: usize = 0,
 placed: bool = false,
 pos: rl.Vector2 = .{ .x = 0, .y = 0 },
 
 pub const SpawnerSnapshot = struct {
-    points: [2]rl.Vector2,
+    points: commons.Line,
 };
 
 pub fn init() Self {
@@ -38,7 +38,7 @@ pub fn fromSnapshot(snap: SpawnerSnapshot) Self {
 }
 
 pub fn getRandomSpawnPos(self: Self) rl.Vector2 {
-    return commons.getRandomPointBetweenVectors(self.points[0], self.points[1]);
+    return commons.getRandomPointBetweenVectors(self.points.p1, self.points.p2);
 }
 
 pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityAction {
@@ -46,17 +46,20 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityA
         self.pos = commons.roundMousePos(sim_data);
         // place new point
         if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left)) {
-            if (self.point_count < 2) {
-                self.points[self.point_count] = self.pos;
+            if (self.point_count == 0) {
+                self.points.p1 = self.pos;
                 self.point_count += 1;
-            }
-            if (self.point_count == 2) {
-                self.placed = true;
-                return .confirm;
+            } else if (self.point_count == 1) {
+                self.points.p2 = self.pos;
+                self.point_count += 1;
+                if (self.point_count == 2) {
+                    self.placed = true;
+                    return .confirm;
+                }
             }
         }
     } else {
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left) and self.checkCollision()) {
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left) and self.checkHover()) {
             return .selected;
         }
     }
@@ -71,10 +74,10 @@ pub fn draw(self: Self) void {
         rl.drawCircleV(self.pos, 6, col);
     } else if (self.point_count == 1) {
         // has placed single point
-        rl.drawLineEx(self.points[0], self.pos, thick, col);
+        rl.drawLineEx(self.points.p1, self.pos, thick, col);
     } else if (self.point_count == 2) {
         // has placed all points
-        rl.drawLineEx(self.points[0], self.points[1], thick, col);
+        rl.drawLineEx(self.points.p1, self.points.p2, thick, col);
     } else {
         unreachable;
     }
@@ -82,21 +85,21 @@ pub fn draw(self: Self) void {
 
 pub fn hover(self: *Self) void {
     if (self.placed) {
-        if (self.checkCollision()) {
-            rl.drawLineEx(self.points[0], self.points[1], 4, palette.env.orange);
+        if (self.checkHover()) {
+            rl.drawLineEx(self.points.p1, self.points.p2, 4, palette.env.hover);
         }
     }
 }
 
-pub fn checkCollision(self: Self) bool {
-    return rl.checkCollisionPointLine(commons.mousePos(), self.points[0], self.points[1], 8);
+pub fn checkHover(self: Self) bool {
+    return rl.checkCollisionPointLine(commons.mousePos(), self.points.p1, self.points.p2, 8);
 }
 
 pub fn confirm(self: *Self) void {
-    _ = z.inputFloat("p1 x", .{ .v = &self.points[0].x });
-    _ = z.inputFloat("p1 y", .{ .v = &self.points[0].y });
-    _ = z.inputFloat("p2 x", .{ .v = &self.points[1].x });
-    _ = z.inputFloat("p2 y", .{ .v = &self.points[1].y });
+    _ = z.inputFloat("p1 x", .{ .v = &self.points.p1.x });
+    _ = z.inputFloat("p1 y", .{ .v = &self.points.p1.y });
+    _ = z.inputFloat("p2 x", .{ .v = &self.points.p2.x });
+    _ = z.inputFloat("p2 y", .{ .v = &self.points.p2.y });
 }
 
 pub fn edit(self: *Self) void {

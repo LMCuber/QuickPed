@@ -259,12 +259,7 @@ pub fn processCurrentNode(
     }
 }
 
-pub fn getBehindVector(
-    self: *Self,
-    agent_id: usize,
-    agents: *Environment.AgentManager,
-    agent_data: AgentData,
-) rl.Vector2 {
+pub fn getBehindVector(self: *Self, agent_id: usize, agents: *Environment.AgentManager, agent_data: AgentData) rl.Vector2 {
     // will only be called on agents that are NOT on the front of the queue
     // (ones which have valid prev_agent_ids)
 

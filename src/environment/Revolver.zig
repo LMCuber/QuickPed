@@ -46,12 +46,7 @@ pub fn fromSnapshot(snap: RevolverSnapshot) Self {
     };
 }
 
-pub fn update(
-    self: *Self,
-    dt: f32,
-    sim_data: SimData,
-    settings: Settings,
-) !Entity.EntityAction {
+pub fn update(self: *Self, dt: f32, sim_data: SimData, settings: Settings) !Entity.EntityAction {
     self.angle -= @as(f32, @floatFromInt(self.speed)) * dt *
         (if (self.clockwise) @as(f32, -1) else @as(f32, 1));
     if (self.angle >= 360) {
@@ -64,6 +59,10 @@ pub fn update(
             return .confirm;
         }
         return .none;
+    } else {
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left) and self.checkHover()) {
+            return .selected;
+        }
     }
     return .none;
 }
@@ -84,6 +83,10 @@ pub fn confirm(self: *Self) void {
     _ = z.checkbox("clockwise", .{ .v = &self.clockwise });
 }
 
+pub fn edit(self: *Self) void {
+    self.confirm();
+}
+
 pub fn getRotatedVector(self: Self, a: f32) rl.Vector2 {
     // a in radians
     const rad: f32 = std.math.degreesToRadians(self.angle);
@@ -91,12 +94,32 @@ pub fn getRotatedVector(self: Self, a: f32) rl.Vector2 {
     return vec.rotate(rad + a);
 }
 
+pub fn checkHover(self: *Self) bool {
+    const threshold = 8;
+    for (0..4) |i| {
+        const angle: f32 = @as(f32, @floatFromInt(i)) * 0.5 * std.math.pi;
+        if (rl.checkCollisionPointLine(commons.mousePos(), self.pos, self.pos.add(self.getRotatedVector(angle)), threshold)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+pub fn hover(self: *Self) void {
+    const line_width = 6;
+
+    for (0..4) |i| {
+        const angle: f32 = @as(f32, @floatFromInt(i)) * 0.5 * std.math.pi;
+        rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(angle)), line_width, palette.env.hover);
+    }
+}
+
 pub fn draw(self: *Self) void {
     const line_width = 6;
     const col = if (self.placed) (palette.env.light_gray) else (palette.env.white_t);
 
-    rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(0)), line_width, col);
-    rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(0.5 * std.math.pi)), line_width, col);
-    rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(std.math.pi)), line_width, col);
-    rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(1.5 * std.math.pi)), line_width, col);
+    for (0..4) |i| {
+        const angle: f32 = @as(f32, @floatFromInt(i)) * 0.5 * std.math.pi;
+        rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(angle)), line_width, col);
+    }
 }

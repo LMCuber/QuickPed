@@ -205,13 +205,21 @@ pub const Entity = struct {
             .queue => |*q| q.draw(sim_data, agent_data),
             inline else => |*kind| kind.draw(),
         }
+        switch (self.kind) {
+            .queue => {},
+            inline else => |*ent| {
+                if (ent.placed and ent.checkHover()) {
+                    ent.hover();
+                }
+            },
+        }
     }
 
     pub fn confirm(self: *Entity, alloc: std.mem.Allocator, sim_data: SimData, agent_data: AgentData) !void {
         switch (self.kind) {
-            inline .area, .revolver, .spawner => |*k| k.confirm(),
+            .contour => {},
             .queue => |*q| try q.confirm(alloc, sim_data, agent_data),
-            else => {},
+            inline else => |*k| k.confirm(),
         }
     }
 
@@ -221,8 +229,8 @@ pub const Entity = struct {
 
         // specialization
         switch (self.kind) {
-            .spawner => |*s| s.edit(),
-            inline else => {},
+            .contour => {},
+            inline else => |*k| k.edit(),
         }
     }
 };

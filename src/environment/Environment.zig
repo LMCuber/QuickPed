@@ -12,7 +12,7 @@ const Manager = @import("../Manager.zig").Manager;
 const Revolver = @import("Revolver.zig");
 const commons = @import("../commons.zig");
 
-pub const MAX_ENTITIES: usize = 512;
+pub const MAX_ENTITIES: usize = 1024;
 pub const EntityManager = Manager(entity.Entity, MAX_ENTITIES);
 pub const AgentManager = Manager(Agent, MAX_ENTITIES);
 

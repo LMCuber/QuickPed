@@ -57,14 +57,14 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.Entity
         }
         return .none;
     } else {
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left) and self.checkCollision()) {
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left) and self.checkHover()) {
             return .selected;
         }
     }
     return .none;
 }
 
-pub fn checkCollision(self: Self) bool {
+pub fn checkHover(self: Self) bool {
     for (self.points.items, 0..) |point, i| {
         if (i == self.points.items.len - 1) continue;
         const next_point: rl.Vector2 = self.points.items[i + 1];
@@ -75,11 +75,18 @@ pub fn checkCollision(self: Self) bool {
     return false;
 }
 
+pub fn hover(self: *Self) void {
+    const line_width = 3;
+    for (self.points.items, 0..) |point, i| {
+        if (i == self.points.items.len - 1) continue;
+        const next_point = self.points.items[i + 1];
+        rl.drawLineEx(point, next_point, line_width, palette.env.hover);
+    }
+}
+
 pub fn draw(self: Self) void {
     const line_width = 2;
-    const col = if (self.placed and self.checkCollision())
-        palette.env.orange
-    else if (self.placed)
+    const col = if (self.placed)
         palette.env.white
     else
         color.white_t;

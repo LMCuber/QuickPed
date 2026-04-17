@@ -154,13 +154,18 @@ pub fn render(
 
         // update and draw entire graph using imnodes
         // and save the selected one
-        for (&self.graph.nodes.items, 0..) |*nslot, i| {
-            if (!nslot.alive) continue;
-            const node_state = nslot.value.update();
-            if (node_state == .selected) {
-                selected_node_id = i;
+        {
+            imnodes.ez.pushStyleVar(.node_rounding, 0);
+            defer imnodes.ez.popStyleVar(1);
+
+            for (&self.graph.nodes.items, 0..) |*nslot, i| {
+                if (!nslot.alive) continue;
+                const node_state = nslot.value.update();
+                if (node_state == .selected) {
+                    selected_node_id = i;
+                }
+                nslot.value.draw();
             }
-            nslot.value.draw();
         }
 
         // user wants to delete the currently selected node
@@ -201,22 +206,27 @@ pub fn render(
         }
 
         // render existing connections
-        var i = self.graph.connections.items.len;
-        while (i > 0) {
-            i -= 1;
-            var conn = self.graph.connections.items[i];
-            const input_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.get(conn.input_slot.node_id));
-            const output_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.get(conn.output_slot.node_id));
+        {
+            imnodes.ez.pushStyleVar(.curve_thickness, 4);
+            defer imnodes.ez.popStyleVar(1);
 
-            const double_clicked: bool = !imnodes.ez.connection(
-                input_node_ptr,
-                conn.input_slot.title,
-                output_node_ptr,
-                conn.output_slot.title,
-            );
-            if (double_clicked) {
-                conn.deinit(allocator);
-                _ = self.graph.connections.swapRemove(i);
+            var i = self.graph.connections.items.len;
+            while (i > 0) {
+                i -= 1;
+                var conn = self.graph.connections.items[i];
+                const input_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.get(conn.input_slot.node_id));
+                const output_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.get(conn.output_slot.node_id));
+
+                const double_clicked: bool = !imnodes.ez.connection(
+                    input_node_ptr,
+                    conn.input_slot.title,
+                    output_node_ptr,
+                    conn.output_slot.title,
+                );
+                if (double_clicked) {
+                    conn.deinit(allocator);
+                    _ = self.graph.connections.swapRemove(i);
+                }
             }
         }
     }

@@ -53,6 +53,12 @@ pub fn contourButton(bs: f32) bool {
 
     dl.addPolyline(points[0..], .{ .col = 0xff_ff_ff_ff, .thickness = 2.0 });
 
+    dl.addPolyline(points[0..], .{ .col = 0xff_ff_ff_ff, .thickness = 2.0 });
+
+    // Cross inside the diamond
+    dl.addLine(.{ .p1 = .{ mid_x, min[1] + 4 }, .p2 = .{ mid_x, max[1] - 4 }, .col = 0xff_ff_ff_ff, .thickness = 2.0 }); // vertical
+    dl.addLine(.{ .p1 = .{ min[0] + 4, mid_y }, .p2 = .{ max[0] - 4, mid_y }, .col = 0xff_ff_ff_ff, .thickness = 2.0 }); // horizontal
+
     // // Text on top
     // const text_size = z.calcTextSize("Ctr", .{});
     // const pos = .{
@@ -101,6 +107,7 @@ pub fn spawnerButton(bs: f32) bool {
     const p3 = .{ mid_x + size_icon, mid_y }; // tip pointing right
 
     dl.addTriangleFilled(.{ .p1 = p1, .p2 = p2, .p3 = p3, .col = 0xFF00A000 }); // green
+    dl.addTriangle(.{ .p1 = p1, .p2 = p2, .p3 = p3, .col = 0xFF80FF80, .thickness = 1.5 }); // light green border
 
     return clicked;
 }
@@ -191,13 +198,11 @@ pub fn portalButton(bs: f32) bool {
     const max = z.getItemRectMax();
     const dl = z.getWindowDrawList();
     const hovered = z.isItemHovered(.{});
-
     if (hovered) {
         _ = z.beginTooltip();
         z.text("Portal", .{});
         z.endTooltip();
     }
-
     const active = z.isItemActive();
     const bg_col: u32 = if (active)
         palette.active
@@ -205,7 +210,6 @@ pub fn portalButton(bs: f32) bool {
         palette.hover
     else
         palette.default;
-
     dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
 
     const pad: f32 = 6.0;
@@ -213,84 +217,29 @@ pub fn portalButton(bs: f32) bool {
     const right = max[0] - pad;
     const top = min[1] + pad;
     const bot = max[1] - pad;
-
-    const mid_y = (top + bot) * 0.5;
-    const half_w = (right - left) * 0.5;
-    const gap: f32 = 4.0;
+    const mid_x = (left + right) * 0.5;
 
     const col_blue: u32 = 0xff_DB_98_34;
     const col_orange: u32 = 0xff_22_7E_E6;
-
     const thick: f32 = 2.0;
 
-    const lx = left + half_w * 0.5 - gap * 0.5;
-    const rx = left + half_w + half_w * 0.5 + gap * 0.5;
+    // ---- SPACING CONTROLS ----
+    // How far apart the two lines within a single portal are (the || width)
+    const line_gap: f32 = 2.0;
+    // How far apart the two portals are from each other (center-to-center distance / 2)
+    // Increase this if the blue and orange lines are too close or touching
+    const portal_gap: f32 = 20.0;
+    // --------------------------
 
-    const ell_rx: f32 = half_w * 0.28;
-    const ell_ry: f32 = (bot - top) * 0.38;
+    // Left portal (blue)
+    const lx = mid_x - portal_gap * 0.5;
+    dl.addLine(.{ .p1 = .{ lx - line_gap, top }, .p2 = .{ lx - line_gap, bot }, .col = col_blue, .thickness = thick });
+    dl.addLine(.{ .p1 = .{ lx + line_gap, top }, .p2 = .{ lx + line_gap, bot }, .col = col_blue, .thickness = thick });
 
-    const segments: u32 = 64; // key fix: high resolution
-    const step: f32 = (std.math.pi * 2.0) / @as(f32, @floatFromInt(segments));
-
-    // --- LEFT portal (blue) ---
-    {
-        var i: u32 = 0;
-        var a0: f32 = 0.0;
-
-        while (i < segments) : (i += 1) {
-            const a1 = a0 + step;
-
-            const x0 = lx + @cos(a0) * ell_rx;
-            const y0 = mid_y + @sin(a0) * ell_ry;
-            const x1 = lx + @cos(a1) * ell_rx;
-            const y1 = mid_y + @sin(a1) * ell_ry;
-
-            dl.addLine(.{
-                .p1 = .{ x0, y0 },
-                .p2 = .{ x1, y1 },
-                .col = col_blue,
-                .thickness = thick,
-            });
-
-            a0 = a1;
-        }
-    }
-
-    // --- RIGHT portal (orange) ---
-    {
-        var i: u32 = 0;
-        var a0: f32 = 0.0;
-
-        while (i < segments) : (i += 1) {
-            const a1 = a0 + step;
-
-            const x0 = rx + @cos(a0) * ell_rx;
-            const y0 = mid_y + @sin(a0) * ell_ry;
-            const x1 = rx + @cos(a1) * ell_rx;
-            const y1 = mid_y + @sin(a1) * ell_ry;
-
-            dl.addLine(.{
-                .p1 = .{ x0, y0 },
-                .p2 = .{ x1, y1 },
-                .col = col_orange,
-                .thickness = thick,
-            });
-
-            a0 = a1;
-        }
-    }
-
-    // --- Arrow into blue portal ---
-    const arr_y = mid_y;
-    const arr_x1 = left;
-    const arr_x2 = lx - ell_rx + 1.0;
-
-    dl.addLine(.{
-        .p1 = .{ arr_x1, arr_y },
-        .p2 = .{ arr_x2, arr_y },
-        .col = col_blue,
-        .thickness = thick,
-    });
+    // Right portal (orange)
+    const rx = mid_x + portal_gap * 0.5;
+    dl.addLine(.{ .p1 = .{ rx - line_gap, top }, .p2 = .{ rx - line_gap, bot }, .col = col_orange, .thickness = thick });
+    dl.addLine(.{ .p1 = .{ rx + line_gap, top }, .p2 = .{ rx + line_gap, bot }, .col = col_orange, .thickness = thick });
 
     return clicked;
 }

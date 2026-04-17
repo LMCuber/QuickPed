@@ -126,13 +126,7 @@ pub fn main() !void {
                     // update all placed entities
                     for (&env.entities.items, 0..) |*eslot, i| {
                         if (eslot.alive) {
-                            const action = try eslot.value.update(
-                                allocator,
-                                dt,
-                                agent_data,
-                                sim_data,
-                                settings,
-                            );
+                            const action = try eslot.value.update(allocator, dt, agent_data, sim_data, settings);
                             switch (action) {
                                 .selected => selected_entity = i,
                                 else => {},
@@ -234,11 +228,7 @@ pub fn main() !void {
 
                 // render the in-progress selected entity
                 if (current_entity) |*ent| {
-                    ent.draw(
-                        sim_data,
-                        agent_data,
-                        current_entity,
-                    );
+                    ent.draw(sim_data, agent_data, current_entity);
                 }
 
                 // render all pedestrians

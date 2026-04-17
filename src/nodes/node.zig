@@ -275,10 +275,7 @@ pub const SinkNode = struct {
         return .{};
     }
 
-    pub fn draw(
-        self: *SinkNode,
-        parent: *Node,
-    ) void {
+    pub fn draw(self: *SinkNode, parent: *Node) void {
         // const node_width: f32 = 140;
         imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.red));
         imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, palette.lighten(palette.env.red));
@@ -333,14 +330,12 @@ pub const SpawnerNode = struct {
         return &self.env.entities.get(self.env.spawners.items[@intCast(self.spawner_index)]).kind.spawner;
     }
 
-    pub fn draw(
-        self: *SpawnerNode,
-        parent: *Node,
-    ) void {
+    pub fn draw(self: *SpawnerNode, parent: *Node) void {
         // style setup
         const node_width: f32 = 160;
         imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.green));
         imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, palette.lighten(palette.env.green));
+
         defer imnodes.ez.popStyleColor(2);
 
         // start the node

@@ -75,6 +75,14 @@ pub const StandingData = struct {
             .anchored = true,
         };
     }
+
+    pub fn checkHover(self: *StandingData) bool {
+        return rl.checkCollisionPointRec(commons.mousePos(), self.rect);
+    }
+
+    pub fn hover(self: *StandingData) void {
+        rl.drawRectangleLinesEx(self.rect, 3, palette.env.hover);
+    }
 };
 
 pub const SeatingData = struct {
@@ -124,6 +132,14 @@ pub const SeatingData = struct {
             .rect = snap.rect,
             .anchored = true,
         };
+    }
+
+    pub fn checkHover(self: *SeatingData) bool {
+        return rl.checkCollisionPointRec(commons.mousePos(), self.rect);
+    }
+
+    pub fn hover(_: *SeatingData) void {
+        return;
     }
 };
 
@@ -181,6 +197,14 @@ pub const IndividualData = struct {
             .free_indices = free_indices,
             .points = points,
         };
+    }
+
+    pub fn checkHover(_: *IndividualData) bool {
+        return true;
+    }
+
+    pub fn hover(_: *IndividualData) void {
+        return;
     }
 };
 
@@ -270,6 +294,10 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.Entity
                 }
             },
         }
+    } else {
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left) and self.checkHover()) {
+            return .selected;
+        }
     }
 
     return .none;
@@ -287,6 +315,8 @@ pub fn confirm(self: *Self) void {
         else => {},
     }
 }
+
+pub fn edit(_: *Self) void {}
 
 pub fn confirmInit(self: *Self) void {
     z.setNextItemWidth(120);
@@ -312,12 +342,20 @@ pub fn getPos(self: *Self) rl.Vector2 {
 
 pub fn checkCollision(self: Self, pos: rl.Vector2, target: rl.Vector2) bool {
     switch (self.style) {
-        inline .standing, .seating => |data| {
-            return rl.checkCollisionPointRec(pos, data.rect);
-        },
-        .individual => {
-            return pos.distance(target) <= 12;
-        },
+        inline .standing, .seating => |data| return rl.checkCollisionPointRec(pos, data.rect),
+        .individual => return pos.distance(target) <= 12,
+    }
+}
+
+pub fn checkHover(self: *Self) bool {
+    switch (self.style) {
+        inline else => |*style| return style.checkHover(),
+    }
+}
+
+pub fn hover(self: *Self) void {
+    switch (self.style) {
+        inline else => |*style| style.hover(),
     }
 }
 

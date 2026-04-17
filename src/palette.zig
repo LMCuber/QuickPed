@@ -15,6 +15,7 @@ pub const env = struct {
     pub const orange = rl.Color{ .r = 235, .g = 150, .b = 38, .a = 255 };
     pub const orange_t = rl.Color{ .r = 235, .g = 150, .b = 38, .a = 180 };
     pub const light_orange = rl.Color{ .r = 209, .g = 173, .b = 100, .a = 255 };
+    pub const hover = rl.Color{ .r = 255, .g = 182, .b = 193, .a = 255 };
 };
 
 pub fn iden(col: rl.Color) u32 {
