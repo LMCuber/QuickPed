@@ -86,12 +86,22 @@ pub fn Manager(comptime T: type, comptime size: usize) type {
         }
 
         pub fn scan(self: *Self, other_ptr: *T) ?usize {
+            // returns the index of a pointer to an other item
             for (&self.items, 0..) |*slot, i| {
                 if (slot.value.equals(other_ptr)) {
                     return i;
                 }
             }
             return null;
+        }
+
+        pub fn cleanup(self: *Self) void {
+            for (&self.items, 0..) |*slot, i| {
+                if (!slot.alive) continue;
+                if (slot.value.marked) {
+                    self.delete(i);
+                }
+            }
         }
     };
 }

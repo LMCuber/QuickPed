@@ -43,7 +43,7 @@ pub fn init(alloc: std.mem.Allocator) Self {
         .revolvers = std.ArrayList(usize).init(alloc),
         .queues = std.ArrayList(usize).init(alloc),
         .portals = std.ArrayList(usize).init(alloc),
-        .quadtree = Quadtree.init(alloc),
+        .quadtree = Quadtree.init(alloc, 8),
     };
 }
 

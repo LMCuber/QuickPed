@@ -1423,6 +1423,13 @@ pub fn text(comptime fmt: []const u8, args: anytype) void {
     const result = format(fmt, args);
     zguiTextUnformatted(result.ptr, result.ptr + result.len);
 }
+// MY OWN CODE
+pub fn text_sl(comptime fmt: []const u8, args: anytype) void {
+    const result = format(fmt, args);
+    zguiTextUnformatted(result.ptr, result.ptr + result.len);
+    sameLine(.{});
+}
+// END MY OWN CODE
 pub fn textColored(color: [4]f32, comptime fmt: []const u8, args: anytype) void {
     pushStyleColor4f(.{ .idx = .text, .c = color });
     text(fmt, args);

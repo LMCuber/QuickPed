@@ -21,6 +21,7 @@ Is very powerful, but to unlock that power, you have to code a lot of `Java`
 ![main](previews/main.png "main")
 ![main2](previews/main2.png "main2")
 ![node editor](previews/node_editor.png "node editor")
+![quadtree](previews/quadtree.png "working quadtree")
 
 # Version support
 ⚠️ **This project currently supports `zig` versions up to 0.13.0.**  

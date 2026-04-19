@@ -30,6 +30,7 @@ const AgentData = @import("editor/AgentData.zig");
 const EB = @import("editor/EnvironmentButtons.zig");
 const Stats = @import("editor/Stats.zig");
 const NodeEditor = @import("nodes/NodeEditor.zig");
+const Benchmarker = @import("Benchmarker.zig");
 
 var sim_data = SimData.init();
 var agent_data = AgentData.init();
@@ -38,6 +39,10 @@ var ctx: ?*imnodes.ez.Context = null;
 
 // main
 pub fn main() !void {
+    var file = try std.fs.cwd().createFile("output.txt", .{});
+    defer file.close();
+    // var writer = file.writer();
+
     rl.setConfigFlags(.{ .vsync_hint = true });
     rl.initWindow(1, 1, "QuickPed");
     const settings = Settings.init();
@@ -111,6 +116,9 @@ pub fn main() !void {
     var prev_mouse_position = commons.mousePos();
     var capture = false;
 
+    var bench = Benchmarker.init(std.ArrayList(f64).init(allocator));
+    defer bench.deinit();
+
     // Main loop
     while (!rl.windowShouldClose()) {
         {
@@ -160,33 +168,45 @@ pub fn main() !void {
                 }
 
                 // rebuild the quadtree
-                try env.quadtree.rebuild(&env.agents, sim_rect);
+                // const last: f64 = rl.getTime();
+                {
+                    // try bench.begin();
+                    // defer bench.end() catch {};
+                    try env.quadtree.rebuild(&env.agents, sim_rect);
+                }
 
                 // update the agents
-                if (!sim_data.paused) {
-                    for (&env.agents.items, 0..) |*aslot, i| {
-                        if (!aslot.alive) continue;
-                        try aslot.value.update(
-                            allocator,
-                            &env,
-                            &stats,
-                            settings,
-                            sim_data,
-                            i,
-                            agent_data,
-                            n_rows,
-                            n_cols,
-                            &node_editor.graph.nodes,
-                        );
-                    }
-                    // cleanup to be deleted agents
-                    for (&env.agents.items, 0..) |*aslot, i| {
-                        if (!aslot.alive) continue;
-                        if (aslot.value.marked) {
-                            env.agents.delete(i);
+                var check_count: i32 = 0;
+                {
+                    try bench.begin();
+                    defer bench.end() catch {};
+                    var scratch_buf = std.ArrayList(rl.Vector2).init(allocator);
+                    defer scratch_buf.deinit();
+
+                    if (!sim_data.paused) {
+                        for (&env.agents.items, 0..) |*aslot, i| {
+                            if (!aslot.alive) continue;
+                            try aslot.value.update(
+                                allocator,
+                                &env,
+                                &stats,
+                                settings,
+                                sim_data,
+                                i,
+                                agent_data,
+                                n_rows,
+                                n_cols,
+                                &node_editor.graph.nodes,
+                                &check_count,
+                                &scratch_buf,
+                            );
                         }
+                        // cleanup to be deleted agents
+                        env.agents.cleanup();
                     }
                 }
+                // try writer.print("{}|{}\n", .{ env.agents.getLen(), check_count });
+                // std.debug.print("{}|{}\n", .{ env.agents.getLen(), check_count });
 
                 // Make sure to check that ImGui is not capturing the mouse inputs
                 // before checking mouse inputs in Raylib!

@@ -296,6 +296,8 @@ pub const SinkNode = struct {
 pub const SpawnerNodeSnapshot = struct {
     spawner_index: i32,
     wait: i32,
+    has_limit: bool,
+    limit: i32,
 };
 
 pub const SpawnerNode = struct {
@@ -303,6 +305,8 @@ pub const SpawnerNode = struct {
     // later converted to usize; needs to be i32 for imgui combo selector
     spawner_index: i32 = 0,
     wait: i32,
+    has_limit: bool = false,
+    limit: i32 = 1024,
 
     input_slots: [0]imnodes.ez.SlotInfo = .{},
     output_slots: [1]imnodes.ez.SlotInfo = .{
@@ -315,6 +319,8 @@ pub const SpawnerNode = struct {
         return .{
             .spawner_index = self.spawner_index,
             .wait = self.wait,
+            .has_limit = self.has_limit,
+            .limit = self.limit,
         };
     }
 
@@ -323,6 +329,8 @@ pub const SpawnerNode = struct {
             .env = env,
             .spawner_index = snap.spawner_index,
             .wait = snap.wait,
+            .has_limit = snap.has_limit,
+            .limit = snap.limit,
         };
     }
 
@@ -363,10 +371,18 @@ pub const SpawnerNode = struct {
         }
 
         // wait input
-        z.text("wait", .{});
-        z.sameLine(.{});
+        z.text_sl("wait", .{});
         setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
         _ = z.inputInt("##wait-int", .{ .v = &self.wait });
+
+        // has limit checkbox
+        z.text_sl("limit", .{});
+        _ = z.checkbox("##has-limit-checkbox", .{ .v = &self.has_limit });
+        z.sameLine(.{});
+        if (self.has_limit) {
+            setNextItemWidth(node_width - z.calcTextSize("limit", .{})[0]);
+            _ = z.inputInt("##limit-int", .{ .v = &self.limit });
+        }
 
         // output slots
         imnodes.ez.outputSlots(&self.output_slots);
@@ -379,7 +395,7 @@ pub const SpawnerNode = struct {
         node_id: usize,
         env: *Environment,
     ) !void {
-        if (env.agents.getLen() >= 500) return; // limit for testing
+        if (self.has_limit and env.agents.getLen() >= self.limit) return;
 
         const time: f64 = commons.getTimeMillis();
         if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {

@@ -27,10 +27,11 @@ arena: std.heap.ArenaAllocator,
 root: ?*Node = null,
 cap: usize = 4,
 
-pub fn init(backing_alloc: std.mem.Allocator) Self {
+pub fn init(backing_alloc: std.mem.Allocator, cap: usize) Self {
     return .{
         .arena = std.heap.ArenaAllocator.init(backing_alloc),
         .root = null,
+        .cap = cap,
     };
 }
 

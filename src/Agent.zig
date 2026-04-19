@@ -24,6 +24,7 @@ const entity = @import("environment/entity.zig");
 const Stats = @import("editor/Stats.zig");
 const Settings = @import("Settings.zig");
 const Quadtree = @import("Quadtree.zig");
+const Benchmarker = @import("Benchmarker.zig");
 
 pos: rl.Vector2,
 target: rl.Vector2,
@@ -261,7 +262,9 @@ pub fn processCurrentNode(
 }
 
 pub fn getAABB(self: *Self, agent_data: AgentData, sim_data: SimData) rl.Rectangle {
-    const r = agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2;
+    const cutoff_dist = 2 * agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) -
+        agent_data.b_ped * std.math.log2(0.01 / agent_data.a_ped);
+    const r = cutoff_dist;
     return .{
         .x = self.pos.x - r,
         .y = self.pos.y - r,
@@ -350,20 +353,21 @@ fn calculateObstacleForce(
 
 fn calculateInteractiveForce(
     self: *Self,
-    alloc: std.mem.Allocator,
     env: *Environment,
     _: usize,
     sim_data: SimData,
     agent_data: AgentData,
+    check_count: *i32,
+    scratch_buf: *std.ArrayList(rl.Vector2),
 ) !rl.Vector2 {
     var force: rl.Vector2 = .{ .x = 0, .y = 0 };
 
     // get all close agents to check collision with
-    var other_points = std.ArrayList(rl.Vector2).init(alloc);
-    defer other_points.deinit();
-    try env.quadtree.query(self.pos, self.getAABB(agent_data, sim_data), &other_points);
+    scratch_buf.clearRetainingCapacity();
+    try env.quadtree.query(self.pos, self.getAABB(agent_data, sim_data), scratch_buf);
 
-    for (other_points.items) |other_point| {
+    for (scratch_buf.items) |other_point| {
+        check_count.* += 1;
         if (other_point.equals(self.pos) != 0) continue;
 
         const n = self.pos.subtract(other_point);
@@ -397,10 +401,12 @@ pub fn update(
     n_rows: i32,
     n_cols: i32,
     nodes: *Graph.NodeManager,
+    check_count: *i32,
+    scratch_buf: *std.ArrayList(rl.Vector2),
 ) !void {
     // get force components
     const drive_force = self.calculateDriveForce(sim_data, agent_data);
-    const interactive_force = try self.calculateInteractiveForce(alloc, env, agent_id, sim_data, agent_data);
+    const interactive_force = try self.calculateInteractiveForce(env, agent_id, sim_data, agent_data, check_count, scratch_buf);
     const obstacle_force = self.calculateObstacleForce(env, sim_data, agent_data);
     self.acc = drive_force
         .add(interactive_force)
