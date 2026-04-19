@@ -18,10 +18,14 @@ Is very powerful, but to unlock that power, you have to code a lot of `Java`
 
 
 # Previews
-![main](previews/main.png "main")
-![main2](previews/main2.png "main2")
-![node editor](previews/node_editor.png "node editor")
-![quadtree](previews/quadtree.png "working quadtree")
+![main](previews/main.png)
+*Main view of the project*
+![main2](previews/main2.png)
+*Another view, including heapmap*
+![node editor](previews/node_editor.png)
+*The node editor for pedestrian behavior modeling*
+![quadtree](previews/quadtree.png)
+*The quadtree in action*
 
 # Version support
 ⚠️ **This project currently supports `zig` versions up to 0.13.0.**  
