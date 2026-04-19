@@ -32,16 +32,16 @@ Later Zig versions are not guaranteed to build correctly.
 - [ ] A blueprint system
     - [x] Working nodes
     - [x] Persistence across runs
-    - [ ] Deleting nodes and connections
+    - [x] Deleting nodes and connections
 - [ ] Statistics
     - [x] Showing number of (waiting) pedestrians
     - [x] Heatmap showing bottlenecks during simulation
-- [ ] Calamity simulation
+- [ ] Calamity simulation, e.g. evacuation due to a fire
 - [ ] Advanced environmental objects
-    - [ ] queues
+    - [x] queues (functional but not releasable yet)
     - [x] revolving doors
+- [x] Quadtree for collisions
 - [ ] *A\** pathfinding for the pedestrians
-- [ ] Quadtree for collisions
 
 ## Node summary
 - *Sink* - ends the pedestrians
