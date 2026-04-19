@@ -43,14 +43,17 @@ pub fn main() !void {
     defer file.close();
     // var writer = file.writer();
 
-    rl.setConfigFlags(.{ .vsync_hint = true });
     rl.initWindow(1, 1, "QuickPed");
+    // initWindow must be called BEFORE Settings.init() to get monitor size
     const settings = Settings.init();
+    rl.setConfigFlags(.{ .vsync_hint = settings.vsync });
     rl.initWindow(settings.width, settings.height, "QuickPed");
-
     defer rl.closeWindow();
-    rl.setTargetFPS(rl.getMonitorRefreshRate(0));
+    if (settings.vsync) {
+        rl.setTargetFPS(rl.getMonitorRefreshRate(0));
+    }
 
+    // imgui setup + breakdown
     c.rlImGuiSetup(true);
     defer c.rlImGuiShutdown();
 
@@ -206,7 +209,6 @@ pub fn main() !void {
                     }
                 }
                 // try writer.print("{}|{}\n", .{ env.agents.getLen(), check_count });
-                // std.debug.print("{}|{}\n", .{ env.agents.getLen(), check_count });
 
                 // Make sure to check that ImGui is not capturing the mouse inputs
                 // before checking mouse inputs in Raylib!
@@ -289,7 +291,12 @@ pub fn main() !void {
 
                     const fps: f32 = @floatFromInt(rl.getFPS());
                     const frametime: f32 = if (fps > 0) 1000.0 / fps else 0.0;
-                    z.text("FPS: {d:.1} | {d:.2} ms frame | peds: {}", .{ fps, frametime, env.agents.getLen() });
+                    z.text("FPS: {d:.1} | {d:.2} ms frame | {s} | peds: {}", .{
+                        fps,
+                        frametime,
+                        if (settings.vsync) ("vsync") else "no vsync",
+                        env.agents.getLen(),
+                    });
 
                     // sim data header
                     sim_data.update_ui(&commons.camera, commons.camera_default);

@@ -9,6 +9,7 @@ sim_width: i32 = 0,
 sim_height: i32 = 0,
 tab_width: i32 = 0,
 tab_height: i32 = 0,
+vsync: bool = true,
 
 pub fn init() Self {
     var ret: Self = .{

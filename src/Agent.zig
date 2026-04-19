@@ -448,7 +448,16 @@ pub fn draw(self: *Self, sim_data: SimData, agent_data: AgentData) void {
     if (self.wait.waiting) {
         rl.drawCircleV(self.pos, f_radius, color.hexToColor(color.fromPalette(.clay)));
     } else {
-        rl.drawCircleV(self.pos, f_radius, self.col);
+        if (self.payload) |payload| {
+            switch (payload) {
+                .area => |a| {
+                    const col_index: usize = (2 + a.area_index * 5) % color.palette.len;
+                    const col: rl.Color = color.hexToColor(color.palette[col_index]);
+                    rl.drawCircleV(self.pos, f_radius, col);
+                },
+                else => {},
+            }
+        }
     }
 
     if (self.payload) |payload| {
