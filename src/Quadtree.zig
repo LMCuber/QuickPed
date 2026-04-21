@@ -128,7 +128,7 @@ pub fn render(self: *Self) void {
 
 fn draw(node: *Node) void {
     // draw the rectangle
-    const thick = 1;
+    const thick = 0.5;
     rl.drawRectangleLinesEx(node.rect, thick, palette.env.yellow);
 
     // recursive step

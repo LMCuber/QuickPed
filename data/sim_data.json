@@ -1,8 +1,8 @@
 {
-  "environment_width": 2000,
-  "environment_height": 2000,
+  "environment_width": 1400,
+  "environment_height": 1400,
   "grid_size": 32,
   "scale": 32,
   "paused": false,
-  "show_quadtree": true
+  "show_quadtree": false
 }

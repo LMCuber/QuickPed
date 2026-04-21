@@ -101,8 +101,8 @@ pub fn main() !void {
     agent_data = try AgentData.loadFromFile(allocator, "data/agent_data.json");
 
     // stats
-    const n_cols = 100;
-    const n_rows = 100;
+    const n_cols = 120;
+    const n_rows = 120;
     const grid_buf = try allocator.alloc(f32, n_cols * n_rows);
     defer allocator.free(grid_buf);
     var stats = Stats.init(allocator, grid_buf, n_cols, n_rows);
@@ -117,7 +117,7 @@ pub fn main() !void {
 
     // commons.camera shenanigans
     var prev_mouse_position = commons.mousePos();
-    var capture = false;
+    var gui_capturing = false;
 
     var bench = Benchmarker.init(std.ArrayList(f64).init(allocator));
     defer bench.deinit();
@@ -181,8 +181,9 @@ pub fn main() !void {
                 // update the agents
                 var check_count: i32 = 0;
                 {
-                    try bench.begin();
-                    defer bench.end() catch {};
+                    // try bench.begin();
+                    // defer bench.end() catch {};
+
                     var scratch_buf = std.ArrayList(rl.Vector2).init(allocator);
                     defer scratch_buf.deinit();
 
@@ -208,13 +209,10 @@ pub fn main() !void {
                         env.agents.cleanup();
                     }
                 }
-                // try writer.print("{}|{}\n", .{ env.agents.getLen(), check_count });
 
-                // Make sure to check that ImGui is not capturing the mouse inputs
-                // before checking mouse inputs in Raylib!
-                capture = z.io.getWantCaptureMouse();
-                capture = z.io.getWantCaptureMouse();
-                capture = z.io.getWantCaptureMouse();
+                // make sure to check that imgui is not capturing the mouse inputs
+                // before checking mouse inputs in raylib!
+                gui_capturing = z.io.getWantCaptureMouse();
             }
 
             // RAYLIB DRAW =============================================
@@ -229,20 +227,30 @@ pub fn main() !void {
                     env.quadtree.render();
                 }
 
-                if (!capture) {
-                    const mouse_position: rl.Vector2 = rl.getMousePosition();
-                    const zoom_delta = rl.getMouseWheelMove() * 0.01;
-                    if (zoom_delta > 0 or (zoom_delta < 0 and commons.camera.zoom > 0.05))
-                        commons.camera.zoom += zoom_delta;
-                    if (rl.isMouseButtonDown(.mouse_button_left)) {
-                        const delta_x = mouse_position.x - prev_mouse_position.x;
-                        const delta_y = mouse_position.y - prev_mouse_position.y;
+                if (!gui_capturing) {
+                    // if pressing ctrl, then zoom. otherwise pan
+                    if (rl.isKeyDown(.key_left_control) or rl.isKeyDown(.key_right_control)) {
+                        const mouse_position: rl.Vector2 = rl.getMousePosition();
+                        const zoom_delta = 0.006 * rl.getMouseWheelMove();
+                        if (zoom_delta > 0 or (zoom_delta < 0 and commons.camera.zoom > 0.1))
+                            commons.camera.zoom += zoom_delta;
+                        if (rl.isMouseButtonDown(.mouse_button_left)) {
+                            const delta_x = mouse_position.x - prev_mouse_position.x;
+                            const delta_y = mouse_position.y - prev_mouse_position.y;
+                            commons.camera.target = .{
+                                .x = commons.camera.target.x - delta_x,
+                                .y = commons.camera.target.y - delta_y,
+                            };
+                        }
+                        prev_mouse_position = mouse_position;
+                    } else {
+                        const wheel: rl.Vector2 = rl.getMouseWheelMoveV();
+                        const m = 8;
                         commons.camera.target = .{
-                            .x = commons.camera.target.x - delta_x,
-                            .y = commons.camera.target.y - delta_y,
+                            .x = commons.camera.target.x - wheel.x * m,
+                            .y = commons.camera.target.y - wheel.y * m,
                         };
                     }
-                    prev_mouse_position = mouse_position;
                 }
 
                 // render all the entities

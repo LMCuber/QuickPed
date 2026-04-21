@@ -10,9 +10,10 @@ To view the paper we have written on this subject: [overleaf link](https://www.o
 As far as my eyes can see, these are the main industry defining _DES_ software:
 
 ### AnyLogic
-Is very powerful, but to unlock that power, you have to code a lot of `Java`
+Is very powerful, but to unlock that power, you have to code a lot of `Java` ☠️. The software also looks very old and some operations are very jank to perform. The only one I have personally used, and in my experience, it is more powerful, but takes a lot more setup and great understanding of the scene, the nodes and all attributes to effectively code in `Java`.
 
 ### FlexSim
+
 
 ### Simio
 
