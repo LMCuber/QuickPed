@@ -48,7 +48,8 @@ pub fn Manager(comptime T: type, comptime size: usize) type {
                 self.items[free_index] = entity_slot;
                 self.free_count -= 1;
             } else {
-                free_index = 0;
+                unreachable;
+                // free_index = 0;
             }
 
             return free_index;
@@ -59,6 +60,12 @@ pub fn Manager(comptime T: type, comptime size: usize) type {
         }
 
         pub fn get(self: *Self, index: usize) *T {
+            if (index < 0 or index >= self.getLen()) {
+                std.debug.panic("index {} out of bounds (len: {}) ", .{ index, self.getLen() });
+            }
+            if (!self.items[index].alive) {
+                std.debug.panic("index {} is unalive", .{index});
+            }
             return &self.items[index].value;
         }
 

@@ -20,6 +20,7 @@ graph: Graph,
 
 active: bool = false,
 showing_keybinds: bool = false,
+// translation_table: std.AutoHashMap()  // old id -> new id
 
 pub fn init(allocator: std.mem.Allocator) Self {
     return .{
@@ -214,6 +215,8 @@ pub fn render(
             while (i > 0) {
                 i -= 1;
                 var conn = self.graph.connections.items[i];
+                std.debug.print("conn: {}->{}\n", .{ conn.output_slot.node_id, conn.input_slot.node_id });
+                std.debug.print("{}\n", .{self.graph.nodes.get(conn.input_slot.node_id)});
                 const input_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.get(conn.input_slot.node_id));
                 const output_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.get(conn.output_slot.node_id));
 

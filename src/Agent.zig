@@ -81,6 +81,7 @@ pub fn init(
     agent_id: usize,
     env: *Environment,
 ) !Self {
+    // INIT CAUSES TRAVERSE FROM CURRENT!
     const col: rl.Color = color.getAgentColor();
     var obj: Self = .{
         .pos = pos,

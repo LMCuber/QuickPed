@@ -180,6 +180,7 @@ pub fn loadNodes(
     path: []const u8,
     env: *Environment,
 ) !void {
+    std.debug.print("LOADED NODES!\n", .{});
     // parse file into JSON
     const json = try commons.readFile(allocator, path);
     defer allocator.free(json);
@@ -208,6 +209,7 @@ pub fn loadNodes(
         _ = self.nodes.createItem(node.Node.fromSnapshot(node_snap, env));
     }
 
+    // connect shit
     for (graph.connections) |conn_snap| {
         try self.connections.append(try node.Connection.fromSnapshot(
             allocator,

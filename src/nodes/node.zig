@@ -400,6 +400,8 @@ pub const SpawnerNode = struct {
         const time: f64 = commons.getTimeMillis();
         if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {
             const pos: rl.Vector2 = self.getSpawner().getRandomSpawnPos();
+
+            std.debug.print("pre-init size: |{}\n", .{env.agents.getLen()});
             const a = try Agent.init(
                 alloc,
                 pos,
@@ -408,6 +410,7 @@ pub const SpawnerNode = struct {
                 env.agents.getNextIndex(),
                 env,
             );
+
             _ = env.agents.createItem(a);
 
             // reset last spawn
