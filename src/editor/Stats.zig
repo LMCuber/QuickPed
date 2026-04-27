@@ -67,9 +67,8 @@ fn maxItemBetweenInterval(
 
 fn getNumWaitingAgents(agents: *Environment.AgentManager) f64 {
     var count: f64 = 0;
-    for (&agents.items) |*aslot| {
-        if (!aslot.alive) continue;
-        if (aslot.value.wait.waiting) {
+    for (agents.items()) |*agent| {
+        if (agent.wait.waiting) {
             count += 1.0;
         }
     }
@@ -98,7 +97,7 @@ pub fn render(self: *Self, agents: *Environment.AgentManager, paused: bool) !voi
                 if (time - self.last_update >= @as(f64, @floatFromInt(self.update_interval))) {
                     // make a new point pair
                     try self.x_data.append(rl.getTime());
-                    try self.num_agents.append(@floatFromInt(agents.getLen()));
+                    try self.num_agents.append(@floatFromInt(agents.len()));
                     try self.num_waiting_agents.append(getNumWaitingAgents(agents));
 
                     // reset last update

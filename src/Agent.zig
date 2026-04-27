@@ -25,7 +25,9 @@ const Stats = @import("editor/Stats.zig");
 const Settings = @import("Settings.zig");
 const Quadtree = @import("Quadtree.zig");
 const Benchmarker = @import("Benchmarker.zig");
+const UUID = @import("UUID.zig");
 
+uuid: UUID,
 pos: rl.Vector2,
 target: rl.Vector2,
 col: rl.Color,
@@ -33,8 +35,7 @@ vel: rl.Vector2 = .{ .x = 0, .y = 0 },
 acc: rl.Vector2 = .{ .x = 0, .y = 0 },
 
 graph: *Graph,
-current_node_id: ?usize = null,
-marked: bool = false, // marked to delete later
+current_node_id: ?UUID = null,
 
 wait: WaitPayload,
 
@@ -57,17 +58,17 @@ pub const WaitPayload = struct {
 };
 
 pub const AreaPayload = struct {
-    area_index: usize,
+    area_index: UUID,
     seat_index: ?usize = null,
 };
 
 pub const PortalPayload = struct {
-    portal_index: usize,
+    portal_index: UUID,
     u: f32, // [0, 1]: the location in the spawn portal
 };
 
 pub const QueuePayload = struct {
-    queue_index: usize,
+    queue_index: UUID,
     spot_index: usize,
     stationary: bool = false,
 };
@@ -76,14 +77,14 @@ pub const QueuePayload = struct {
 pub fn init(
     alloc: std.mem.Allocator,
     pos: rl.Vector2,
-    spawner_node_id: usize,
+    spawner_node_id: UUID,
     graph: *Graph,
-    agent_id: usize,
     env: *Environment,
 ) !Self {
     // INIT CAUSES TRAVERSE FROM CURRENT!
     const col: rl.Color = color.getAgentColor();
     var obj: Self = .{
+        .uuid = UUID.init(),
         .pos = pos,
         .target = .{ .x = 100, .y = 100 },
         .col = col,
@@ -92,14 +93,13 @@ pub fn init(
         .payload = null,
     };
     obj.current_node_id = spawner_node_id;
-    try obj.traverseFromCurrent(alloc, agent_id, &graph.nodes, env);
+    try obj.traverseFromCurrent(alloc, &graph.nodes, env);
     return obj;
 }
 
 pub fn traverseFromCurrent(
     self: *Self,
     alloc: std.mem.Allocator,
-    agent_id: usize,
     nodes: *Graph.NodeManager,
     env: *Environment,
 ) !void {
@@ -109,17 +109,17 @@ pub fn traverseFromCurrent(
         // set current node to next by default (might be changed by e.g. fork)
         self.current_node_id = next_node_id;
 
-        const next_node: *node.Node = nodes.get(next_node_id);
+        const next_node: *node.Node = nodes.getByUUID(next_node_id);
 
         // check what type of node the next found node is
         switch (next_node.kind) {
             .spawner => unreachable,
             .area => |*area_node| {
-                const a_obj: *Area = area_node.getArea();
+                const a_obj: *Area = &env.entities.getByUUID(area_node.getAreaUUID()).kind.area;
 
                 self.payload = .{
                     .area = .{
-                        .area_index = @intCast(area_node.area_index),
+                        .area_index = area_node.getAreaUUID(),
                     },
                 };
                 switch (a_obj.style) {
@@ -133,33 +133,36 @@ pub fn traverseFromCurrent(
             .portal => |*portal_node| {
                 self.payload = .{
                     .portal = .{
-                        .portal_index = @intCast(portal_node.portal_index),
+                        .portal_index = portal_node.getPortalUUID(),
                         .u = commons.rand01(),
                     },
                 };
-                self.target = portal_node.getPortal().getSourcePosFromU(self.payload.?.portal.u);
+                self.target = env.entities.getByUUID(portal_node.getPortalUUID()).kind.portal.getSourcePosFromU(self.payload.?.portal.u);
             },
-            .sink => self.marked = true, // next is sink, so destroy ourselves
+            .sink => {
+                // delete ourselves
+                try env.agents.deleteByUUID(self.uuid);
+            },
             inline .fork, .queue_fork => {
                 self.current_node_id = next_node_id;
-                try self.traverseFromCurrent(alloc, agent_id, nodes, env);
+                try self.traverseFromCurrent(alloc, nodes, env);
             },
-            .queue => |*queue_node| {
-                self.current_node_id = next_node_id;
-                self.payload = .{
-                    .queue = .{
-                        .queue_index = @intCast(queue_node.queue_index),
-                        .spot_index = queue_node.getQueue().getWaitingSpotIndex(),
-                    },
-                };
-                self.target = queue_node.getQueue().getWaitingSpotFromIndex(
-                    self.payload.?.queue.spot_index,
-                );
+            .queue => |_| {
+                // self.current_node_id = next_node_id;
+                // self.payload = .{
+                //     .queue = .{
+                //         .queue_index = @intCast(queue_node.queue_index),
+                //         .spot_index = queue_node.getQueue().getWaitingSpotIndex(),
+                //     },
+                // };
+                // self.target = queue_node.getQueue().getWaitingSpotFromIndex(
+                //     self.payload.?.queue.spot_index,
+                // );
             },
         }
     } else {
         // the spawner is standalone, so just kill the agent
-        self.marked = true;
+
     }
 }
 
@@ -168,19 +171,18 @@ pub fn traverseFromCurrent(
 pub fn processCurrentNode(
     self: *Self,
     alloc: std.mem.Allocator,
-    agent_id: usize,
     sim_data: SimData,
     agent_data: AgentData,
     nodes: *Graph.NodeManager,
     env: *Environment,
 ) !void {
-    const current_node: *node.Node = nodes.get(self.current_node_id.?);
+    const current_node: *node.Node = nodes.getByUUID(self.current_node_id.?);
     const time: f64 = commons.getTimeMillis();
 
     switch (current_node.kind) {
         .area => |*area_node| {
             const area_payload = self.payload.?.area;
-            const a_obj: *Area = &env.entities.get(env.areas.items[area_payload.area_index]).kind.area;
+            const a_obj: *Area = &env.entities.getByUUID(area_payload.area_index).kind.area;
 
             // check should start waiting
             if (!self.wait.waiting) {
@@ -201,23 +203,23 @@ pub fn processCurrentNode(
                     }
 
                     // traverse to next
-                    try self.traverseFromCurrent(alloc, agent_id, nodes, env);
+                    try self.traverseFromCurrent(alloc, nodes, env);
                 }
             }
         },
         .portal => {
             const portal_payload = self.payload.?.portal;
-            const p_obj: *Portal = &env.entities.get(env.portals.items[portal_payload.portal_index]).kind.portal;
+            const p_obj: *Portal = &env.entities.getByUUID(portal_payload.portal_index).kind.portal;
 
             // start waiting if in bounds
             if (p_obj.checkCollision(self.pos)) {
                 self.pos = p_obj.getDestPos(portal_payload.u);
-                try self.traverseFromCurrent(alloc, agent_id, nodes, env);
+                try self.traverseFromCurrent(alloc, nodes, env);
             }
         },
         .queue => |queue_node| {
             const q: *Self.QueuePayload = &self.payload.?.queue;
-            var q_obj: *Queue = &env.entities.get(env.queues.items[q.queue_index]).kind.queue;
+            var q_obj: *Queue = &env.entities.getByUUID(q.queue_index).kind.queue;
 
             // "waiting" means in the queue
             if (self.wait.waiting) {
@@ -229,7 +231,7 @@ pub fn processCurrentNode(
                             // can only dispatch if it is stationary
                             q_obj.freeIndex(q.spot_index);
                             self.wait.waiting = false;
-                            try self.traverseFromCurrent(alloc, agent_id, nodes, env);
+                            try self.traverseFromCurrent(alloc, nodes, env);
                         }
                     }
                 }
@@ -274,26 +276,6 @@ pub fn getAABB(self: *Self, agent_data: AgentData, sim_data: SimData) rl.Rectang
     };
 }
 
-pub fn getBehindVector(self: *Self, agent_id: usize, agents: *Environment.AgentManager, agent_data: AgentData) rl.Vector2 {
-    // will only be called on agents that are NOT on the front of the queue
-    // (ones which have valid prev_agent_ids)
-
-    const queue_obj: *Queue = self.payload.?.queue.obj;
-    const prev_agent_id: usize = queue_obj.getPreviousAgentId(agent_id).?;
-    const prev_prev_agent: ?usize = queue_obj.getPreviousAgentId(prev_agent_id);
-
-    var direction: ?rl.Vector2 = null;
-    if (prev_prev_agent) |prev_prev_agent_id| {
-        direction = agents.get(prev_agent_id).target
-            .subtract(agents.get(prev_prev_agent_id).target).normalize();
-    } else {
-        // the prev prev is none, so the queue is only 2 long.
-        // Calculate direction using queue.pos
-        direction = agents.get(prev_agent_id).target.subtract(queue_obj.pos).normalize();
-    }
-    return self.target.add(direction.?.scale(queue_obj.getPadding(agent_data)));
-}
-
 fn obstacleForceFromTwoVectors(
     self: *Self,
     A: rl.Vector2,
@@ -321,7 +303,7 @@ fn calculateObstacleForce(
 
     // iterate over all contour objects
     for (env.contours.items) |contour_id| {
-        const contour: Contour = env.entities.get(contour_id).kind.contour;
+        const contour: Contour = env.entities.getByUUID(contour_id).kind.contour;
 
         // iterate over all line segements in that contour
         for (0..contour.points.items.len) |i| {
@@ -336,7 +318,7 @@ fn calculateObstacleForce(
 
     // iterate over all the revolvers
     for (env.revolvers.items) |revolver_id| {
-        const revolver: Revolver = env.entities.get(revolver_id).kind.revolver;
+        const revolver: Revolver = env.entities.getByUUID(revolver_id).kind.revolver;
 
         // get 4 rotational symmetries
         for (0..4) |i| {
@@ -355,7 +337,6 @@ fn calculateObstacleForce(
 fn calculateInteractiveForce(
     self: *Self,
     env: *Environment,
-    _: usize,
     sim_data: SimData,
     agent_data: AgentData,
     check_count: *i32,
@@ -397,7 +378,6 @@ pub fn update(
     stats: *Stats,
     settings: Settings,
     sim_data: SimData,
-    agent_id: usize,
     agent_data: AgentData,
     n_rows: i32,
     n_cols: i32,
@@ -407,7 +387,7 @@ pub fn update(
 ) !void {
     // get force components
     const drive_force = self.calculateDriveForce(sim_data, agent_data);
-    const interactive_force = try self.calculateInteractiveForce(env, agent_id, sim_data, agent_data, check_count, scratch_buf);
+    const interactive_force = try self.calculateInteractiveForce(env, sim_data, agent_data, check_count, scratch_buf);
     const obstacle_force = self.calculateObstacleForce(env, sim_data, agent_data);
     self.acc = drive_force
         .add(interactive_force)
@@ -423,7 +403,6 @@ pub fn update(
     // process node
     try self.processCurrentNode(
         alloc,
-        agent_id,
         sim_data,
         agent_data,
         nodes,
@@ -451,8 +430,8 @@ pub fn draw(self: *Self, sim_data: SimData, agent_data: AgentData) void {
     } else {
         if (self.payload) |payload| {
             switch (payload) {
-                .area => |a| {
-                    const col_index: usize = (2 + a.area_index * 5) % color.palette.len;
+                .area => |_| {
+                    const col_index: usize = (2 + 0) % color.palette.len;
                     const col: rl.Color = color.hexToColor(color.palette[col_index]);
                     rl.drawCircleV(self.pos, f_radius, col);
                 },

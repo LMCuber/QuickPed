@@ -60,9 +60,8 @@ pub fn rebuild(
         .children = null,
     };
 
-    for (&agents.items) |aslot| {
-        if (!aslot.alive) continue;
-        try self.insert(self.root.?, aslot.value.pos);
+    for (agents.items()) |*agent| {
+        try self.insert(self.root.?, agent.pos);
     }
 }
 

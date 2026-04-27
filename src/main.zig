@@ -31,6 +31,7 @@ const EB = @import("editor/EnvironmentButtons.zig");
 const Stats = @import("editor/Stats.zig");
 const NodeEditor = @import("nodes/NodeEditor.zig");
 const Benchmarker = @import("Benchmarker.zig");
+const UUID = @import("UUID.zig");
 
 var sim_data = SimData.init();
 var agent_data = AgentData.init();
@@ -44,7 +45,7 @@ pub fn main() !void {
     // var writer = file.writer();
 
     rl.initWindow(1, 1, "QuickPed");
-    // initWindow must be called BEFORE Settings.init() to get monitor size
+    // initWindow must be called BEFORE Settings.init() so we can get monitor size
     const settings = Settings.init();
     rl.setConfigFlags(.{ .vsync_hint = settings.vsync });
     rl.initWindow(settings.width, settings.height, "QuickPed");
@@ -90,7 +91,7 @@ pub fn main() !void {
     var env: Environment = Environment.init(allocator);
     defer env.deinit();
     var current_entity: ?entity.Entity = null;
-    var selected_entity: ?usize = null;
+    var selected_entity: ?UUID = null;
 
     // load saved data
     sim_data = try SimData.loadFromFile(allocator, "data/sim_data.json");
@@ -141,13 +142,11 @@ pub fn main() !void {
             {
                 if (!sim_data.paused) {
                     // update all placed entities
-                    for (&env.entities.items, 0..) |*eslot, i| {
-                        if (eslot.alive) {
-                            const action = try eslot.value.update(allocator, dt, agent_data, sim_data, settings);
-                            switch (action) {
-                                .selected => selected_entity = i,
-                                else => {},
-                            }
+                    for (env.entities.items()) |*ent| {
+                        const action = try ent.update(allocator, dt, agent_data, sim_data, settings);
+                        switch (action) {
+                            .selected => selected_entity = ent.uuid,
+                            else => {},
                         }
                     }
                 }
@@ -188,15 +187,13 @@ pub fn main() !void {
                     defer scratch_buf.deinit();
 
                     if (!sim_data.paused) {
-                        for (&env.agents.items, 0..) |*aslot, i| {
-                            if (!aslot.alive) continue;
-                            try aslot.value.update(
+                        for (env.agents.items()) |*agent| {
+                            try agent.update(
                                 allocator,
                                 &env,
                                 &stats,
                                 settings,
                                 sim_data,
-                                i,
                                 agent_data,
                                 n_rows,
                                 n_cols,
@@ -205,8 +202,6 @@ pub fn main() !void {
                                 &scratch_buf,
                             );
                         }
-                        // cleanup to be deleted agents
-                        env.agents.cleanup();
                     }
                 }
 
@@ -254,9 +249,8 @@ pub fn main() !void {
                 }
 
                 // render all the entities
-                for (&env.entities.items) |*eslot| {
-                    if (!eslot.alive) continue;
-                    eslot.value.draw(
+                for (env.entities.items()) |*ent| {
+                    ent.draw(
                         sim_data,
                         agent_data,
                         current_entity,
@@ -269,9 +263,8 @@ pub fn main() !void {
                 }
 
                 // render all pedestrians
-                for (&env.agents.items) |*aslot| {
-                    if (!aslot.alive) continue;
-                    aslot.value.draw(sim_data, agent_data);
+                for (env.agents.items()) |*agent| {
+                    agent.draw(sim_data, agent_data);
                 }
 
                 // render sim data misc. things
@@ -303,7 +296,7 @@ pub fn main() !void {
                         fps,
                         frametime,
                         if (settings.vsync) ("vsync") else "no vsync",
-                        env.agents.getLen(),
+                        env.agents.items().len,
                     });
 
                     // sim data header
@@ -315,7 +308,7 @@ pub fn main() !void {
                     // ENVIRONMENTAL BUTTONS --------------------------------------------
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
                         const button_size: i32 = 50;
-                        const next_id: usize = env.entities.getNextIndex();
+                        const next_id: usize = 0;
 
                         // contour
                         if (EB.contourButton(button_size)) {
@@ -361,7 +354,7 @@ pub fn main() !void {
                         // update the selected entity
                         z.newLine();
                         if (selected_entity) |ent_id| {
-                            var ent = env.entities.get(ent_id);
+                            var ent = env.entities.getByUUID(ent_id);
                             ent.edit();
                         }
                         z.newLine();
@@ -409,9 +402,8 @@ pub fn main() !void {
 
                             // if name already exists, display that
                             var duplicate_name: bool = false;
-                            for (env.entities.items[0..]) |*inner_eslot| {
-                                if (!inner_eslot.alive) continue;
-                                if (std.mem.eql(u8, inner_eslot.value.name, name_str)) {
+                            for (env.entities.items()) |inner_ent| {
+                                if (std.mem.eql(u8, inner_ent.name, name_str)) {
                                     duplicate_name = true;
                                 }
                             }
@@ -499,9 +491,8 @@ pub fn main() !void {
     try node_editor.saveNodes(allocator, "data/nodes.json");
 
     // dealloc all entities
-    for (&env.entities.items) |*eslot| {
-        if (!eslot.alive) continue;
-        eslot.value.deinit(allocator);
+    for (env.entities.items()) |*ent| {
+        ent.deinit(allocator);
     }
 }
 

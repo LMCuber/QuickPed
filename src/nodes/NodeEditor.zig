@@ -15,6 +15,7 @@ const Settings = @import("../Settings.zig");
 const Agent = @import("../Agent.zig");
 const commons = @import("../commons.zig");
 const imnodes = @import("imnodesez");
+const UUID = @import("../UUID.zig");
 
 graph: Graph,
 
@@ -34,10 +35,6 @@ pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
 
 pub fn saveNodes(self: *Self, alloc: std.mem.Allocator, path: []const u8) !void {
     try self.graph.saveNodes(alloc, path);
-}
-
-pub fn deleteEntity(self: *Self, ent_id: usize) void {
-    self.graph.deleteEntity(ent_id);
 }
 
 pub fn loadNodes(self: *Self, alloc: std.mem.Allocator, path: []const u8, env: *Environment) !void {
@@ -151,7 +148,7 @@ pub fn render(
             }
         }
 
-        var selected_node_id: ?usize = null;
+        var selected_node_id: ?UUID = null;
 
         // update and draw entire graph using imnodes
         // and save the selected one
@@ -159,13 +156,12 @@ pub fn render(
             imnodes.ez.pushStyleVar(.node_rounding, 0);
             defer imnodes.ez.popStyleVar(1);
 
-            for (&self.graph.nodes.items, 0..) |*nslot, i| {
-                if (!nslot.alive) continue;
-                const node_state = nslot.value.update();
+            for (self.graph.nodes.items()) |*n| {
+                const node_state = n.update();
                 if (node_state == .selected) {
-                    selected_node_id = i;
+                    selected_node_id = n.uuid;
                 }
-                nslot.value.draw();
+                n.draw();
             }
         }
 
@@ -186,7 +182,7 @@ pub fn render(
             output_node_ptr_ptr,
             &new_conn.output_slot_title,
         )) {
-            // scan which node id the ptrs correspond to
+            // scan which node id the pointers correspond to
             const input_node_id = self.graph.nodes.scan(new_conn.input_node.?).?;
             const output_node_id = self.graph.nodes.scan(new_conn.output_node.?).?;
 
@@ -215,10 +211,8 @@ pub fn render(
             while (i > 0) {
                 i -= 1;
                 var conn = self.graph.connections.items[i];
-                std.debug.print("conn: {}->{}\n", .{ conn.output_slot.node_id, conn.input_slot.node_id });
-                std.debug.print("{}\n", .{self.graph.nodes.get(conn.input_slot.node_id)});
-                const input_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.get(conn.input_slot.node_id));
-                const output_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.get(conn.output_slot.node_id));
+                const input_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.getByUUID(conn.input_slot.node_id));
+                const output_node_ptr: *anyopaque = @ptrCast(self.graph.nodes.getByUUID(conn.output_slot.node_id));
 
                 const double_clicked: bool = !imnodes.ez.connection(
                     input_node_ptr,

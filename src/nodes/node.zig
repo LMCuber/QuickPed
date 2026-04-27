@@ -17,6 +17,7 @@ const palette = @import("../palette.zig");
 const entity = @import("../environment/entity.zig");
 const Environment = @import("../environment/Environment.zig");
 const Manager = @import("../Manager.zig").Manager;
+const UUID = @import("../UUID.zig");
 
 fn setNextItemWidth(width: f32) void {
     const zoom: f32 = imnodes.getZoom(imnodes.ez.getState());
@@ -24,6 +25,7 @@ fn setNextItemWidth(width: f32) void {
 }
 
 pub const NodeSnapshot = struct {
+    uuid: UUID.UUIDSnapshot,
     pos: imnodes.Vec2 = .{ .x = 230, .y = 230 },
     kind: Kind,
 
@@ -39,6 +41,7 @@ pub const NodeSnapshot = struct {
 };
 
 pub const Node = struct {
+    uuid: UUID,
     pos: imnodes.Vec2 = .{ .x = 230, .y = 230 },
     selected: bool = false,
     kind: Kind,
@@ -64,6 +67,7 @@ pub const Node = struct {
 
     pub fn getSnapshot(self: Node) NodeSnapshot {
         return .{
+            .uuid = self.uuid.getSnapshot(),
             .pos = self.pos,
             .kind = switch (self.kind) {
                 inline else => |k, tag| @unionInit(
@@ -80,6 +84,7 @@ pub const Node = struct {
         env: *Environment,
     ) Node {
         return .{
+            .uuid = UUID.fromSnapshot(snap.uuid.data),
             .pos = snap.pos,
             .kind = switch (snap.kind) {
                 .sink => |sk| .{ .sink = SinkNode.fromSnapshot(sk) },
@@ -107,6 +112,7 @@ pub const Node = struct {
 
     pub fn initSpawner(env: *Environment, wait: i32) Node {
         return .{
+            .uuid = UUID.init(),
             .kind = .{
                 .spawner = .{
                     .env = env,
@@ -118,6 +124,7 @@ pub const Node = struct {
 
     pub fn initArea(env: *Environment, wait: utils.Wait) Node {
         return .{
+            .uuid = UUID.init(),
             .kind = .{
                 .area = .{
                     .env = env,
@@ -128,11 +135,19 @@ pub const Node = struct {
     }
 
     pub fn initPortal(env: *Environment) Node {
-        return .{ .kind = .{ .portal = .{ .env = env } } };
+        return .{
+            .uuid = UUID.init(),
+            .kind = .{
+                .portal = .{
+                    .env = env,
+                },
+            },
+        };
     }
 
     pub fn initQueue(env: *Environment, wait: utils.Wait) Node {
         return .{
+            .uuid = UUID.init(),
             .kind = .{
                 .queue = .{
                     .env = env,
@@ -144,14 +159,18 @@ pub const Node = struct {
 
     pub fn initQueueFork() Node {
         return .{
+            .uuid = UUID.init(),
             .kind = .{
-                .queue_fork = .{ .selection = .random },
+                .queue_fork = .{
+                    .selection = .random,
+                },
             },
         };
     }
 
     pub fn initFork() Node {
         return .{
+            .uuid = UUID.init(),
             .kind = .{
                 .fork = .{},
             },
@@ -160,6 +179,7 @@ pub const Node = struct {
 
     pub fn initSink() Node {
         return .{
+            .uuid = UUID.init(),
             .kind = .{
                 .sink = .{},
             },
@@ -169,10 +189,10 @@ pub const Node = struct {
 
 // slot is identified by composite key: node_index (FK), title (weak ID)
 pub const Slot = struct {
-    node_id: usize,
+    node_id: UUID,
     title: [:0]const u8,
 
-    pub fn init(alloc: std.mem.Allocator, node_id: usize, title: [*c]const u8) !Slot {
+    pub fn init(alloc: std.mem.Allocator, node_id: UUID, title: [*c]const u8) !Slot {
         return .{
             .node_id = node_id,
             .title = try commons.dupeCStr(alloc, title),
@@ -184,7 +204,7 @@ pub const Slot = struct {
     }
 
     pub fn equals(self: Slot, other: Slot) bool {
-        return self.node_id == other.node_id and
+        return self.node_id.equals(other.node_id) and
             std.mem.eql(u8, self.title, other.title);
     }
 
@@ -205,7 +225,7 @@ pub const Slot = struct {
 };
 
 pub const SlotSnapshot = struct {
-    node_id: usize, // node id instead of runtime pointer
+    node_id: UUID, // node id instead of runtime pointer
     title: []const u8,
 };
 
@@ -294,7 +314,7 @@ pub const SinkNode = struct {
 };
 
 pub const SpawnerNodeSnapshot = struct {
-    spawner_index: i32,
+    spawner_index: i32 = 0,
     wait: i32,
     has_limit: bool,
     limit: i32,
@@ -302,7 +322,6 @@ pub const SpawnerNodeSnapshot = struct {
 
 pub const SpawnerNode = struct {
     env: *Environment,
-    // later converted to usize; needs to be i32 for imgui combo selector
     spawner_index: i32 = 0,
     wait: i32,
     has_limit: bool = false,
@@ -334,8 +353,8 @@ pub const SpawnerNode = struct {
         };
     }
 
-    pub fn getSpawner(self: *SpawnerNode) *Spawner {
-        return &self.env.entities.get(self.env.spawners.items[@intCast(self.spawner_index)]).kind.spawner;
+    pub fn getSpawnerUUID(self: *SpawnerNode) UUID {
+        return self.env.spawners.items[@as(usize, @intCast(self.spawner_index))];
     }
 
     pub fn draw(self: *SpawnerNode, parent: *Node) void {
@@ -354,29 +373,31 @@ pub const SpawnerNode = struct {
         imnodes.ez.inputSlots(&self.input_slots);
 
         // spawner selector
-        var buf: [2 << 11]u8 = undefined;
-        const names = entity.Entity.buildNameComboString(
-            .spawner,
-            &self.env.entities,
-            &buf,
-        );
-        setNextItemWidth(node_width);
-        const changed = z.combo("##spawner-selector", .{
-            .current_item = &self.spawner_index,
-            .items_separated_by_zeros = names,
-        });
-        if (changed) {
-            // clicked on a different spawner instance
-            std.debug.print("{}", .{self.spawner_index});
+        {
+            var buf: [2 << 11]u8 = undefined;
+            const names = entity.Entity.buildNameComboString(
+                .spawner,
+                &self.env.entities,
+                &buf,
+            );
+            setNextItemWidth(node_width);
+            const changed = z.combo("##spawner-selector", .{
+                .current_item = &self.spawner_index,
+                .items_separated_by_zeros = names,
+            });
+            if (changed) {
+                // clicked on a different spawner instance
+                std.debug.print("{}", .{self.spawner_index});
+            }
         }
 
         // wait input
-        z.text_sl("wait", .{});
+        z.textSl("wait", .{});
         setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
         _ = z.inputInt("##wait-int", .{ .v = &self.wait });
 
         // has limit checkbox
-        z.text_sl("limit", .{});
+        z.textSl("limit", .{});
         _ = z.checkbox("##has-limit-checkbox", .{ .v = &self.has_limit });
         z.sameLine(.{});
         if (self.has_limit) {
@@ -391,27 +412,24 @@ pub const SpawnerNode = struct {
     pub fn update(
         self: *SpawnerNode,
         alloc: std.mem.Allocator,
+        parent: *Node,
         graph: *Graph,
-        node_id: usize,
         env: *Environment,
     ) !void {
-        if (self.has_limit and env.agents.getLen() >= self.limit) return;
+        if (self.has_limit and env.agents.len() >= self.limit) return;
 
         const time: f64 = commons.getTimeMillis();
         if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {
-            const pos: rl.Vector2 = self.getSpawner().getRandomSpawnPos();
+            const pos: rl.Vector2 = env.entities.getByUUID(self.getSpawnerUUID()).kind.spawner.getRandomSpawnPos();
 
-            std.debug.print("pre-init size: |{}\n", .{env.agents.getLen()});
             const a = try Agent.init(
                 alloc,
                 pos,
-                node_id,
+                parent.uuid,
                 graph,
-                env.agents.getNextIndex(),
                 env,
             );
-
-            _ = env.agents.createItem(a);
+            try env.agents.append(a);
 
             // reset last spawn
             self.last_spawn = commons.getTimeMillis();
@@ -461,8 +479,8 @@ pub const AreaNode = struct {
         };
     }
 
-    pub fn getArea(self: *AreaNode) *Area {
-        return &self.env.entities.get(self.env.areas.items[@intCast(self.area_index)]).kind.area;
+    pub fn getAreaUUID(self: *AreaNode) UUID {
+        return self.env.areas.items[@as(usize, @intCast(self.area_index))];
     }
 
     pub fn draw(self: *AreaNode, parent: *Node) void {
@@ -558,7 +576,9 @@ pub const PortalNode = struct {
     },
 
     pub fn getSnapshot(self: PortalNode) PortalNodeSnapshot {
-        return .{ .portal_index = self.portal_index };
+        return .{
+            .portal_index = self.portal_index,
+        };
     }
 
     pub fn fromSnapshot(snap: PortalNodeSnapshot, env: *Environment) PortalNode {
@@ -568,13 +588,13 @@ pub const PortalNode = struct {
         };
     }
 
-    pub fn getPortal(self: *PortalNode) *Portal {
-        return &self.env.entities.get(self.env.portals.items[@intCast(self.portal_index)]).kind.portal;
+    pub fn getPortalUUID(self: *PortalNode) UUID {
+        return self.env.portals.items[@intCast(self.portal_index)];
     }
 
     pub fn draw(self: *PortalNode, parent: *Node) void {
         // style setup
-        const node_width: f32 = 120;
+        // const node_width: f32 = 120;
         imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.light_blue));
         imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, palette.lighten(palette.env.light_blue));
         defer imnodes.ez.popStyleColor(2);
@@ -587,17 +607,20 @@ pub const PortalNode = struct {
         imnodes.ez.inputSlots(&self.input_slots);
 
         // portal selector
-        var buf: [2 << 11]u8 = undefined;
-        const names = entity.Entity.buildNameComboString(
-            .portal,
-            &self.env.entities,
-            &buf,
-        );
-        setNextItemWidth(node_width);
-        _ = z.combo("##portal-selector", .{
-            .current_item = &self.portal_index,
-            .items_separated_by_zeros = names,
-        });
+        {
+
+            // var buf: [2 << 11]u8 = undefined;
+            // const names = entity.Entity.buildNameComboString(
+            //     .portal,
+            //     &self.env.entities,
+            //     &buf,
+            // );
+            // setNextItemWidth(node_width);
+            // _ = z.combo("##portal-selector", .{
+            //     .current_item = &self.portal_index,
+            //     .items_separated_by_zeros = names,
+            // });
+        }
 
         // output slots
         imnodes.ez.outputSlots(&self.output_slots);
@@ -646,9 +669,9 @@ pub const QueueNode = struct {
         };
     }
 
-    pub fn getQueue(self: *QueueNode) *Queue {
-        return &self.env.entities.get(self.env.queues.items[@intCast(self.queue_index)]).kind.queue;
-    }
+    // pub fn getQueue(self: *QueueNode) *Queue {
+    //     return &self.env.entities.get(self.env.queues.items[@intCast(self.queue_index)]).kind.queue;
+    // }
 
     pub fn draw(self: *QueueNode, parent: *Node) void {
         const node_width: f32 = 120;
@@ -666,39 +689,39 @@ pub const QueueNode = struct {
 
         // queue selector
         {
-            var buf: [2048]u8 = undefined;
-            const names = entity.Entity.buildNameComboString(
-                .queue,
-                &self.env.entities,
-                &buf,
-            );
-            setNextItemWidth(node_width);
-            const changed = z.combo("##queue-selector", .{
-                .current_item = &self.queue_index,
-                .items_separated_by_zeros = names,
-            });
-            if (changed) {
-                // clicked on a different spawner instance
-                std.debug.print("{}", .{self.queue_index});
-            }
+            // var buf: [2048]u8 = undefined;
+            // const names = entity.Entity.buildNameComboString(
+            //     .queue,
+            //     &self.env.entities,
+            //     &buf,
+            // );
+            // setNextItemWidth(node_width);
+            // const changed = z.combo("##queue-selector", .{
+            //     .current_item = &self.queue_index,
+            //     .items_separated_by_zeros = names,
+            // });
+            // if (changed) {
+            //     // clicked on a different spawner instance
+            //     std.debug.print("{}", .{self.queue_index});
+            // }
         }
 
         // wait time options
         {
-            setNextItemWidth(node_width);
-            const changed = z.combo("##queue-wait-type", .{
-                .current_item = &self.wait_type,
-                .items_separated_by_zeros = utils.Wait.zeroSepItems,
-            });
-            // if the combo box changes, change the base wait struct we operate on
-            if (changed) {
-                self.wait = switch (self.wait_type) {
-                    0 => .{ .constant = .{} },
-                    1 => .{ .uniform = .{} },
-                    2 => .{ .normal = .{} },
-                    else => unreachable,
-                };
-            }
+            // setNextItemWidth(node_width);
+            // const changed = z.combo("##queue-wait-type", .{
+            //     .current_item = &self.wait_type,
+            //     .items_separated_by_zeros = utils.Wait.zeroSepItems,
+            // });
+            // // if the combo box changes, change the base wait struct we operate on
+            // if (changed) {
+            //     self.wait = switch (self.wait_type) {
+            //         0 => .{ .constant = .{} },
+            //         1 => .{ .uniform = .{} },
+            //         2 => .{ .normal = .{} },
+            //         else => unreachable,
+            //     };
+            // }
         }
 
         // wait time inputs
@@ -888,15 +911,15 @@ pub const QueueForkNode = struct {
         output_slot: Slot,
         nodes: *Graph.NodeManager,
         conns: *std.ArrayList(Connection),
-    ) !?usize {
-        var queue_nodes = std.ArrayList(usize).init(alloc);
+    ) !?UUID {
+        var queue_nodes = std.ArrayList(UUID).init(alloc);
         defer queue_nodes.deinit();
 
         // find connection whose output slot is same as current node's output slot
         // and save
         for (conns.items) |*conn| {
             // must also be a queue first
-            const connected_node: *Node = nodes.get(conn.input_slot.node_id);
+            const connected_node: *Node = nodes.getByUUID(conn.input_slot.node_id);
             switch (connected_node.kind) {
                 .queue => {
                     if (output_slot.equals(conn.output_slot)) {

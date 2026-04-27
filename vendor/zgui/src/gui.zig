@@ -1424,7 +1424,7 @@ pub fn text(comptime fmt: []const u8, args: anytype) void {
     zguiTextUnformatted(result.ptr, result.ptr + result.len);
 }
 // MY OWN CODE
-pub fn text_sl(comptime fmt: []const u8, args: anytype) void {
+pub fn textSl(comptime fmt: []const u8, args: anytype) void {
     const result = format(fmt, args);
     zguiTextUnformatted(result.ptr, result.ptr + result.len);
     sameLine(.{});

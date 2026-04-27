@@ -20,6 +20,23 @@ pub const camera_default = rl.Camera2D{
 };
 pub var camera = camera_default;
 
+///
+/// AI CODE
+///
+pub fn printUuid(id: [16]u8) void {
+    // The format string '{s:0>2}' means:
+    // x    -> hexadecimal
+    // 0    -> pad with zeros
+    // >    -> right align
+    // 2    -> width of 2
+    std.debug.print("{x:0>2}{x:0>2}{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}\n", .{
+        id[0],  id[1],  id[2],  id[3],
+        id[4],  id[5],  id[6],  id[7],
+        id[8],  id[9],  id[10], id[11],
+        id[12], id[13], id[14], id[15],
+    });
+}
+
 pub fn editorCapturingMouse(settings: Settings) bool {
     const mouse: rl.Vector2 = rl.getMousePosition();
     return mouse.x <= @as(f32, @floatFromInt(settings.sim_width)) and
@@ -31,9 +48,8 @@ pub fn roundN(value: i32, n: i32) i32 {
 }
 
 pub fn existsAnyObject(env: *Environment, comptime kind: std.meta.Tag(entity.Entity.Kind)) bool {
-    for (&env.entities.items) |*eslot| {
-        if (!eslot.alive) continue;
-        if (std.meta.activeTag(eslot.value.kind) == kind) return true;
+    for (env.entities.items()) |*ent| {
+        if (std.meta.activeTag(ent.kind) == kind) return true;
     }
     return false;
 }
@@ -70,17 +86,6 @@ pub fn roundMousePos(sim_data: SimData) rl.Vector2 {
         .x = @floatFromInt(roundN(@intFromFloat(mousePos().x), sim_data.grid_size)),
         .y = @floatFromInt(roundN(@intFromFloat(mousePos().y), sim_data.grid_size)),
     };
-}
-
-//
-// AI CODE
-//
-fn arrSum(comptime T: type, comptime arr: []const T) T {
-    var s: T = 0;
-    comptime for (arr) |x| {
-        s += x;
-    };
-    return s;
 }
 
 //

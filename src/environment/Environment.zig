@@ -12,20 +12,19 @@ const Manager = @import("../Manager.zig").Manager;
 const Revolver = @import("Revolver.zig");
 const Quadtree = @import("../Quadtree.zig");
 const commons = @import("../commons.zig");
+const UUID = @import("../UUID.zig");
 
-pub const MAX_ENTITIES: usize = 1024;
-pub const EntityManager = Manager(entity.Entity, MAX_ENTITIES);
-pub const AgentManager = Manager(Agent, MAX_ENTITIES);
+pub const EntityManager = Manager(entity.Entity);
+pub const AgentManager = Manager(Agent);
 
 entities: EntityManager,
-
 agents: AgentManager,
-contours: std.ArrayList(usize),
-spawners: std.ArrayList(usize),
-areas: std.ArrayList(usize),
-revolvers: std.ArrayList(usize),
-queues: std.ArrayList(usize),
-portals: std.ArrayList(usize),
+contours: std.ArrayList(UUID),
+spawners: std.ArrayList(UUID),
+areas: std.ArrayList(UUID),
+revolvers: std.ArrayList(UUID),
+queues: std.ArrayList(UUID),
+portals: std.ArrayList(UUID),
 quadtree: Quadtree,
 
 const EnvironmentSnapshot = struct {
@@ -35,14 +34,14 @@ const EnvironmentSnapshot = struct {
 
 pub fn init(alloc: std.mem.Allocator) Self {
     return .{
-        .agents = Manager(Agent, MAX_ENTITIES).init(),
-        .entities = Manager(entity.Entity, MAX_ENTITIES).init(),
-        .contours = std.ArrayList(usize).init(alloc),
-        .spawners = std.ArrayList(usize).init(alloc),
-        .areas = std.ArrayList(usize).init(alloc),
-        .revolvers = std.ArrayList(usize).init(alloc),
-        .queues = std.ArrayList(usize).init(alloc),
-        .portals = std.ArrayList(usize).init(alloc),
+        .agents = Manager(Agent).init(alloc),
+        .entities = Manager(entity.Entity).init(alloc),
+        .contours = std.ArrayList(UUID).init(alloc),
+        .spawners = std.ArrayList(UUID).init(alloc),
+        .areas = std.ArrayList(UUID).init(alloc),
+        .revolvers = std.ArrayList(UUID).init(alloc),
+        .queues = std.ArrayList(UUID).init(alloc),
+        .portals = std.ArrayList(UUID).init(alloc),
         .quadtree = Quadtree.init(alloc, 8),
     };
 }
@@ -55,31 +54,31 @@ pub fn deinit(self: *Self) void {
     self.queues.deinit();
     self.portals.deinit();
     self.quadtree.deinit();
+    self.agents.deinit();
+    self.entities.deinit();
 }
 
 pub fn createEntity(self: *Self, ent: entity.Entity) !void {
-    const new_index = self.entities.createItem(ent);
+    try self.entities.append(ent);
 
     // add entity to corresponding specialized arraylist
     switch (ent.kind) {
-        .contour => try self.contours.append(new_index),
-        .spawner => try self.spawners.append(new_index),
-        .area => try self.areas.append(new_index),
-        .revolver => try self.revolvers.append(new_index),
-        .queue => try self.queues.append(new_index),
-        .portal => try self.portals.append(new_index),
+        .contour => try self.contours.append(ent.uuid),
+        .spawner => try self.spawners.append(ent.uuid),
+        .area => try self.areas.append(ent.uuid),
+        .revolver => try self.revolvers.append(ent.uuid),
+        .queue => try self.queues.append(ent.uuid),
+        .portal => try self.portals.append(ent.uuid),
     }
 }
 
 pub fn clearEntities(self: *Self, alloc: std.mem.Allocator) void {
     // dealloc and delete existing entities
-    for (&self.entities.items) |*eslot| {
-        if (eslot.alive) {
-            eslot.value.deinit(alloc);
-        }
+    for (self.entities.items()) |*ent| {
+        ent.deinit(alloc);
     }
 
-    // clear the reference lists
+    // clear the uuid lists
     self.contours.clearRetainingCapacity();
     self.spawners.clearRetainingCapacity();
     self.revolvers.clearRetainingCapacity();
@@ -101,9 +100,8 @@ pub fn loadScene(
     defer allocator.free(json);
 
     // dealloc and delete existing entities (environmental objects)
-    for (&self.entities.items) |*eslot| {
-        if (!eslot.alive) continue;
-        eslot.value.deinit(allocator);
+    for (self.entities.items()) |*ent| {
+        ent.deinit(allocator);
     }
     self.contours.clearRetainingCapacity();
     self.spawners.clearRetainingCapacity();
@@ -134,9 +132,8 @@ pub fn saveScene(self: *Self, allocator: std.mem.Allocator, path: []const u8) !v
     var snaps = std.ArrayList(entity.EntitySnapshot).init(allocator);
     defer snaps.deinit();
 
-    for (&self.entities.items) |*eslot| {
-        if (!eslot.alive) continue;
-        try snaps.append(eslot.value.getSnapshot());
+    for (self.entities.items()) |*ent| {
+        try snaps.append(ent.getSnapshot());
     }
     const scene_snap: EnvironmentSnapshot = .{
         .version = "0.1.0",

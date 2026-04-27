@@ -7,9 +7,9 @@ const commons = @import("../commons.zig");
 const node = @import("node.zig");
 const Environment = @import("../environment/Environment.zig");
 const Manager = @import("../Manager.zig").Manager;
+const UUID = @import("../UUID.zig");
 
-pub const MAX_NODES: usize = 1024;
-pub const NodeManager: type = Manager(node.Node, MAX_NODES);
+pub const NodeManager: type = Manager(node.Node);
 
 allocator: std.mem.Allocator,
 nodes: NodeManager,
@@ -25,7 +25,7 @@ pub const GraphSnapshot = struct {
 pub fn init(allocator: std.mem.Allocator) Self {
     return .{
         .allocator = allocator,
-        .nodes = Manager(node.Node, MAX_NODES).init(),
+        .nodes = Manager(node.Node).init(allocator),
         .connections = std.ArrayList(node.Connection).init(allocator),
     };
 }
@@ -35,43 +35,29 @@ pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
         conn.deinit(allocator);
     }
     self.connections.deinit();
+    self.nodes.deinit();
 }
 
 pub fn addNode(self: *Self, n: node.Node) !void {
-    const new_index = self.nodes.createItem(n);
-    imnodes.autoPositionNode(self.nodes.get(new_index));
+    // creates node and positions it inside the canvas
+    // ONLY CALL WHEN CANVAS EXISTS!
+    try self.nodes.append(n);
+    imnodes.autoPositionNode(self.nodes.getByUUID(n.uuid));
 }
 
-pub fn deleteNode(self: *Self, alloc: std.mem.Allocator, node_id: usize) !void {
+pub fn deleteNode(self: *Self, alloc: std.mem.Allocator, node_id: UUID) !void {
     // delete the connections connecting to that node (output and input)
     var i: usize = self.connections.items.len;
     while (i > 0) {
         i -= 1;
         var conn = self.connections.items[i];
-        if (conn.output_slot.node_id == node_id or conn.input_slot.node_id == node_id) {
+        if (conn.output_slot.node_id.equals(node_id) or conn.input_slot.node_id.equals(node_id)) {
             conn.deinit(alloc);
             _ = self.connections.swapRemove(i);
         }
     }
     // delete the node
-    self.nodes.delete(node_id);
-}
-
-pub fn deleteEntity(self: *Self, ent_id: usize) void {
-    // delete all nodes with that entity id
-    for (&self.nodes.items, 0..) |*nslot, i| {
-        if (!nslot.alive) continue;
-        switch (nslot.value.kind) {
-            .area => |*area| {
-                if (area.area_index == @as(i32, @intCast(ent_id))) {
-                    self.nodes.delete(i);
-                }
-            },
-            else => {},
-        }
-    }
-
-    // delete all connections with those nodes
+    try self.nodes.deleteByUUID(node_id);
 }
 
 pub fn addConnection(self: *Self, output_slot: node.Slot, input_slot: node.Slot) !void {
@@ -82,13 +68,12 @@ pub fn addConnection(self: *Self, output_slot: node.Slot, input_slot: node.Slot)
 }
 
 pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
-    for (&self.nodes.items, 0..) |*nslot, i| {
-        if (!nslot.alive) continue;
-        switch (nslot.value.kind) {
+    for (self.nodes.items()) |*n| {
+        switch (n.kind) {
             .spawner => |*spawner| try spawner.update(
                 alloc,
+                n,
                 self,
-                i,
                 env,
             ),
             else => {},
@@ -96,8 +81,8 @@ pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment)
     }
 }
 
-pub fn getNextNodeId(self: *Self, alloc: std.mem.Allocator, current_node_id: usize) !?usize {
-    const current_node: *node.Node = self.nodes.get(current_node_id);
+pub fn getNextNodeId(self: *Self, alloc: std.mem.Allocator, current_node_id: UUID) !?UUID {
+    const current_node: *node.Node = self.nodes.getByUUID(current_node_id);
 
     // get correct port ID from current node
     const current_title: [*c]const u8 = switch (current_node.kind) {
@@ -148,9 +133,8 @@ pub fn saveNodes(
     var node_snaps = std.ArrayList(node.NodeSnapshot).init(allocator);
     defer node_snaps.deinit();
 
-    for (&self.nodes.items) |*nslot| {
-        if (!nslot.alive) continue;
-        try node_snaps.append(nslot.value.getSnapshot());
+    for (self.nodes.items()) |*n| {
+        try node_snaps.append(n.getSnapshot());
     }
     for (self.connections.items) |conn| {
         try conn_snaps.append(conn.getSnapshot());
@@ -180,7 +164,6 @@ pub fn loadNodes(
     path: []const u8,
     env: *Environment,
 ) !void {
-    std.debug.print("LOADED NODES!\n", .{});
     // parse file into JSON
     const json = try commons.readFile(allocator, path);
     defer allocator.free(json);
@@ -206,7 +189,7 @@ pub fn loadNodes(
 
     // repopulate nodes and connections
     for (graph.nodes) |node_snap| {
-        _ = self.nodes.createItem(node.Node.fromSnapshot(node_snap, env));
+        try self.nodes.append(node.Node.fromSnapshot(node_snap, env));
     }
 
     // connect shit

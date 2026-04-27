@@ -10,11 +10,13 @@ const Environment = @import("Environment.zig");
 const AgentData = @import("../editor/AgentData.zig");
 const Manager = @import("../Manager.zig").Manager;
 const commons = @import("../commons.zig");
+const UUID = @import("../UUID.zig");
 const std = @import("std");
 const rl = @import("raylib");
 const z = @import("zgui");
 
 pub const EntitySnapshot = struct {
+    uuid: UUID.UUIDSnapshot,
     name: [:0]const u8,
     kind: Kind,
 
@@ -29,6 +31,7 @@ pub const EntitySnapshot = struct {
 };
 
 pub const Entity = struct {
+    uuid: UUID,
     name: [:0]const u8,
     name_edit_buf: [256:0]u8 = .{0} ** 256,
     kind: Kind,
@@ -56,18 +59,18 @@ pub const Entity = struct {
     //
     pub fn buildNameComboString(
         comptime kind_tag: std.meta.Tag(Entity.Kind),
-        entities: *Manager(Entity, Environment.MAX_ENTITIES),
+        entities: *Manager(Entity),
         buf: []u8,
     ) [:0]u8 {
         var pos: usize = 0;
 
-        for (&entities.items) |*eslot| {
-            if (eslot.value.kind == kind_tag) {
+        for (entities.items()) |*ent| {
+            if (ent.kind == kind_tag) {
                 @memcpy(
-                    buf[pos..][0..eslot.value.name.len],
-                    eslot.value.name,
+                    buf[pos..][0..ent.name.len],
+                    ent.name,
                 );
-                pos += eslot.value.name.len;
+                pos += ent.name.len;
                 buf[pos] = 0;
                 pos += 1;
             }
@@ -101,6 +104,7 @@ pub const Entity = struct {
         const contour = try Contour.init(allocator);
         const name = try std.fmt.allocPrintZ(allocator, "Contour{}", .{id});
         return .{
+            .uuid = UUID.init(),
             .name = name,
             .kind = .{
                 .contour = contour,
@@ -112,6 +116,7 @@ pub const Entity = struct {
         const spawner = Spawner.init();
         const name = try std.fmt.allocPrintZ(allocator, "Spawner{}", .{id});
         return .{
+            .uuid = UUID.init(),
             .name = name,
             .kind = .{
                 .spawner = spawner,
@@ -123,6 +128,7 @@ pub const Entity = struct {
         const area = Area.init();
         const name = try std.fmt.allocPrintZ(allocator, "Area{}", .{id});
         return .{
+            .uuid = UUID.init(),
             .name = name,
             .kind = .{
                 .area = area,
@@ -134,6 +140,7 @@ pub const Entity = struct {
         const revolver = Revolver.init();
         const name = try std.fmt.allocPrintZ(allocator, "Revolver{}", .{id});
         return .{
+            .uuid = UUID.init(),
             .name = name,
             .kind = .{
                 .revolver = revolver,
@@ -145,6 +152,7 @@ pub const Entity = struct {
         const queue = try Queue.init(allocator);
         const name = try std.fmt.allocPrintZ(allocator, "Queue{}", .{id});
         return .{
+            .uuid = UUID.init(),
             .name = name,
             .kind = .{
                 .queue = queue,
@@ -156,6 +164,7 @@ pub const Entity = struct {
         const portal = Portal.init();
         const name = try std.fmt.allocPrintZ(allocator, "Portal{}", .{id});
         return .{
+            .uuid = UUID.init(),
             .name = name,
             .kind = .{
                 .portal = portal,
@@ -175,6 +184,7 @@ pub const Entity = struct {
 
     pub fn getSnapshot(self: *Entity) EntitySnapshot {
         return .{
+            .uuid = self.uuid.getSnapshot(),
             .name = self.name,
             .kind = switch (self.kind) {
                 inline else => |k, tag| @unionInit(
@@ -188,6 +198,7 @@ pub const Entity = struct {
 
     pub fn fromSnapshot(alloc: std.mem.Allocator, snap: EntitySnapshot, sim_data: SimData, agent_data: AgentData) !Entity {
         return .{
+            .uuid = UUID.fromSnapshot(snap.uuid.data),
             .name = try alloc.dupeZ(u8, snap.name),
             .kind = switch (snap.kind) {
                 .contour => |cs| .{ .contour = try Contour.fromSnapshot(alloc, cs) },
