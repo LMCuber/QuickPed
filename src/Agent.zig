@@ -58,12 +58,12 @@ pub const WaitPayload = struct {
 };
 
 pub const AreaPayload = struct {
-    area_index: UUID,
+    area_id: UUID,
     seat_index: ?usize = null,
 };
 
 pub const PortalPayload = struct {
-    portal_index: UUID,
+    portal_id: UUID,
     u: f32, // [0, 1]: the location in the spawn portal
 };
 
@@ -119,7 +119,7 @@ pub fn traverseFromCurrent(
 
                 self.payload = .{
                     .area = .{
-                        .area_index = area_node.getAreaUUID(),
+                        .area_id = area_node.getAreaUUID(),
                     },
                 };
                 switch (a_obj.style) {
@@ -133,7 +133,7 @@ pub fn traverseFromCurrent(
             .portal => |*portal_node| {
                 self.payload = .{
                     .portal = .{
-                        .portal_index = portal_node.getPortalUUID(),
+                        .portal_id = portal_node.getPortalUUID(),
                         .u = commons.rand01(),
                     },
                 };
@@ -161,8 +161,8 @@ pub fn traverseFromCurrent(
             },
         }
     } else {
-        // the spawner is standalone, so just kill the agent
-
+        // the node has no output port, so just kill the agent
+        try env.agents.deleteByUUID(self.uuid);
     }
 }
 
@@ -182,7 +182,7 @@ pub fn processCurrentNode(
     switch (current_node.kind) {
         .area => |*area_node| {
             const area_payload = self.payload.?.area;
-            const a_obj: *Area = &env.entities.getByUUID(area_payload.area_index).kind.area;
+            const a_obj: *Area = &env.entities.getByUUID(area_payload.area_id).kind.area;
 
             // check should start waiting
             if (!self.wait.waiting) {
@@ -209,7 +209,7 @@ pub fn processCurrentNode(
         },
         .portal => {
             const portal_payload = self.payload.?.portal;
-            const p_obj: *Portal = &env.entities.getByUUID(portal_payload.portal_index).kind.portal;
+            const p_obj: *Portal = &env.entities.getByUUID(portal_payload.portal_id).kind.portal;
 
             // start waiting if in bounds
             if (p_obj.checkCollision(self.pos)) {
@@ -421,7 +421,7 @@ pub fn update_heatmap(self: *Self, stats: *Stats, settings: Settings, n_rows: i3
     stats.add_to_heatmap(int_x, int_y);
 }
 
-pub fn draw(self: *Self, sim_data: SimData, agent_data: AgentData) void {
+pub fn draw(self: *Self, env: *Environment, sim_data: SimData, agent_data: AgentData) void {
     // render sphere
     const f_radius: f32 = agent_data.radius * @as(f32, @floatFromInt(sim_data.scale));
 
@@ -429,14 +429,14 @@ pub fn draw(self: *Self, sim_data: SimData, agent_data: AgentData) void {
         rl.drawCircleV(self.pos, f_radius, color.hexToColor(color.fromPalette(.clay)));
     } else {
         if (self.payload) |payload| {
-            switch (payload) {
-                .area => |_| {
-                    const col_index: usize = (2 + 0) % color.palette.len;
-                    const col: rl.Color = color.hexToColor(color.palette[col_index]);
-                    rl.drawCircleV(self.pos, f_radius, col);
-                },
-                else => {},
-            }
+            var col_index = (2 + 5 * switch (payload) {
+                .area => |a| env.entities.uuidToIndex(a.area_id).?,
+                .portal => |p| env.entities.uuidToIndex(p.portal_id).?,
+                else => 5,
+            }) % color.palette.len;
+            if (col_index == 1) col_index += 1;
+            const col: rl.Color = color.hexToColor(color.palette[col_index]);
+            rl.drawCircleV(self.pos, f_radius, col);
         }
     }
 

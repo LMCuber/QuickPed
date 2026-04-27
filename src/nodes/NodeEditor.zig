@@ -55,16 +55,15 @@ pub fn render(
     settings: Settings,
     env: *Environment,
 ) !void {
-    if (rl.isKeyPressed(.key_space)) {
-        self.active = !self.active;
-    }
-
     z.setNextWindowSize(.{
         .w = @floatFromInt(settings.width),
         .h = @floatFromInt(settings.height),
     });
 
+    self.active = false;
     if (z.begin("Node editor", .{ .flags = .{ .no_scrollbar = true, .no_scroll_with_mouse = true } })) {
+        self.active = true;
+
         // tutorial
         if (rl.isKeyReleased(.key_i)) {
             self.showing_keybinds = !self.showing_keybinds;

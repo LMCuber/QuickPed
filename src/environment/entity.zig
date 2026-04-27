@@ -211,7 +211,7 @@ pub const Entity = struct {
         };
     }
 
-    pub fn draw(self: *Entity, sim_data: SimData, agent_data: AgentData, _: ?Entity) void {
+    pub fn draw(self: *Entity, sim_data: SimData, agent_data: AgentData, node_editor_active: bool) void {
         switch (self.kind) {
             .queue => |*q| q.draw(sim_data, agent_data),
             inline else => |*kind| kind.draw(),
@@ -219,7 +219,7 @@ pub const Entity = struct {
         switch (self.kind) {
             .queue => {},
             inline else => |*ent| {
-                if (ent.placed and ent.checkHover()) {
+                if (!node_editor_active and ent.placed and ent.checkHover()) {
                     ent.hover();
                 }
             },

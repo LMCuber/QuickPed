@@ -253,18 +253,18 @@ pub fn main() !void {
                     ent.draw(
                         sim_data,
                         agent_data,
-                        current_entity,
+                        node_editor.active,
                     );
                 }
 
                 // render the in-progress selected entity
                 if (current_entity) |*ent| {
-                    ent.draw(sim_data, agent_data, current_entity);
+                    ent.draw(sim_data, agent_data, node_editor.active);
                 }
 
                 // render all pedestrians
                 for (env.agents.items()) |*agent| {
-                    agent.draw(sim_data, agent_data);
+                    agent.draw(&env, sim_data, agent_data);
                 }
 
                 // render sim data misc. things

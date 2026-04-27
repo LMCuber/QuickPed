@@ -594,7 +594,7 @@ pub const PortalNode = struct {
 
     pub fn draw(self: *PortalNode, parent: *Node) void {
         // style setup
-        // const node_width: f32 = 120;
+        const node_width: f32 = 120;
         imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.light_blue));
         imnodes.ez.pushStyleColor(.node_title_bar_bg_hovered, palette.lighten(palette.env.light_blue));
         defer imnodes.ez.popStyleColor(2);
@@ -608,18 +608,17 @@ pub const PortalNode = struct {
 
         // portal selector
         {
-
-            // var buf: [2 << 11]u8 = undefined;
-            // const names = entity.Entity.buildNameComboString(
-            //     .portal,
-            //     &self.env.entities,
-            //     &buf,
-            // );
-            // setNextItemWidth(node_width);
-            // _ = z.combo("##portal-selector", .{
-            //     .current_item = &self.portal_index,
-            //     .items_separated_by_zeros = names,
-            // });
+            var buf: [2 << 11]u8 = undefined;
+            const names = entity.Entity.buildNameComboString(
+                .portal,
+                &self.env.entities,
+                &buf,
+            );
+            setNextItemWidth(node_width);
+            _ = z.combo("##portal-selector", .{
+                .current_item = &self.portal_index,
+                .items_separated_by_zeros = names,
+            });
         }
 
         // output slots
