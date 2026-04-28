@@ -668,9 +668,9 @@ pub const QueueNode = struct {
         };
     }
 
-    // pub fn getQueue(self: *QueueNode) *Queue {
-    //     return &self.env.entities.get(self.env.queues.items[@intCast(self.queue_index)]).kind.queue;
-    // }
+    pub fn getQueueUUID(self: *QueueNode) UUID {
+        return self.env.queues.items[@as(usize, @intCast(self.queue_index))];
+    }
 
     pub fn draw(self: *QueueNode, parent: *Node) void {
         const node_width: f32 = 120;
@@ -688,21 +688,21 @@ pub const QueueNode = struct {
 
         // queue selector
         {
-            // var buf: [2048]u8 = undefined;
-            // const names = entity.Entity.buildNameComboString(
-            //     .queue,
-            //     &self.env.entities,
-            //     &buf,
-            // );
-            // setNextItemWidth(node_width);
-            // const changed = z.combo("##queue-selector", .{
-            //     .current_item = &self.queue_index,
-            //     .items_separated_by_zeros = names,
-            // });
-            // if (changed) {
-            //     // clicked on a different spawner instance
-            //     std.debug.print("{}", .{self.queue_index});
-            // }
+            var buf: [2048]u8 = undefined;
+            const names = entity.Entity.buildNameComboString(
+                .queue,
+                &self.env.entities,
+                &buf,
+            );
+            setNextItemWidth(node_width);
+            const changed = z.combo("##queue-selector", .{
+                .current_item = &self.queue_index,
+                .items_separated_by_zeros = names,
+            });
+            if (changed) {
+                // clicked on a different spawner instance
+                std.debug.print("{}", .{self.queue_index});
+            }
         }
 
         // wait time options

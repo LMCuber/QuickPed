@@ -5,6 +5,7 @@ const palette = @import("../palette.zig");
 const z = @import("zgui");
 const rl = @import("raylib");
 
+aspect_ratio: f32 = 1,
 environment_width: i32 = 0,
 environment_height: i32 = 0,
 grid_size: i32 = 2 << 4,
@@ -29,8 +30,10 @@ pub fn render(self: *Self) void {
 
 pub fn update_ui(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) void {
     if (z.collapsingHeader("Simulation", .{ .default_open = false })) {
-        _ = z.inputInt("width", .{ .v = &self.environment_width });
+        _ = z.inputFloat("aspect ratio", .{ .v = &self.aspect_ratio });
         _ = z.inputInt("height", .{ .v = &self.environment_height });
+        if (self.aspect_ratio <= 0) self.aspect_ratio = 1;
+        self.environment_width = @intFromFloat(self.aspect_ratio * @as(f32, @floatFromInt(self.environment_height)));
 
         if (z.button("recenter", .{})) {
             camera.target = camera_default.target;

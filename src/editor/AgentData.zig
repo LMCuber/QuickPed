@@ -37,7 +37,7 @@ pub fn update_ui(self: *Self, agents: *Environment.AgentManager) !void {
 
         z.separatorText("Properties");
 
-        _ = z.sliderFloat("##speed", .{ .v = &self.speed, .min = 0.3, .max = 3.0 });
+        _ = z.sliderFloat("##agent-speed", .{ .v = &self.speed, .min = 0.3, .max = 3.0 });
         z.sameLine(.{});
         _ = z.text("speed", .{});
         if (z.isItemHovered(.{})) {

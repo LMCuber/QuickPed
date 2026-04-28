@@ -34,7 +34,12 @@ pub fn Manager(comptime T: type) type {
             if (removed_index) |i| {
                 try self.deleteByIndex(i);
             } else {
-                std.debug.panic("UUID {} is not in the list", .{uuid});
+                std.debug.print("UUID {} is not in the list\n", .{uuid.toInt()});
+                std.debug.print("list of UUIDS:\n", .{});
+                for (self.items()) |item| {
+                    std.debug.print("{}\n", .{item.uuid.toInt()});
+                }
+                std.debug.panic("error\n", .{});
             }
         }
 
@@ -42,10 +47,15 @@ pub fn Manager(comptime T: type) type {
             // remove old UUID -> index pointer
             const uuid = self.list.items[index].uuid;
             _ = self.map.remove(uuid.toInt());
+
             // swap remove last item with the removed_index
             _ = self.list.swapRemove(index);
+
             // update new index mapping of the just moved entity
-            try self.map.put(self.list.items[index].uuid.toInt(), index);
+            // but not if we removed the last entry
+            if (index < self.list.items.len) {
+                try self.map.put(self.list.items[index].uuid.toInt(), index);
+            }
         }
 
         pub fn uuidToIndex(self: *Self, uuid: UUID) ?usize {
@@ -70,6 +80,10 @@ pub fn Manager(comptime T: type) type {
             } else {
                 unreachable;
             }
+        }
+
+        pub fn getByIndex(self: *Self, index: usize) *T {
+            return &self.list.items[index];
         }
 
         pub fn scan(self: *Self, other: *T) ?UUID {

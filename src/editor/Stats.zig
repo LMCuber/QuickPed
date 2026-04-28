@@ -16,7 +16,8 @@ render_checks: struct {
 x_width: f64 = 10,
 x_data: std.ArrayList(f64),
 num_agents: std.ArrayList(f64),
-num_waiting_agents: std.ArrayList(f64),
+num_waiting_area_agents: std.ArrayList(f64),
+num_waiting_queue_agents: std.ArrayList(f64),
 update_interval: i32 = 100,
 last_update: f64 = 0,
 
@@ -31,7 +32,8 @@ pub fn init(alloc: std.mem.Allocator, buffer: []f32, cols: i32, rows: i32) Self 
     return .{
         .x_data = std.ArrayList(f64).init(alloc),
         .num_agents = std.ArrayList(f64).init(alloc),
-        .num_waiting_agents = std.ArrayList(f64).init(alloc),
+        .num_waiting_area_agents = std.ArrayList(f64).init(alloc),
+        .num_waiting_queue_agents = std.ArrayList(f64).init(alloc),
         .heatmap = buffer,
         .n_cols = cols,
         .n_rows = rows,
@@ -41,7 +43,8 @@ pub fn init(alloc: std.mem.Allocator, buffer: []f32, cols: i32, rows: i32) Self 
 pub fn deinit(self: *Self) void {
     self.x_data.deinit();
     self.num_agents.deinit();
-    self.num_waiting_agents.deinit();
+    self.num_waiting_area_agents.deinit();
+    self.num_waiting_queue_agents.deinit();
 }
 
 ///
@@ -65,14 +68,26 @@ fn maxItemBetweenInterval(
     return if (max == 0) (@as(T, 1)) else (max);
 }
 
-fn getNumWaitingAgents(agents: *Environment.AgentManager) f64 {
-    var count: f64 = 0;
+const NumWaiting = struct {
+    area: f64 = 0,
+    queue: f64 = 0,
+};
+
+fn getNumWaitingAgents(agents: *Environment.AgentManager) NumWaiting {
+    var num_waiting: NumWaiting = .{};
+
     for (agents.items()) |*agent| {
         if (agent.wait.waiting) {
-            count += 1.0;
+            if (agent.payload) |payload| {
+                switch (payload) {
+                    .area => num_waiting.area += 1.0,
+                    .queue => num_waiting.queue += 1.0,
+                    else => {},
+                }
+            }
         }
     }
-    return count;
+    return num_waiting;
 }
 
 pub fn decay_map(self: *Self) void {
@@ -98,7 +113,10 @@ pub fn render(self: *Self, agents: *Environment.AgentManager, paused: bool) !voi
                     // make a new point pair
                     try self.x_data.append(rl.getTime());
                     try self.num_agents.append(@floatFromInt(agents.len()));
-                    try self.num_waiting_agents.append(getNumWaitingAgents(agents));
+
+                    const num_waiting: NumWaiting = getNumWaitingAgents(agents);
+                    try self.num_waiting_area_agents.append(num_waiting.area);
+                    try self.num_waiting_queue_agents.append(num_waiting.queue);
 
                     // reset last update
                     self.last_update = commons.getTimeMillis();
@@ -128,7 +146,8 @@ pub fn render(self: *Self, agents: *Environment.AgentManager, paused: bool) !voi
                 implot.plotLine(f64, "Agents", self.x_data.items, self.num_agents.items, .{});
 
                 // all waiting agents
-                implot.plotLine(f64, "Waiting agents", self.x_data.items, self.num_waiting_agents.items, .{});
+                implot.plotLine(f64, "Agents in area", self.x_data.items, self.num_waiting_area_agents.items, .{});
+                implot.plotLine(f64, "Agents in queue", self.x_data.items, self.num_waiting_queue_agents.items, .{});
 
                 // TEXTUAL INFO
                 // X
@@ -139,8 +158,7 @@ pub fn render(self: *Self, agents: *Environment.AgentManager, paused: bool) !voi
                     z.text("waiting/total ratio", .{});
                 }
                 z.sameLine(.{});
-                if (self.num_waiting_agents.getLast() > self.num_agents.getLast()) unreachable;
-                const ratio = if (self.num_agents.getLast() == 0) 0 else self.num_waiting_agents.getLast() / self.num_agents.getLast() * 100;
+                const ratio = if (self.num_agents.getLast() == 0) 0 else self.num_waiting_area_agents.getLast() / self.num_agents.getLast() * 100;
                 z.text("{d:.0}%", .{ratio});
             }
         }

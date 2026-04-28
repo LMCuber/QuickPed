@@ -34,6 +34,13 @@ col: rl.Color,
 vel: rl.Vector2 = .{ .x = 0, .y = 0 },
 acc: rl.Vector2 = .{ .x = 0, .y = 0 },
 
+// use marked instead of deleting immediately inside the struct because
+// 1: the struct knowing the container its inside is kind of an antipattern
+// 2: removing while iterating is always a headache
+// 3: when a tailless spawner creates an entity, it immediately deletes itself
+// without being inside any container (since constructor calls traverse())
+marked: bool = false,
+
 graph: *Graph,
 current_node_id: ?UUID = null,
 
@@ -141,28 +148,28 @@ pub fn traverseFromCurrent(
             },
             .sink => {
                 // delete ourselves
-                try env.agents.deleteByUUID(self.uuid);
+                self.marked = true;
             },
             inline .fork, .queue_fork => {
                 self.current_node_id = next_node_id;
                 try self.traverseFromCurrent(alloc, nodes, env);
             },
-            .queue => |_| {
-                // self.current_node_id = next_node_id;
-                // self.payload = .{
-                //     .queue = .{
-                //         .queue_index = @intCast(queue_node.queue_index),
-                //         .spot_index = queue_node.getQueue().getWaitingSpotIndex(),
-                //     },
-                // };
-                // self.target = queue_node.getQueue().getWaitingSpotFromIndex(
-                //     self.payload.?.queue.spot_index,
-                // );
+            .queue => |*queue_node| {
+                self.current_node_id = next_node_id;
+                self.payload = .{
+                    .queue = .{
+                        .queue_index = queue_node.getQueueUUID(),
+                        .spot_index = env.entities.getByUUID(queue_node.getQueueUUID()).kind.queue.getWaitingSpotIndex(),
+                    },
+                };
+                self.target = env.entities.getByUUID(queue_node.getQueueUUID()).kind.queue.getWaitingSpotFromIndex(
+                    self.payload.?.queue.spot_index,
+                );
             },
         }
     } else {
         // the node has no output port, so just kill the agent
-        try env.agents.deleteByUUID(self.uuid);
+        self.marked = true;
     }
 }
 

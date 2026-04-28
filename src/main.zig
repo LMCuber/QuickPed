@@ -202,6 +202,14 @@ pub fn main() !void {
                                 &scratch_buf,
                             );
                         }
+                        // remove marked entities
+                        var i: usize = env.agents.len();
+                        while (i > 0) {
+                            i -= 1;
+                            if (env.agents.getByIndex(i).marked) {
+                                try env.agents.deleteByIndex(i);
+                            }
+                        }
                     }
                 }
 

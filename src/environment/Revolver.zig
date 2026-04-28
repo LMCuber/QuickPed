@@ -72,7 +72,7 @@ pub fn confirm(self: *Self) void {
     z.setNextItemWidth(w);
     _ = z.inputInt("length", .{ .v = &self.length });
     z.setNextItemWidth(w);
-    _ = z.inputInt("##speed", .{ .v = &self.speed });
+    _ = z.inputInt("##revolver-speed", .{ .v = &self.speed });
     z.sameLine(.{});
     _ = z.text("speed", .{});
     if (z.isItemHovered(.{})) {
