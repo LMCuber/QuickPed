@@ -106,9 +106,8 @@ pub fn spawnerButton(bs: f32) bool {
     const p2 = .{ mid_x - size_icon, mid_y + size_icon };
     const p3 = .{ mid_x + size_icon, mid_y }; // tip pointing right
 
-    dl.addTriangleFilled(.{ .p1 = p1, .p2 = p2, .p3 = p3, .col = 0xFF00A000 }); // green
-    dl.addTriangle(.{ .p1 = p1, .p2 = p2, .p3 = p3, .col = 0xFF80FF80, .thickness = 1.5 }); // light green border
-
+    dl.addTriangleFilled(.{ .p1 = p1, .p2 = p2, .p3 = p3, .col = 0xFF4C8F4C }); // muted green
+    dl.addTriangle(.{ .p1 = p1, .p2 = p2, .p3 = p3, .col = 0xFF7FAF7F, .thickness = 1.5 }); // softer border
     return clicked;
 }
 

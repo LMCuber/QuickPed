@@ -28,7 +28,7 @@ pub const Style = union(enum) {
     seating: SeatingData,
     individual: IndividualData,
 
-    pub fn getSnapshot(self: Style) StyleSnapshot {
+    pub fn getSnapshot(self: @This()) StyleSnapshot {
         switch (self) {
             inline else => |k, tag| return @unionInit(
                 StyleSnapshot,
@@ -56,14 +56,14 @@ pub const StandingData = struct {
     rect: rl.Rectangle = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
     anchored: bool = false,
 
-    pub fn getPos(self: StandingData) rl.Vector2 {
+    pub fn getPos(self: @This()) rl.Vector2 {
         return .{
             .x = self.rect.x + self.rect.width / 2,
             .y = self.rect.y + self.rect.height / 2,
         };
     }
 
-    pub fn getSnapshot(self: StandingData) StandingDataSnapshot {
+    pub fn getSnapshot(self: @This()) StandingDataSnapshot {
         return .{
             .rect = self.rect,
         };
@@ -76,11 +76,11 @@ pub const StandingData = struct {
         };
     }
 
-    pub fn checkHover(self: *StandingData) bool {
+    pub fn checkHover(self: *@This()) bool {
         return rl.checkCollisionPointRec(commons.mousePos(), self.rect);
     }
 
-    pub fn hover(self: *StandingData) void {
+    pub fn hover(self: *@This()) void {
         rl.drawRectangleLinesEx(self.rect, 3, palette.env.hover);
     }
 };
@@ -99,7 +99,7 @@ pub const SeatingData = struct {
     num_cols: i32 = 1,
     num_rows: i32 = 1,
 
-    pub fn getPos(self: SeatingData) rl.Vector2 {
+    pub fn getPos(self: @This()) rl.Vector2 {
         const row_index: f32 = @floatFromInt(rl.getRandomValue(1, self.num_rows));
         const col_index: f32 = @floatFromInt(rl.getRandomValue(1, self.num_cols));
         const seat_offset: rl.Vector2 = self.getSeatOffset(self.rect.width, self.rect.height);
@@ -110,14 +110,14 @@ pub const SeatingData = struct {
         return rel_seat_pos.add(.{ .x = self.rect.x, .y = self.rect.y });
     }
 
-    pub fn getSeatOffset(self: SeatingData, w: f32, h: f32) rl.Vector2 {
+    pub fn getSeatOffset(self: @This(), w: f32, h: f32) rl.Vector2 {
         return .{
             .x = w / @as(f32, @floatFromInt(self.num_cols + 1)),
             .y = h / @as(f32, @floatFromInt(self.num_rows + 1)),
         };
     }
 
-    pub fn getSnapshot(self: SeatingData) SeatingDataSnapshot {
+    pub fn getSnapshot(self: @This()) SeatingDataSnapshot {
         return .{
             .num_cols = self.num_cols,
             .num_rows = self.num_rows,
@@ -134,11 +134,11 @@ pub const SeatingData = struct {
         };
     }
 
-    pub fn checkHover(self: *SeatingData) bool {
+    pub fn checkHover(self: *@This()) bool {
         return rl.checkCollisionPointRec(commons.mousePos(), self.rect);
     }
 
-    pub fn hover(_: *SeatingData) void {
+    pub fn hover(_: *@This()) void {
         return;
     }
 };
@@ -150,6 +150,9 @@ pub const IndividualData = struct {
 
     points: std.ArrayList(rl.Vector2),
     free_indices: std.ArrayList(usize),
+    selected_seat_index: ?usize = null,
+    last_selected_seat_index: ?usize = null,
+    radius: f32 = 16,
 
     pub fn init(alloc: std.mem.Allocator) !IndividualData {
         return .{
@@ -158,27 +161,27 @@ pub const IndividualData = struct {
         };
     }
 
-    pub fn deinit(self: *IndividualData) void {
+    pub fn deinit(self: *@This()) void {
         self.points.deinit();
         self.free_indices.deinit();
     }
 
-    pub fn getSeatIndex(self: *IndividualData) usize {
+    pub fn getSeatIndex(self: *@This()) usize {
         if (self.free_indices.items.len == 0) return 0;
         const u: usize = @intCast(rl.getRandomValue(0, @intCast(self.free_indices.items.len - 1)));
         const free_index: usize = self.free_indices.swapRemove(u);
         return free_index;
     }
 
-    pub fn freeSeatIndex(self: *IndividualData, index: usize) !void {
+    pub fn freeSeatIndex(self: *@This(), index: usize) !void {
         try self.free_indices.append(index);
     }
 
-    pub fn getPosFromSeatIndex(self: *IndividualData, index: usize) rl.Vector2 {
+    pub fn getPosFromSeatIndex(self: *@This(), index: usize) rl.Vector2 {
         return self.points.items[index];
     }
 
-    pub fn getSnapshot(self: IndividualData) IndividualDataSnapshot {
+    pub fn getSnapshot(self: @This()) IndividualDataSnapshot {
         return .{
             .points = self.points.items,
         };
@@ -199,12 +202,46 @@ pub const IndividualData = struct {
         };
     }
 
-    pub fn checkHover(_: *IndividualData) bool {
-        return true;
+    pub fn checkHover(self: *@This()) bool {
+        for (self.points.items) |seat_pos| {
+            if (rl.checkCollisionPointCircle(commons.mousePos(), seat_pos, self.radius)) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    pub fn hover(_: *IndividualData) void {
-        return;
+    pub fn hover(self: *@This()) void {
+        for (self.points.items) |seat_pos| {
+            // the one colliding should be highlighted color
+            if (rl.checkCollisionPointCircle(commons.mousePos(), seat_pos, self.radius)) {
+                rl.drawCircleLinesV(seat_pos, self.radius, palette.env.yellow);
+                // cross
+                const line: rl.Vector2 = .{ .x = self.radius, .y = 0 };
+                inline for (0..4) |i| {
+                    rl.drawLineV(
+                        seat_pos,
+                        seat_pos.add(line.rotate(@as(f32, @floatFromInt(i)) * std.math.pi * 0.5)),
+                        palette.env.yellow,
+                    );
+                }
+            } else {
+                // only render pink if not currently dragging
+                if (self.selected_seat_index == null) {
+                    rl.drawCircleLinesV(seat_pos, self.radius, palette.env.hover);
+                }
+            }
+        }
+    }
+
+    pub fn addNewPoint(self: *@This()) !void {
+        try self.points.append(.{
+            .x = self.points.items[self.points.items.len - 1].x + self.radius * 2,
+            .y = self.points.items[self.points.items.len - 1].y,
+        });
+        // NOT selected_seat_index, since it's not selected. it should just
+        // be highlighted
+        self.last_selected_seat_index = self.points.items.len - 1;
     }
 };
 
@@ -295,6 +332,37 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.Entity
             },
         }
     } else {
+        // is placed
+        switch (self.style) {
+            .individual => |*ind| {
+                if (ind.selected_seat_index) |seat_index| {
+                    // update current seat if currently one hovered
+                    var seat_pos: *rl.Vector2 = &ind.points.items[seat_index];
+                    seat_pos.x = commons.roundMousePos(sim_data).x;
+                    seat_pos.y = commons.roundMousePos(sim_data).y;
+
+                    // check if not hovered anymore
+                    if (!rl.isMouseButtonDown(.mouse_button_left)) {
+                        ind.selected_seat_index = null;
+                    }
+                } else {
+                    // check for clicking on new seat
+                    for (ind.points.items, 0..) |*seat_pos, i| {
+                        if (rl.isMouseButtonPressed(.mouse_button_left) and
+                            rl.checkCollisionPointCircle(commons.mousePos(), seat_pos.*, ind.radius))
+                        {
+                            if (ind.selected_seat_index == null) {
+                                ind.selected_seat_index = i;
+                                ind.last_selected_seat_index = ind.selected_seat_index;
+                                break;
+                            }
+                        }
+                    }
+                }
+            },
+            else => {},
+        }
+
         if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left) and self.checkHover()) {
             return .selected;
         }
@@ -316,7 +384,52 @@ pub fn confirm(self: *Self) void {
     }
 }
 
-pub fn edit(_: *Self) void {}
+pub fn edit(self: *Self) !void {
+    switch (self.style) {
+        .individual => |*ind| {
+            // the current points
+            var i: usize = ind.points.items.len;
+            while (i > 0) {
+                i -= 1;
+
+                // check if the index is the currently selected index for change of color
+                if (i == ind.last_selected_seat_index) {
+                    z.pushStyleColor1u(.{ .idx = .frame_bg, .c = palette.ui.green });
+                    z.pushStyleColor1u(.{ .idx = .button, .c = palette.ui.green });
+                }
+                var seat_pos: *rl.Vector2 = &ind.points.items[i];
+
+                // position input
+                var buf: [32]u8 = undefined;
+                var label = try std.fmt.bufPrintZ(&buf, "P{d}##delete-seat-button{d}", .{ i, i });
+                _ = z.inputFloat2(
+                    label,
+                    .{ .v = @as(*[2]f32, @ptrCast(&seat_pos.x)) },
+                );
+
+                // deleting the point
+                if (ind.points.items.len > 1) {
+                    z.sameLine(.{});
+                    label = try std.fmt.bufPrintZ(&buf, "-##delete-seat{}", .{i});
+                    if (z.button(label, .{ .w = 40 })) {
+                        _ = ind.points.orderedRemove(i);
+                    }
+                }
+
+                // pop the style
+                if (i == ind.last_selected_seat_index) {
+                    z.popStyleColor(.{ .count = 2 });
+                }
+            }
+
+            // add new point
+            if (z.button("+", .{ .w = 80 })) {
+                try ind.addNewPoint();
+            }
+        },
+        else => {},
+    }
+}
 
 pub fn confirmInit(self: *Self) void {
     z.setNextItemWidth(120);
@@ -401,15 +514,14 @@ pub fn draw(self: Self) void {
                 }
             }
         },
-        .individual => |*data| {
-            const r: f32 = 14;
-            for (data.points.items) |point| {
-                rl.drawCircleV(point, r, palette.env.navy_t);
-                rl.drawCircleLinesV(point, r, if (self.placed) palette.env.white else palette.env.orange);
+        .individual => |*ind| {
+            for (ind.points.items) |point| {
+                rl.drawCircleV(point, ind.radius, palette.env.navy_t);
+                rl.drawCircleLinesV(point, ind.radius, if (self.placed) palette.env.white else palette.env.orange);
             }
             if (!self.placed) {
-                rl.drawCircleV(self.pos, r, palette.env.orange);
-                rl.drawCircleLinesV(self.pos, r, palette.env.white);
+                rl.drawCircleV(self.pos, ind.radius, palette.env.orange);
+                rl.drawCircleLinesV(self.pos, ind.radius, palette.env.white);
                 rl.drawText("<enter> to finish", @intFromFloat(self.pos.x + 32), @intFromFloat(self.pos.y + 62), 16, palette.env.white);
             }
         },

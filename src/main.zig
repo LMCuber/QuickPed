@@ -363,7 +363,7 @@ pub fn main() !void {
                         z.newLine();
                         if (selected_entity) |ent_id| {
                             var ent = env.entities.getByUUID(ent_id);
-                            ent.edit();
+                            try ent.edit();
                         }
                         z.newLine();
                     }

@@ -19,6 +19,14 @@ pub const env = struct {
     pub const hover = rl.Color{ .r = 255, .g = 182, .b = 193, .a = 255 };
 };
 
+pub const ui = struct {
+    pub const green: u32 = rgbaToU32(71, 135, 120, 255);
+};
+
+pub fn rgbaToU32(comptime r: u32, comptime g: u32, comptime b: u32, comptime a: u32) u32 {
+    return (a << 24) | (b << 16) | (g << 8) | r;
+}
+
 pub fn iden(col: rl.Color) u32 {
     return colorToU32(col);
 }

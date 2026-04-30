@@ -212,10 +212,13 @@ pub const Entity = struct {
     }
 
     pub fn draw(self: *Entity, sim_data: SimData, agent_data: AgentData, node_editor_active: bool) void {
+        // draw general entity
         switch (self.kind) {
             .queue => |*q| q.draw(sim_data, agent_data),
             inline else => |*kind| kind.draw(),
         }
+        // check hover behavior (after draw)
+        // split up since we don't want to pass node_editor_active to each hover() function
         switch (self.kind) {
             .queue => {},
             inline else => |*ent| {
@@ -234,13 +237,14 @@ pub const Entity = struct {
         }
     }
 
-    pub fn edit(self: *Entity) void {
+    pub fn edit(self: *Entity) !void {
         // all entities
         z.separatorText(self.name);
 
         // specialization
         switch (self.kind) {
             .contour => {},
+            .area => |*a| try a.edit(),
             inline else => |*k| k.edit(),
         }
     }
