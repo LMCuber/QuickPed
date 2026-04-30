@@ -256,6 +256,12 @@ pub fn main() !void {
                     }
                 }
 
+                // keypresses
+                if (rl.isKeyDown(.key_left_super) and rl.isKeyPressed(.key_s)) {
+                    std.debug.print("Saved!\n", .{});
+                    try save(allocator, &env, &node_editor);
+                }
+
                 // render all the entities
                 for (env.entities.items()) |*ent| {
                     ent.draw(
@@ -379,7 +385,7 @@ pub fn main() !void {
                             current_entity_action = .none;
                         },
                         .confirm_init => {
-                            z.openPopup("Confirm init", .{});
+                            z.openPopup("Confirm creation", .{});
                             current_entity_action = .none;
                         },
                         else => {},
@@ -445,8 +451,8 @@ pub fn main() !void {
                         } else unreachable;
                     }
 
-                    // confirm init popup
-                    if (z.beginPopupModal("Confirm init", .{ .flags = .{ .always_auto_resize = true } })) {
+                    // confirm creation popup
+                    if (z.beginPopupModal("Confirm creation", .{ .flags = .{ .always_auto_resize = true } })) {
                         defer z.endPopup();
                         if (current_entity) |*ent| {
                             // entity-specific widgets
@@ -493,15 +499,19 @@ pub fn main() !void {
     resetCurrentEntity(allocator, &current_entity);
 
     // save the simulation data, scene, nodes
-    try agent_data.saveToFile(allocator, "data/agent_data.json");
-    try sim_data.saveToFile(allocator, "data/sim_data.json");
-    try env.saveScene(allocator, "data/scene.json");
-    try node_editor.saveNodes(allocator, "data/nodes.json");
+    try save(allocator, &env, &node_editor);
 
     // dealloc all entities
     for (env.entities.items()) |*ent| {
         ent.deinit(allocator);
     }
+}
+
+pub fn save(alloc: std.mem.Allocator, env: *Environment, node_editor: *NodeEditor) !void {
+    try agent_data.saveToFile(alloc, "data/agent_data.json");
+    try sim_data.saveToFile(alloc, "data/sim_data.json");
+    try env.saveScene(alloc, "data/scene.json");
+    try node_editor.saveNodes(alloc, "data/nodes.json");
 }
 
 pub fn resetCurrentEntity(alloc: std.mem.Allocator, current_entity: *?entity.Entity) void {

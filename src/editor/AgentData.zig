@@ -55,7 +55,7 @@ pub fn update_ui(self: *Self, agents: *Environment.AgentManager) !void {
             _ = z.text("Relaxation time: how fast the agents adjust to their desired force of movement", .{});
         }
 
-        _ = z.sliderFloat("##radius", .{ .v = &self.radius, .min = 2, .max = 16 });
+        _ = z.sliderFloat("##radius", .{ .v = &self.radius, .min = 0.1, .max = 1.0 });
         z.sameLine(.{});
         _ = z.text("radius", .{});
         if (z.isItemHovered(.{})) {

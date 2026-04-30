@@ -327,7 +327,7 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.Entity
                         try data.free_indices.append(i);
                     }
                     self.placed = true;
-                    return .placed;
+                    return .confirm;
                 }
             },
         }
@@ -387,44 +387,46 @@ pub fn confirm(self: *Self) void {
 pub fn edit(self: *Self) !void {
     switch (self.style) {
         .individual => |*ind| {
-            // the current points
-            var i: usize = ind.points.items.len;
-            while (i > 0) {
-                i -= 1;
+            if (z.collapsingHeader("seats", .{})) {
+                // the current points
+                var i: usize = ind.points.items.len;
+                while (i > 0) {
+                    i -= 1;
 
-                // check if the index is the currently selected index for change of color
-                if (i == ind.last_selected_seat_index) {
-                    z.pushStyleColor1u(.{ .idx = .frame_bg, .c = palette.ui.green });
-                    z.pushStyleColor1u(.{ .idx = .button, .c = palette.ui.green });
-                }
-                var seat_pos: *rl.Vector2 = &ind.points.items[i];
+                    // check if the index is the currently selected index for change of color
+                    if (i == ind.last_selected_seat_index) {
+                        z.pushStyleColor1u(.{ .idx = .frame_bg, .c = palette.ui.green });
+                        z.pushStyleColor1u(.{ .idx = .button, .c = palette.ui.green });
+                    }
+                    var seat_pos: *rl.Vector2 = &ind.points.items[i];
 
-                // position input
-                var buf: [32]u8 = undefined;
-                var label = try std.fmt.bufPrintZ(&buf, "P{d}##delete-seat-button{d}", .{ i, i });
-                _ = z.inputFloat2(
-                    label,
-                    .{ .v = @as(*[2]f32, @ptrCast(&seat_pos.x)) },
-                );
+                    // position input
+                    var buf: [32]u8 = undefined;
+                    var label = try std.fmt.bufPrintZ(&buf, "P{d}##delete-seat-button{d}", .{ i, i });
+                    _ = z.inputFloat2(
+                        label,
+                        .{ .v = @as(*[2]f32, @ptrCast(&seat_pos.x)) },
+                    );
 
-                // deleting the point
-                if (ind.points.items.len > 1) {
-                    z.sameLine(.{});
-                    label = try std.fmt.bufPrintZ(&buf, "-##delete-seat{}", .{i});
-                    if (z.button(label, .{ .w = 40 })) {
-                        _ = ind.points.orderedRemove(i);
+                    // deleting the point
+                    if (ind.points.items.len > 1) {
+                        z.sameLine(.{});
+                        label = try std.fmt.bufPrintZ(&buf, "-##delete-seat{}", .{i});
+                        if (z.button(label, .{ .w = 40 })) {
+                            _ = ind.points.orderedRemove(i);
+                        }
+                    }
+
+                    // pop the style
+                    if (i == ind.last_selected_seat_index) {
+                        z.popStyleColor(.{ .count = 2 });
                     }
                 }
 
-                // pop the style
-                if (i == ind.last_selected_seat_index) {
-                    z.popStyleColor(.{ .count = 2 });
+                // add new point
+                if (z.button("+", .{ .w = 80 })) {
+                    try ind.addNewPoint();
                 }
-            }
-
-            // add new point
-            if (z.button("+", .{ .w = 80 })) {
-                try ind.addNewPoint();
             }
         },
         else => {},
