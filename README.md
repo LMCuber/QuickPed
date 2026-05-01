@@ -26,6 +26,7 @@ Simulations don't usually tell you the underlying physics model their agents. Th
 - [ ] Realistic and easy-to-implement arrival schedule: in _AnyLogic_, arrival schedules can be imported as a dataset, for which I have to use another spreadsheet software (and tinker for hours with the formulas for the columns of arrival time, arrival rate, interarrival time). Arrival schedules are (almost always) either:
 * _Poisson_ processes where the interarrival times are exponentially distributed, e.g. $f(x) = \lambda e^{-\lambda x}$
 * Distributed according to a similar distribution with a different shape, e.g. the _Weibull_ distribution: $f(x) = \frac{k}{\lambda} \left(\frac{x}{\lambda}\right)^{k-1} \exp\left(-\left(\frac{x}{\lambda}\right)^k\right)$
+While the former one is widely supported, the latter one is mostly underrepresented, all the while being very common in establishments such as airports or movie theaters, where the arrival pattern of pedestrians are determined by a schedule, rather than being relatively uniform (such as a carnival or a shop).
 
 - [ ] Statistics
 Statistics is the eventual reason we do agent based modeling. This should therefore very easily accessible, and the data should be easily extractable to be used for further analysis. Examples:
