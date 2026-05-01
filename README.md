@@ -10,7 +10,7 @@ To view the paper we have written on this subject: [overleaf link](https://www.o
 * Go to [my previous Python implementation](https://www.github.com/lmcuber/agentbasedmodel) for the same project but without a node editor and some spaghetti code
 
 ## Competitors
-_AnyLogic_ (specifically the _Pedestrian Library_) is the only software I have used for an extended period of time, so this is the one I can talk about.
+_AnyLogic_ (specifically the _Pedestrian Library_) is the only software I have used for an extended period of time, so that is the one I can talk about.
 * The software is quite expressive, but setting up the simplest of things takes you through unintuitive mental hoops.
 * The program (and the additional code you write) is in `Java` ☠️. This makes the simulation slower than a simulation written in a compiled language where the memory is manully managed (e.g. `zig`).
 * The software looks very old and some operations are feel very janky to perform, such as configuring a custom agent profile and importing a database for arrival schedules (which broke at least 4 times when I was trying to import it).
@@ -23,7 +23,7 @@ Simulations don't usually tell you the underlying physics model their agents. Th
 
 - [ ] Built with optimization in mind: optimizing certain parameters of your simulation should not feel like coal mining with the source code - it should be built into the simulation software. _AnyLogic_ for example has decent support for optimization of _variables_, but it has a hard time modifying the location and dimensions of, for example, a waiting area.
 
-- [ ] Realistic and easy-to-implement arrival schedule: in _AnyLogic_, arrival schedules can be imported as a dataset, for which I have to use another spreadsheet software (and tinker for hours with the formulas for the columns of arrival time, arrival rate, interarrival time). Arrival schedules are (almost always) either:
+- [ ] Realistic and easy-to-implement arrival schedules: in _AnyLogic_, arrival schedules can be imported as a dataset, for which I have to use another spreadsheet software (and tinker for hours with the formulas for the columns of arrival time, arrival rate, interarrival time). Arrival schedules are (almost always) either:
 * _Poisson_ processes where the interarrival times are exponentially distributed, e.g. $f(x) = \lambda e^{-\lambda x}$
 * Distributed according to a similar distribution with a different shape, e.g. the _Weibull_ distribution: $f(x) = \frac{k}{\lambda} \left(\frac{x}{\lambda}\right)^{k-1} \exp\left(-\left(\frac{x}{\lambda}\right)^k\right)$
 
