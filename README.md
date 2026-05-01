@@ -1,13 +1,13 @@
 # Very quick pedestrian flow simulation
 
 > [!WARNING]
-> This project currently supports `zig` versions up to 0.13.0. Later Zig versions are not guaranteed to build correctly.
+> This project currently supports `zig` versions up to 0.13.0. Later Zig versions are not guaranteed to build correctly, primarily because of the changes in the memory api.
 
 ## Project philosopy
 To view the paper we have written on this subject: [overleaf link](https://www.overleaf.com/project/66f667ffb591f8ff65cffdd8) (broken)
 
 * Go to the [backlog](#project-backlog) to see the planned features.
-* Go to [my previous Python implementation](https://www.github.com/lmcuber/agentbasedmodel) without a node editor for some spaghetti code
+* Go to [my previous Python implementation](https://www.github.com/lmcuber/agentbasedmodel) for the same project but without a node editor and some spaghetti code
 
 ## Competitors
 _AnyLogic_ (specifically the _Pedestrian Library_) is the only software I have used for an extended period of time, so this is the one I can talk about.
@@ -26,7 +26,8 @@ Simulations don't usually tell you the underlying physics model their agents. Th
 - [ ] Realistic and easy-to-implement arrival schedule: in _AnyLogic_, arrival schedules can be imported as a dataset, for which I have to use another spreadsheet software (and tinker for hours with the formulas for the columns of arrival time, arrival rate, interarrival time). Arrival schedules are (almost always) either:
 * _Poisson_ processes where the interarrival times are exponentially distributed, e.g. $f(x) = \lambda e^{-\lambda x}$
 * Distributed according to a similar distribution with a different shape, e.g. the _Weibull_ distribution: $f(x) = \frac{k}{\lambda} \left(\frac{x}{\lambda}\right)^{k-1} \exp\left(-\left(\frac{x}{\lambda}\right)^k\right)$
-While the former one is widely supported, the latter one is mostly underrepresented, all the while being very common in establishments such as airports or movie theaters, where the arrival pattern of pedestrians are determined by a schedule, rather than being relatively uniform (such as a carnival or a shop).
+
+While the former one is widely supported, the latter one is mostly underrepresented, all the while being very common in establishments such as airports and movie theaters, where the arrival pattern of pedestrians are determined by a schedule, rather than being distributed in a "flat" fashion without huge peaks (such as a carnival or a shop).
 
 - [ ] Statistics
 Statistics is the eventual reason we do agent based modeling. This should therefore very easily accessible, and the data should be easily extractable to be used for further analysis. Examples:
@@ -34,9 +35,9 @@ Statistics is the eventual reason we do agent based modeling. This should theref
     - [ ] Heatmap showing bottlenecks during simulation
 
 - [ ] Quadtree for collisions
-    _AnyLogic_ can become quite slow when simulating a lot of entities. _FlexSim_ uses a similar approach (_BVH_'s).
+    _AnyLogic_ can become quite slow when simulating a lot of entities. _FlexSim_ uses a similar approach (_BVH_'s). Since there can easily be tens of thousands of people in a single point in time in an airport, optimization measures should not be thought of lightly.
 
-- [ ] Pathfinding for the pedestrians
+- [ ] Pathfinding for the pedestrians:
 In _AnyLogic_, pedestrians can get stuck behind corners and cause severe congestions, since they follow the shortest path in a straight line. This can be fixed by using direction objects, but this just makes it more indirect for the user and adds complexity for no reason.
 
 ## Won't haves
@@ -45,7 +46,7 @@ The project should maximize development time and ease of use. I might implement 
 - _**Others means of agent based simulation**_<br>
 This refers to other businesses, such as transport systems and factory pipelines. Those are currently way beyond the scope of the project.
 
-> Jack of all trades, master of none, often better than a master of one, though it doesn't matter because in the end the simulation software didn't support revolving doors so I told the architect to scrap that idea.
+> Jack of all trades, master of none, often better than a master of one, until the simulation software doesn't support revolving doors so you have to tell the the architects to scrap that idea.
 
 # Previews
 ![main](previews/main.png)
