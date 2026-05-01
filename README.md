@@ -38,12 +38,13 @@ Later Zig versions are not guaranteed to build correctly.
     - [x] Working nodes
     - [x] Persistence across runs
     - [x] Deleting nodes and connections
+    - [ ] References still working when the object gets deleted
 - [ ] Statistics
     - [x] Showing number of (waiting) pedestrians
     - [x] Heatmap showing bottlenecks during simulation
-- [ ] Calamity simulation, e.g. evacuation due to a fire
+- [ ] Calamity simulation (e.g. evacuation due to a fire)
 - [ ] Advanced environmental objects
-    - [x] queues (functional but not releasable yet)
+    - [ ] queues (functional but not perfect yet)
     - [x] revolving doors
 - [x] Quadtree for collisions
 - [ ] *A\** pathfinding for the pedestrians
