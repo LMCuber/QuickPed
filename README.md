@@ -18,20 +18,6 @@ Is very powerful, but to unlock that power, you have to code a lot of `Java` ☠
 ### Simio
 
 
-# Previews
-![main](previews/main.png)
-*Main view of the project*
-![main2](previews/main2.png)
-*Another view, including heapmap*
-![node editor](previews/node_editor.png)
-*The node editor for pedestrian behavior modeling*
-![quadtree](previews/quadtree.png)
-*The quadtree in action*
-
-# Version support
-⚠️ **This project currently supports `zig` versions up to 0.13.0.**  
-Later Zig versions are not guaranteed to build correctly.
-
 # Planned features
 - [x] Social force model for pedestrians based on [the works](https://www.researchgate.net/publication/1947096_Social_Force_Model_for_Pedestrian_Dynamics) of _Helbing et al_.
 - [ ] A blueprint system
@@ -48,6 +34,20 @@ Later Zig versions are not guaranteed to build correctly.
     - [x] revolving doors
 - [x] Quadtree for collisions
 - [ ] *A\** pathfinding for the pedestrians
+
+# Previews
+![main](previews/main.png)
+*Main view of the project*
+![main2](previews/main2.png)
+*Another view, including heapmap*
+![node editor](previews/node_editor.png)
+*The node editor for pedestrian behavior modeling*
+![quadtree](previews/quadtree.png)
+*The quadtree in action*
+
+# Version support
+⚠️ **This project currently supports `zig` versions up to 0.13.0.**  
+Later Zig versions are not guaranteed to build correctly.
 
 ## Node summary
 - *Sink* - ends the pedestrians

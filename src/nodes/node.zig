@@ -210,7 +210,7 @@ pub const Slot = struct {
 
     pub fn getSnapshot(self: Slot) SlotSnapshot {
         return .{
-            .node_id = self.node_id,
+            .node_id = self.node_id.getSnapshot(),
             .title = self.title,
         };
     }
@@ -218,14 +218,14 @@ pub const Slot = struct {
     pub fn fromSnapshot(alloc: std.mem.Allocator, snap: SlotSnapshot) !Slot {
         // find the node with the saved ID to get its pointer
         return .{
-            .node_id = snap.node_id,
+            .node_id = UUID.fromSnapshot(snap.node_id.data),
             .title = try alloc.dupeZ(u8, snap.title),
         };
     }
 };
 
 pub const SlotSnapshot = struct {
-    node_id: UUID, // node id instead of runtime pointer
+    node_id: UUID.UUIDSnapshot, // node id instead of runtime pointer
     title: []const u8,
 };
 
