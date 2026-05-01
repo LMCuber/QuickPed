@@ -1,5 +1,8 @@
 # Very quick pedestrian flow simulation
 
+> [!WARNING]
+> This project currently supports `zig` versions up to 0.13.0. Later Zig versions are not guaranteed to build correctly.
+
 ## Project philosopy
 To view the paper we have written on this subject: [overleaf link](https://www.overleaf.com/project/66f667ffb591f8ff65cffdd8) (broken)
 
@@ -52,9 +55,6 @@ This refers to other businesses, such as transport systems and factory pipelines
 *The node editor for pedestrian behavior modeling*
 ![quadtree](previews/quadtree.png)
 *The quadtree in action*
-
-> [!WARNING]
-> This project currently supports `zig` versions up to 0.13.0. Later Zig versions are not guaranteed to build correctly.
 
 # How to run
 ```
