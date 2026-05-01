@@ -1,6 +1,6 @@
 # Very quick pedestrian flow simulation
 
-## What
+## Project philosopy
 To view the paper we have written on this subject: [overleaf link](https://www.overleaf.com/project/66f667ffb591f8ff65cffdd8) (broken)
 
 * Go to the [backlog](#project-backlog) to see the planned features.
@@ -10,7 +10,10 @@ To view the paper we have written on this subject: [overleaf link](https://www.o
 As far as my eyes can see, these are the main industry defining _DES_ software:
 
 ### AnyLogic
-Is very powerful, but to unlock that power, you have to code a lot of `Java` ☠️. The software also looks very old and some operations are very jank to perform. The only one I have personally used, and in my experience, it is more powerful, but takes a lot more setup and great understanding of the scene, the nodes and all attributes to effectively code in `Java`.
+This is the one I has personally used before.
+* 
+* The program (and the additional code you write) must be `Java` ☠️. This makes the simulation slower than a simulation written in a compiled language where the memory is manully managed (e.g. `zig`).
+* The software looks very old and some operations are feel very janky to perform, such as configuring a custom agent profile and importing a database for arrival schedules (which broke at least 4 times when I was trying to import it).
 
 ### FlexSim
 
@@ -18,22 +21,32 @@ Is very powerful, but to unlock that power, you have to code a lot of `Java` ☠
 ### Simio
 
 
-# Planned features
+## Defining features
 - [x] Social force model for pedestrians based on [the works](https://www.researchgate.net/publication/1947096_Social_Force_Model_for_Pedestrian_Dynamics) of _Helbing et al_.
-- [ ] A blueprint system
-    - [x] Working nodes
-    - [x] Persistence across runs
-    - [x] Deleting nodes and connections
-    - [ ] References still working when the object gets deleted
+Simulations don't usually tell you the underlying physics model their agents. This project uses the above model with variable parameters.
+
+- [ ] No-code system: as powerful scripting may be, the absolute last thing I wish upon my worst enemy is inspecting the implementation of a certain _AnyLogic_ `Node` class to find its size and find the correct method to call to change its position, just for it not to work in the end anyway.
+
+- [ ] Built with optimization in mind: optimizing certain parameters of your simulation should not feel like coal mining with the source code - it should be built into the simulation software. _AnyLogic_ for example has decent support for optimization of _variables_, but it has a hard time modifying the location and dimensions of, for example, a waiting area.
+
 - [ ] Statistics
-    - [x] Showing number of (waiting) pedestrians
-    - [x] Heatmap showing bottlenecks during simulation
-- [ ] Calamity simulation (e.g. evacuation due to a fire)
-- [ ] Advanced environmental objects
-    - [ ] queues (functional but not perfect yet)
-    - [x] revolving doors
-- [x] Quadtree for collisions
-- [ ] *A\** pathfinding for the pedestrians
+Statistics is the eventual reason we do agent based modeling. This should therefore very easily accessible, and the data should be easily extractable to be used for further analysis. Examples:
+    - [ ] Showing the percentage of waiting pedestrians per waiting area/queue
+    - [ ] Heatmap showing bottlenecks during simulation
+
+- [ ] Quadtree for collisions
+    _AnyLogic_ can become quite slow when simulating a lot of entities. _FlexSim_ uses a similar approach (_BVH_'s).
+
+- [ ] Pathfinding for the pedestrians
+In _AnyLogic_, pedestrians can get stuck behind corners and cause severe congestions, since they follow the shortest path in a straight line. This can be fixed by using direction objects, but this just makes it more indirect for the user and adds complexity for no reason.
+
+## Won't haves
+- _**Any type of scripting support**_<br>
+The project should maximize development time and ease of use. I might implement it later when I see that the base nodes in the editor aren't enough to express complex interactions that are complex enough.
+- _**Others means of agent based simulation**_<br>
+This refers to other businesses, such as transport systems and factory pipelines. Those are currently way beyond the scope of the project.
+
+> Jack of all trades, master of none, often better than a master of one, though it doesn't matter because in the end the simulation software didn't support revolving doors so I told the architect to scrap that idea.
 
 # Previews
 ![main](previews/main.png)
@@ -45,24 +58,8 @@ Is very powerful, but to unlock that power, you have to code a lot of `Java` ☠
 ![quadtree](previews/quadtree.png)
 *The quadtree in action*
 
-# Version support
-⚠️ **This project currently supports `zig` versions up to 0.13.0.**  
-Later Zig versions are not guaranteed to build correctly.
-
-## Node summary
-- *Sink* - ends the pedestrians
-- *Spawner* - location where new pedestrians are created
-- *Area* - a target location for pedestrians to walk to
-- *Portal* - a literal portal (used to simulate multiple floors of a building)
-- *Queue* - a FIFO queue
-- *Fork* - allows for probabilistic behavior of agent
-- *QueueFork* allows for probabilistic queue choosing based on a strategy
-
-## Won't haves
-- _**Any type of scripting support**_<br>
-The project should maximize development time and ease of use. I might implement it later when I see that the base nodes in the editor aren't enough to express complex interactions that are complex enough.
-- _**Others means of agent based simulation**_<br>
-This refers to other businesses, such as transport systems and factory pipelines. Those are currently way beyond the scope of the project.
+> [!WARNING]
+> This project currently supports `zig` versions up to 0.13.0. Later Zig versions are not guaranteed to build correctly.
 
 # How to run
 ```
