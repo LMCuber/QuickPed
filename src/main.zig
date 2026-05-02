@@ -27,6 +27,7 @@ const Revolver = @import("environment/Revolver.zig");
 const Settings = @import("Settings.zig");
 const SimData = @import("editor/SimData.zig");
 const AgentData = @import("editor/AgentData.zig");
+const Schedule = @import("editor/Schedule.zig");
 const EB = @import("editor/EnvironmentButtons.zig");
 const Stats = @import("editor/Stats.zig");
 const NodeEditor = @import("nodes/NodeEditor.zig");
@@ -100,6 +101,8 @@ pub fn main() !void {
         sim_data.environment_height = settings.sim_height;
     }
     agent_data = try AgentData.loadFromFile(allocator, "data/agent_data.json");
+    var schedule = try Schedule.loadFromFile(allocator, "data/schedule.json");
+    defer schedule.deinit();
 
     // stats
     const n_cols = 120;
@@ -259,7 +262,12 @@ pub fn main() !void {
                 // keypresses
                 if (rl.isKeyDown(.key_left_super) and rl.isKeyPressed(.key_s)) {
                     std.debug.print("Saved!\n", .{});
-                    try save(allocator, &env, &node_editor);
+                    try save(
+                        allocator,
+                        &env,
+                        &node_editor,
+                        &schedule,
+                    );
                 }
 
                 // render all the entities
@@ -314,10 +322,14 @@ pub fn main() !void {
                     });
 
                     // sim data header
-                    sim_data.update_ui(&commons.camera, commons.camera_default);
+                    if (rl.isKeyPressed(.key_space)) sim_data.paused = !sim_data.paused;
+                    sim_data.updateUi(&commons.camera, commons.camera_default);
+
+                    // schedule header
+                    try schedule.updateUi();
 
                     // agent data header
-                    try agent_data.update_ui(&env.agents);
+                    try agent_data.updateUi(&env.agents);
 
                     // ENVIRONMENTAL BUTTONS --------------------------------------------
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
@@ -376,7 +388,7 @@ pub fn main() !void {
                     // ------------------------------------------------------------------
 
                     // statistics header
-                    try stats.render(&env.agents, sim_data.paused);
+                    try stats.updateUi(&env.agents, sim_data.paused);
 
                     // process new popups if placing entity gave .confirm signal
                     switch (current_entity_action) {
@@ -499,7 +511,12 @@ pub fn main() !void {
     resetCurrentEntity(allocator, &current_entity);
 
     // save the simulation data, scene, nodes
-    try save(allocator, &env, &node_editor);
+    try save(
+        allocator,
+        &env,
+        &node_editor,
+        &schedule,
+    );
 
     // dealloc all entities
     for (env.entities.items()) |*ent| {
@@ -507,11 +524,17 @@ pub fn main() !void {
     }
 }
 
-pub fn save(alloc: std.mem.Allocator, env: *Environment, node_editor: *NodeEditor) !void {
+pub fn save(
+    alloc: std.mem.Allocator,
+    env: *Environment,
+    node_editor: *NodeEditor,
+    schedule: *Schedule,
+) !void {
     try agent_data.saveToFile(alloc, "data/agent_data.json");
     try sim_data.saveToFile(alloc, "data/sim_data.json");
     try env.saveScene(alloc, "data/scene.json");
     try node_editor.saveNodes(alloc, "data/nodes.json");
+    try schedule.saveToFile(alloc, "data/schedule.json");
 }
 
 pub fn resetCurrentEntity(alloc: std.mem.Allocator, current_entity: *?entity.Entity) void {

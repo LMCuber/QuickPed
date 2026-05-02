@@ -100,16 +100,14 @@ pub fn render(
                 if (z.menuItem("Spawner", .{ .enabled = commons.existsAnyObject(env, .spawner) })) {
                     try self.graph.addNode(node.Node.initSpawner(
                         env,
-                        1_000,
+                        .{ .constant = .{} },
                     ));
                 }
 
                 if (z.menuItem("Area", .{ .enabled = commons.existsAnyObject(env, .area) })) {
                     try self.graph.addNode(node.Node.initArea(
                         env,
-                        .{ .constant = .{
-                            .wait = 1000,
-                        } },
+                        .{ .constant = .{} },
                     ));
                 }
 

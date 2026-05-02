@@ -10,7 +10,7 @@ environment_width: i32 = 0,
 environment_height: i32 = 0,
 grid_size: i32 = 2 << 4,
 scale: i32 = 32, // this many pixels is 1 meter in simulation
-paused: bool = false,
+paused: bool = true,
 show_quadtree: bool = false,
 
 pub fn init() Self {
@@ -28,7 +28,7 @@ pub fn render(self: *Self) void {
     rl.drawText("1m", @intFromFloat(start.add(end.subtract(start).scale(0.5)).x), start.y + 12, 18, palette.env.white);
 }
 
-pub fn update_ui(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) void {
+pub fn updateUi(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) void {
     if (z.collapsingHeader("Simulation", .{ .default_open = false })) {
         _ = z.inputFloat("aspect ratio", .{ .v = &self.aspect_ratio });
         _ = z.inputInt("height", .{ .v = &self.environment_height });

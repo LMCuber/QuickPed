@@ -27,7 +27,7 @@ pub fn init() Self {
     return .{};
 }
 
-pub fn update_ui(self: *Self, agents: *Environment.AgentManager) !void {
+pub fn updateUi(self: *Self, agents: *Environment.AgentManager) !void {
     if (z.collapsingHeader("Agent", .{ .default_open = false })) {
         if (z.button("delete", .{})) {
             for (0..@intCast(self.num_to_place)) |i| {

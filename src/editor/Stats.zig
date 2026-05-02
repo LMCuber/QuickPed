@@ -96,7 +96,7 @@ pub fn decay_map(self: *Self) void {
     }
 }
 
-pub fn render(self: *Self, agents: *Environment.AgentManager, paused: bool) !void {
+pub fn updateUi(self: *Self, agents: *Environment.AgentManager, paused: bool) !void {
     if (z.collapsingHeader("Statistics", .{ .default_open = false })) {
         _ = z.checkbox("Graph", .{ .v = &self.render_checks.graph });
         z.sameLine(.{});

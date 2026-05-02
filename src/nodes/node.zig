@@ -4,6 +4,7 @@
 const rl = @import("raylib");
 const std = @import("std");
 const imnodes = @import("imnodesez");
+const implot = @import("implot");
 const z = @import("zgui");
 const utils = @import("utils.zig");
 const Spawner = @import("../environment/Spawner.zig");
@@ -110,7 +111,7 @@ pub const Node = struct {
         }
     }
 
-    pub fn initSpawner(env: *Environment, wait: i32) Node {
+    pub fn initSpawner(env: *Environment, wait: SpawnerWait) Node {
         return .{
             .uuid = UUID.init(),
             .kind = .{
@@ -313,9 +314,47 @@ pub const SinkNode = struct {
     }
 };
 
+pub const SpawnerWait = union(enum) {
+    pub const zeroSepItems: [:0]const u8 = "constant\x00poisson\x00weibull\x00";
+
+    pub const Constant = struct {
+        lambda: f32 = 60.0,
+        pub fn getInter(self: @This()) f32 {
+            return 1 / self.lambda;
+        }
+    };
+    pub const Poisson = struct {
+        lambda: f32 = 60.0,
+        pub fn getInter(self: @This()) f32 {
+            // inverse of the CDF: F(x) = 1 - exp(-lambda * t)
+            // => t = -1 / lambda * ln(u)
+            const u: f32 = commons.rand01();
+            return -1.0 / self.lambda * @log(u);
+        }
+    };
+    pub const Weibull = struct {
+        k: f32 = 6.0,
+        lambda: f32 = 2.3,
+        show_plot: bool = true,
+        pub fn getInter(_: @This()) f32 {
+            return 1.0 / 60.0;
+        }
+        pub fn pdf(self: @This(), t: f32) f32 {
+            return (self.k / self.lambda) *
+                std.math.pow(f32, t / self.lambda, self.k - 1) *
+                @exp(-std.math.pow(f32, (t / self.lambda), self.k));
+        }
+    };
+
+    constant: Constant,
+    poisson: Poisson,
+    weibull: Weibull,
+};
+
 pub const SpawnerNodeSnapshot = struct {
     spawner_index: i32 = 0,
-    wait: i32,
+    wait: SpawnerWait,
+    wait_type: i32,
     has_limit: bool,
     limit: i32,
 };
@@ -323,7 +362,11 @@ pub const SpawnerNodeSnapshot = struct {
 pub const SpawnerNode = struct {
     env: *Environment,
     spawner_index: i32 = 0,
-    wait: i32,
+
+    wait: SpawnerWait,
+    wait_type: i32 = 0,
+    inter: ?f32 = null, // the next interarrival time
+
     has_limit: bool = false,
     limit: i32 = 1024,
 
@@ -338,6 +381,7 @@ pub const SpawnerNode = struct {
         return .{
             .spawner_index = self.spawner_index,
             .wait = self.wait,
+            .wait_type = self.wait_type,
             .has_limit = self.has_limit,
             .limit = self.limit,
         };
@@ -348,6 +392,7 @@ pub const SpawnerNode = struct {
             .env = env,
             .spawner_index = snap.spawner_index,
             .wait = snap.wait,
+            .wait_type = snap.wait_type,
             .has_limit = snap.has_limit,
             .limit = snap.limit,
         };
@@ -391,10 +436,71 @@ pub const SpawnerNode = struct {
             }
         }
 
-        // wait input
-        z.textSl("wait", .{});
-        setNextItemWidth(node_width - z.calcTextSize("wait", .{})[0]);
-        _ = z.inputInt("##wait-int", .{ .v = &self.wait });
+        // spawner wait type selector
+        setNextItemWidth(node_width);
+        const changed = z.combo("##spawner-wait-type", .{
+            .current_item = &self.wait_type,
+            .items_separated_by_zeros = SpawnerWait.zeroSepItems,
+        });
+        if (changed) {
+            self.wait = switch (self.wait_type) {
+                0 => .{ .constant = .{} },
+                1 => .{ .poisson = .{} },
+                2 => .{ .weibull = .{} },
+                else => unreachable,
+            };
+            std.debug.print("{}\n", .{SpawnerWait.Constant{}});
+        }
+
+        // wait inputs depending on the wait type
+        switch (self.wait) {
+            .constant => |*constant| {
+                setNextItemWidth(node_width);
+                _ = z.inputFloat("wait##constant", .{ .v = &constant.lambda });
+            },
+            .poisson => |*poisson| {
+                setNextItemWidth(node_width);
+                _ = z.inputFloat("lambda", .{ .v = &poisson.lambda });
+            },
+            .weibull => |*weibull| {
+                setNextItemWidth(node_width);
+                _ = z.sliderFloat("k", .{ .min = 1.0, .max = 10, .v = &weibull.k });
+                setNextItemWidth(node_width);
+                _ = z.sliderFloat("lambda", .{ .min = 0.1, .max = 8, .v = &weibull.lambda });
+
+                setNextItemWidth(node_width);
+                z.textSl("plot", .{});
+                _ = z.checkbox("##weibull-plot", .{ .v = &weibull.show_plot });
+                if (weibull.show_plot) {
+                    if (implot.beginPlot("Distribution", 0.0, 0.0, implot.Flags.none)) {
+                        defer implot.endPlot();
+
+                        // construct weibull PDF graph from pairs of xs and ys
+                        const max_x: f32 = 10.0;
+                        var max_y: ?f32 = null;
+                        const n: comptime_int = 1000;
+                        var xs: [n]f32 = undefined;
+                        for (0..n) |i| {
+                            xs[i] = @as(f32, @floatFromInt(i)) * (1.0 / @as(f32, @floatFromInt(n)) * 10.0);
+                        }
+                        var ys: [n]f32 = undefined;
+                        for (0..n) |i| {
+                            ys[i] = weibull.pdf(xs[i]);
+                            // if height is higher than max height, update it
+                            if (max_y == null or ys[i] > max_y.?) {
+                                max_y = ys[i];
+                            }
+                        }
+
+                        // plot
+                        std.debug.print("{?}\n", .{max_y});
+                        implot.setupAxisLimits(.X1, 0.0, max_x, .Always);
+                        implot.setupAxisLimits(.Y1, 0.0, max_y.?, .Always);
+                        implot.plotLine(f32, "##weibull-dist-graph", &xs, &ys, .{});
+                    }
+                }
+            },
+        }
 
         // has limit checkbox
         z.textSl("limit", .{});
@@ -418,8 +524,15 @@ pub const SpawnerNode = struct {
     ) !void {
         if (self.has_limit and env.agents.len() >= self.limit) return;
 
+        if (self.inter == null) {
+            self.inter = switch (self.wait) {
+                // getInter returns interarrival time in MINUTES
+                inline else => |w| w.getInter(),
+            };
+        }
+
         const time: f64 = commons.getTimeMillis();
-        if (time - self.last_spawn >= @as(f64, @floatFromInt(self.wait))) {
+        if (time - self.last_spawn >= self.inter.? * std.time.ms_per_min) {
             const pos: rl.Vector2 = env.entities.getByUUID(self.getSpawnerUUID()).kind.spawner.getRandomSpawnPos();
 
             const a = try Agent.init(
@@ -431,8 +544,11 @@ pub const SpawnerNode = struct {
             );
             try env.agents.append(a);
 
-            // reset last spawn
+            // reset timer and get next interarrival time
             self.last_spawn = commons.getTimeMillis();
+            self.inter = switch (self.wait) {
+                inline else => |w| w.getInter(),
+            };
         }
     }
 };
@@ -538,7 +654,7 @@ pub const AreaNode = struct {
         switch (self.wait) {
             .constant => |*constant| {
                 setNextItemWidth(node_width);
-                _ = z.inputInt("wait", .{ .v = &constant.wait });
+                _ = z.inputInt("p/m", .{ .v = &constant.wait });
             },
             .uniform => |*uniform| {
                 setNextItemWidth(node_width);
