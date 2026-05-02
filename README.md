@@ -13,13 +13,15 @@ To view the paper we have written on this subject: [overleaf link](https://www.o
 _AnyLogic_ (specifically the _Pedestrian Library_) is the only software I have used for an extended period of time, so that is the one I can talk about.
 * The software is quite expressive, but setting up the simplest of things takes you through unintuitive mental hoops.
 * The program (and the additional code you write) is in `Java` ☠️. This makes the simulation slower than a simulation written in a compiled language where the memory is manully managed (e.g. `zig`).
-* The software looks very old and some operations are feel very janky to perform, such as configuring a custom agent profile and importing a database for arrival schedules (which broke at least 4 times when I was trying to import it).
+* The software looks very old and some operations are feel very janky to perform, such as configuring a custom agent profile and importing a database for arrival schedules (which broke at least 4 times when I was trying to import my dataset).
 
 ## Defining features
 - [x] Social force model for pedestrians based on [the works](https://www.researchgate.net/publication/1947096_Social_Force_Model_for_Pedestrian_Dynamics) of _Helbing et al_.
-Simulations don't usually tell you the underlying physics model their agents. This project uses the above model with variable parameters.
+Simulations don't usually tell you the underlying physics model their agents. This project uses the above model with variable parameters you can vary in the editor.
 
 - [ ] No-code system: as powerful scripting may be, the absolute last thing I wish upon my worst enemy is inspecting the implementation of a certain _AnyLogic_ `Node` class to find its size and find the correct method to call to change its position, just for it not to work in the end anyway.
+
+> If the blueprint system isn't expressive enough that it requires scripting, then is it even a blueprint system?
 
 - [ ] Built with optimization in mind: optimizing certain parameters of your simulation should not feel like coal mining with the source code - it should be built into the simulation software. _AnyLogic_ for example has decent support for optimization of _variables_, but it has a hard time modifying the location and dimensions of, for example, a waiting area.
 
