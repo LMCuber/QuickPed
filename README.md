@@ -43,10 +43,10 @@ this is the eventual reason we do agent based modeling. This should therefore ve
 In _AnyLogic_, pedestrians can get stuck behind corners and cause severe congestions, since they follow the shortest path in a straight line. This can be fixed by using direction objects, but this just makes it more indirect for the user and adds complexity for no reason.
 
 ## Won't haves
-- _**Any type of scripting support**_<br>
-The project should maximize development time and ease of use. I might implement it later when I see that the base nodes in the editor aren't enough to express complex interactions that are complex enough.
-- _**Others means of agent based simulation**_<br>
-This refers to other businesses, such as transport systems and factory pipelines. Those are currently way beyond the scope of the project.
+- Any type of scripting support:
+the project should maximize development time and ease of use. I might implement it later when I see that the base nodes in the editor aren't enough to express complex interactions that are complex enough.
+- Others means of agent based simulation:
+this refers to other businesses, such as transport systems and factory pipelines. Those are currently way beyond the scope of the project.
 
 > Jack of all trades, master of none, often better than a master of one, until the simulation software doesn't support revolving doors so you have to tell the the architects to scrap that idea.
 
