@@ -29,14 +29,14 @@ Simulations don't usually tell you the underlying physics model their agents. Th
 * _Poisson_ processes where the interarrival times are exponentially distributed, e.g. $f(x) = \lambda e^{-\lambda x}$
 * Distributed according to a similar distribution with a different shape, e.g. the _Weibull_ distribution: $f(x) = \frac{k}{\lambda} \left(\frac{x}{\lambda}\right)^{k-1} \exp\left(-\left(\frac{x}{\lambda}\right)^k\right)$
 
-While the former one is widely supported, the latter one is mostly underrepresented, all the while being very common in establishments such as airports and movie theaters, where the arrival pattern of pedestrians are determined by a schedule, rather than being distributed in a "flat" fashion without huge peaks (such as a carnival or a shop).
+While the former one is widely supported, the latter one is mostly underrepresented, all the while being very common in establishments such as airports and movie theaters, where the arrival pattern of pedestrians are determined by a schedule, rather than being distributed in a "flat" fashion without huge peaks (such as a carnival or a shop). (Of course, airports have so many flights departing at (nearly) the same time such that the sum of all arrivals per gate can be approximated to be uniformly distributed. But for smaller establishments such as movie theaters, there are defined peaks and valleys.)
 
-- [ ] Statistics
-Statistics is the eventual reason we do agent based modeling. This should therefore very easily accessible, and the data should be easily extractable to be used for further analysis. Examples:
+- [ ] Statistics:
+this is the eventual reason we do agent based modeling. This should therefore very easily accessible, and the data should be easily extractable to be used for further analysis. Examples:
     - [ ] Showing the percentage of waiting pedestrians per waiting area/queue
     - [ ] Heatmap showing bottlenecks during simulation
 
-- [ ] Quadtree for collisions
+- [ ] Quadtree for collisions:
     _AnyLogic_ can become quite slow when simulating a lot of entities. _FlexSim_ uses a similar approach (_BVH_'s). Since there can easily be tens of thousands of people in a single point in time in an airport, optimization measures should not be thought of lightly.
 
 - [ ] Pathfinding for the pedestrians:
