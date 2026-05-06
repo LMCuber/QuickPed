@@ -21,7 +21,7 @@ pub const Time = struct {
         return a.min > b.min;
     }
 
-    pub fn render(self: *@This(), i: i32) !bool {
+    pub fn render(self: *@This(), alloc: std.mem.Allocator, i: i32) !bool {
         // init
         var delete: bool = false;
         const w = 120;
@@ -38,7 +38,7 @@ pub const Time = struct {
 
         // delimiter
         z.sameLine(.{});
-        z.text(":", .{});
+        try z.text(alloc, ":", .{});
         z.sameLine(.{});
         z.setNextItemWidth(w);
 
@@ -70,10 +70,8 @@ const Snapshot = struct {
 start_time: Time = Time.init(9, 0),
 times: std.ArrayList(Time),
 
-pub fn init(alloc: std.mem.Allocator) Self {
-    return .{
-        .times = std.ArrayList(Time).init(alloc),
-    };
+pub fn init() Self {
+    return .{ .times = .empty };
 }
 
 pub fn getSnapshot(self: Self) Snapshot {
@@ -83,26 +81,12 @@ pub fn getSnapshot(self: Self) Snapshot {
     };
 }
 
-pub fn saveToFile(self: Self, alloc: std.mem.Allocator, path: []const u8) !void {
-    var buf = std.ArrayList(u8).init(alloc);
-    defer buf.deinit();
-
-    try std.json.stringify(self.getSnapshot(), .{
-        .whitespace = .indent_2,
-    }, buf.writer());
-
-    // create file it it doesn't exist
-    const file = try std.fs.cwd().createFile(path, .{ .truncate = true });
-    defer file.close();
-    try file.writeAll(buf.items);
-}
-
-pub fn loadFromFile(alloc: std.mem.Allocator, path: []const u8) !Self {
-    const json = try commons.readFile(alloc, path);
+pub fn loadFromFile(alloc: std.mem.Allocator, io: std.Io, path: []const u8) !Self {
+    const json = try commons.readFile(alloc, io, path);
     defer alloc.free(json);
 
     // if there is nothing in the file, return
-    if (json.len == 0) return Self.init(alloc);
+    if (json.len == 0) return Self.init();
 
     // get parsed AgentData struct
     const parsed = try std.json.parseFromSlice(
@@ -114,35 +98,33 @@ pub fn loadFromFile(alloc: std.mem.Allocator, path: []const u8) !Self {
     defer parsed.deinit();
 
     // construct schedule from snapshot
-    var self = Self.init(alloc);
-    var times = std.ArrayList(Time).init(alloc);
-    for (parsed.value.times) |time| {
-        try times.append(time);
-    }
+    var self = Self.init();
+    var times: std.ArrayList(Time) = .empty;
+    for (parsed.value.times) |time| try times.append(alloc, time);
     self.times = times;
     return self;
 }
 
-pub fn deinit(self: *Self) void {
-    self.times.deinit();
+pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
+    self.times.deinit(alloc);
 }
 
 pub fn sortTimes(self: *Self) !void {
     std.mem.sort(Time, self.times.items, {}, Time.compareFn);
 }
 
-pub fn updateUi(self: *Self) !void {
+pub fn updateUi(self: *Self, alloc: std.mem.Allocator) !void {
     if (z.collapsingHeader("Schedule", .{ .default_open = false })) {
         // start hour
-        z.text("start time:", .{});
-        _ = try self.start_time.render(-1);
+        try z.text(alloc, "start time:", .{});
+        _ = try self.start_time.render(alloc, -1);
 
         // all current times
         z.newLine();
         var i = self.times.items.len;
         while (i > 0) {
             i -= 1;
-            if (try self.times.items[i].render(@intCast(i))) {
+            if (try self.times.items[i].render(alloc, @intCast(i))) {
                 _ = self.times.orderedRemove(i);
             }
         }
@@ -151,10 +133,10 @@ pub fn updateUi(self: *Self) !void {
         if (self.times.items.len > 0) z.newLine();
         if (z.button("+", .{ .w = 80 })) {
             if (self.times.items.len == 0) {
-                try self.times.insert(0, Time.init(10, 0));
+                try self.times.insert(alloc, 0, Time.init(10, 0));
             } else {
                 const last_item = self.times.items[self.times.items.len - 1];
-                try self.times.insert(0, last_item);
+                try self.times.insert(alloc, 0, last_item);
             }
         }
         z.sameLine(.{});

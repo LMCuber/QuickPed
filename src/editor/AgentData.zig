@@ -27,7 +27,7 @@ pub fn init() Self {
     return .{};
 }
 
-pub fn updateUi(self: *Self, agents: *Environment.AgentManager) !void {
+pub fn updateUi(self: *Self, alloc: std.mem.Allocator, agents: *Environment.AgentManager) !void {
     if (z.collapsingHeader("Agent", .{ .default_open = false })) {
         if (z.button("delete", .{})) {
             for (0..@intCast(self.num_to_place)) |i| {
@@ -39,70 +39,69 @@ pub fn updateUi(self: *Self, agents: *Environment.AgentManager) !void {
 
         _ = z.sliderFloat("##agent-speed", .{ .v = &self.speed, .min = 0.3, .max = 3.0 });
         z.sameLine(.{});
-        _ = z.text("speed", .{});
+        try z.text(alloc, "speed", .{});
         if (z.isItemHovered(.{})) {
             _ = z.beginTooltip();
             defer z.endTooltip();
-            _ = z.text("Agent speed in m/s", .{});
+            try z.text(alloc, "Agent speed in m/s", .{});
         }
 
         _ = z.sliderFloat("##tau", .{ .v = &self.relaxation, .min = 1, .max = 30 });
         z.sameLine(.{});
-        _ = z.text("tau", .{});
+        try z.text(alloc, "tau", .{});
         if (z.isItemHovered(.{})) {
             _ = z.beginTooltip();
             defer z.endTooltip();
-            _ = z.text("Relaxation time: how fast the agents adjust to their desired force of movement", .{});
+            try z.text(alloc, "Relaxation time: how fast the agents adjust to their desired force of movement", .{});
         }
 
         _ = z.sliderFloat("##radius", .{ .v = &self.radius, .min = 0.1, .max = 1.0 });
         z.sameLine(.{});
-        _ = z.text("radius", .{});
+        try z.text(alloc, "radius", .{});
         if (z.isItemHovered(.{})) {
             _ = z.beginTooltip();
             defer z.endTooltip();
-            _ = z.text("Radius of the agents in pixels", .{});
+            try z.text(alloc, "Radius of the agents in pixels", .{});
         }
 
         _ = z.sliderFloat("##a_ped", .{ .v = &self.a_ped, .min = 0.01, .max = 0.2 });
         z.sameLine(.{});
-        _ = z.text("A_ped", .{});
+        try z.text(alloc, "A_ped", .{});
         if (z.isItemHovered(.{})) {
             _ = z.beginTooltip();
             defer z.endTooltip();
-            _ = z.text("Repulsive force: how badly the agents want to stay away from each other", .{});
+            try z.text(alloc, "Repulsive force: how badly the agents want to stay away from each other", .{});
         }
 
         _ = z.sliderFloat("##b_ped", .{ .v = &self.b_ped, .min = 1, .max = 10 });
         z.sameLine(.{});
-        _ = z.text("B_ped", .{});
+        try z.text(alloc, "B_ped", .{});
         if (z.isItemHovered(.{})) {
             _ = z.beginTooltip();
             defer z.endTooltip();
-            _ = z.text("The distance the agents want to keep from each other", .{});
+            try z.text(alloc, "The distance the agents want to keep from each other", .{});
         }
 
         _ = z.sliderFloat("##a_ob", .{ .v = &self.a_ob, .min = 0.1, .max = 4 });
         z.sameLine(.{});
-        _ = z.text("A_ob", .{});
+        try z.text(alloc, "A_ob", .{});
         if (z.isItemHovered(.{})) {
             _ = z.beginTooltip();
             defer z.endTooltip();
-            _ = z.text("Repulsive force: how badly the agents want to stay away from the obstacles", .{});
+            try z.text(alloc, "Repulsive force: how badly the agents want to stay away from the obstacles", .{});
         }
 
         _ = z.sliderFloat("##b_ob", .{ .v = &self.b_ob, .min = 0.1, .max = 10 });
         z.sameLine(.{});
-        _ = z.text("B_ob", .{});
+        try z.text(alloc, "B_ob", .{});
         if (z.isItemHovered(.{})) {
             _ = z.beginTooltip();
             defer z.endTooltip();
-            _ = z.text("The distance the agents want to keep from the obstacles", .{});
+            try z.text(alloc, "The distance the agents want to keep from the obstacles", .{});
         }
 
-        if (z.button("reset", .{})) {
+        if (z.button("reset", .{}))
             self.* = default_data;
-        }
 
         _ = z.checkbox("show vectors", .{ .v = &self.show_vectors });
         _ = z.checkbox("show targets", .{ .v = &self.show_targets });
@@ -110,8 +109,8 @@ pub fn updateUi(self: *Self, agents: *Environment.AgentManager) !void {
     }
 }
 
-pub fn loadFromFile(alloc: std.mem.Allocator, path: []const u8) !Self {
-    const json = try commons.readFile(alloc, path);
+pub fn loadFromFile(alloc: std.mem.Allocator, io: std.Io, path: []const u8) !Self {
+    const json = try commons.readFile(alloc, io, path);
     defer alloc.free(json);
 
     // if there is nothing in the file, return
@@ -128,18 +127,4 @@ pub fn loadFromFile(alloc: std.mem.Allocator, path: []const u8) !Self {
     );
     defer parsed.deinit();
     return parsed.value;
-}
-
-pub fn saveToFile(self: Self, alloc: std.mem.Allocator, path: []const u8) !void {
-    var buf = std.ArrayList(u8).init(alloc);
-    defer buf.deinit();
-
-    try std.json.stringify(self, .{
-        .whitespace = .indent_2,
-    }, buf.writer());
-
-    // create file it it doesn't exist
-    const file = try std.fs.cwd().createFile(path, .{ .truncate = true });
-    defer file.close();
-    try file.writeAll(buf.items);
 }

@@ -91,21 +91,30 @@ pub fn roundMousePos(sim_data: SimData) rl.Vector2 {
 //
 // AI CODE
 //
-pub fn readFile(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
-    const file = std.fs.cwd().openFile(path, .{}) catch |err| {
-        if (err == error.FileNotFound) {
-            // create empty file
-            const new_file = try std.fs.cwd().createFile(path, .{});
-            new_file.close();
-            return try allocator.dupe(u8, "");
-        }
-        return err;
+pub fn readFile(alloc: std.mem.Allocator, io: std.Io, path: []const u8) ![]u8 {
+    return std.Io.Dir.cwd().readFileAlloc(io, path, alloc, .unlimited) catch |err| switch (err) {
+        error.FileNotFound => {
+            const file = try std.Io.Dir.cwd().createFile(io, path, .{});
+            file.close(io);
+            return try alloc.dupe(u8, "");
+        },
+        else => err,
     };
-    defer file.close();
-    return try file.readToEndAlloc(
-        allocator,
-        std.math.maxInt(usize),
-    );
+}
+
+/// Formats an object to JSON and writes it to `path`
+pub fn writeFile(alloc: std.mem.Allocator, io: std.Io, obj: anytype, path: []const u8) !void {
+    var allocating = std.Io.Writer.Allocating.init(alloc);
+    defer allocating.deinit();
+
+    const formatter = std.json.fmt(obj, .{});
+    try formatter.format(&allocating.writer);
+
+    // create file it it doesn't exist
+    const file = try std.Io.Dir.cwd().createFile(io, path, .{ .truncate = true });
+    defer file.close(io);
+
+    try file.writeStreamingAll(io, allocating.written());
 }
 
 pub fn rand01() f32 {

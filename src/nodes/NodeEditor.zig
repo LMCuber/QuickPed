@@ -33,12 +33,18 @@ pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
     self.graph.deinit(allocator);
 }
 
-pub fn saveNodes(self: *Self, alloc: std.mem.Allocator, path: []const u8) !void {
-    try self.graph.saveNodes(alloc, path);
+pub fn saveNodes(self: *Self, alloc: std.mem.Allocator, io: std.Io, path: []const u8) !void {
+    try self.graph.saveNodes(alloc, io, path);
 }
 
-pub fn loadNodes(self: *Self, alloc: std.mem.Allocator, path: []const u8, env: *Environment) !void {
-    try self.graph.loadNodes(alloc, path, env);
+pub fn loadNodes(
+    self: *Self,
+    alloc: std.mem.Allocator,
+    io: std.Io,
+    path: []const u8,
+    env: *Environment,
+) !void {
+    try self.graph.loadNodes(alloc, io, path, env);
 }
 
 pub fn update(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
@@ -51,7 +57,7 @@ pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment)
 
 pub fn render(
     self: *Self,
-    allocator: std.mem.Allocator,
+    alloc: std.mem.Allocator,
     settings: Settings,
     env: *Environment,
 ) !void {
@@ -65,30 +71,30 @@ pub fn render(
         self.active = true;
 
         // tutorial
-        if (rl.isKeyReleased(.key_i)) {
+        if (rl.isKeyReleased(.i)) {
             self.showing_keybinds = !self.showing_keybinds;
         }
         if (self.showing_keybinds) {
-            z.text("[a] to add node", .{});
-            z.text("[d] to delete node", .{});
-            z.text("[c] to recenter", .{});
-            z.text("double click to delete link", .{});
+            try z.text(alloc, "[a] to add node", .{});
+            try z.text(alloc, "[d] to delete node", .{});
+            try z.text(alloc, "[c] to recenter", .{});
+            try z.text(alloc, "double click to delete link", .{});
             z.newLine();
-            z.text("[i] to hide keybinds", .{});
+            try z.text(alloc, "[i] to hide keybinds", .{});
         } else {
-            z.text("[i] to show keybinds", .{});
+            try z.text(alloc, "[i] to show keybinds", .{});
         }
 
         imnodes.ez.beginCanvas();
         defer imnodes.ez.endCanvas();
 
         // user centers the editor
-        if (rl.isKeyReleased(.key_c) and !z.isAnyItemHovered()) {
+        if (rl.isKeyReleased(.c) and !z.isAnyItemHovered()) {
             imnodes.setOffset(imnodes.ez.getState(), .{ .x = 0, .y = 0 });
         }
 
         // user adds new nodes
-        const wants_add: bool = rl.isKeyReleased(.key_a) or rl.isMouseButtonDown(.mouse_button_right);
+        const wants_add: bool = rl.isKeyReleased(.a) or rl.isMouseButtonDown(.right);
         if (wants_add and !z.isAnyItemHovered()) {
             z.openPopup("edit", .{});
         }
@@ -98,40 +104,29 @@ pub fn render(
                 defer z.endMenu();
 
                 if (z.menuItem("Spawner", .{ .enabled = commons.existsAnyObject(env, .spawner) })) {
-                    try self.graph.addNode(node.Node.initSpawner(
-                        env,
-                        .{ .constant = .{} },
-                    ));
+                    try self.graph.addNode(alloc, node.Node.initSpawner(env, .{ .constant = .{} }));
                 }
 
                 if (z.menuItem("Area", .{ .enabled = commons.existsAnyObject(env, .area) })) {
-                    try self.graph.addNode(node.Node.initArea(
-                        env,
-                        .{ .constant = .{} },
-                    ));
+                    try self.graph.addNode(alloc, node.Node.initArea(env, .{ .constant = .{} }));
                 }
 
                 if (z.menuItem("Queue", .{ .enabled = commons.existsAnyObject(env, .queue) })) {
-                    try self.graph.addNode(node.Node.initQueue(
-                        env,
-                        .{ .constant = .{
-                            .wait = 1000,
-                        } },
-                    ));
+                    try self.graph.addNode(alloc, node.Node.initQueue(env, .{ .constant = .{ .wait = 1000 } }));
                 }
 
                 if (z.menuItem("Queue Fork", .{})) {
-                    try self.graph.addNode(node.Node.initQueueFork());
+                    try self.graph.addNode(alloc, node.Node.initQueueFork());
                 }
 
                 // fork node
                 if (z.menuItem("Fork", .{})) {
-                    try self.graph.addNode(node.Node.initFork());
+                    try self.graph.addNode(alloc, node.Node.initFork());
                 }
 
                 // sink node
                 if (z.menuItem("Sink", .{})) {
-                    try self.graph.addNode(node.Node.initSink());
+                    try self.graph.addNode(alloc, node.Node.initSink());
                 }
 
                 // less frequently used environmental objects
@@ -139,7 +134,7 @@ pub fn render(
                     defer z.endMenu();
 
                     if (z.menuItem("Portal", .{ .enabled = commons.existsAnyObject(env, .portal) })) {
-                        try self.graph.addNode(node.Node.initPortal(env));
+                        try self.graph.addNode(alloc, node.Node.initPortal(env));
                     }
                 }
             }
@@ -155,18 +150,15 @@ pub fn render(
 
             for (self.graph.nodes.items()) |*n| {
                 const node_state = n.update();
-                if (node_state == .selected) {
+                if (node_state == .selected)
                     selected_node_id = n.uuid;
-                }
-                n.draw();
+                try n.draw(alloc);
             }
         }
 
         // user wants to delete the currently selected node
         if (selected_node_id) |node_id| {
-            if (rl.isKeyReleased(.key_d)) {
-                try self.graph.deleteNode(allocator, node_id);
-            }
+            if (rl.isKeyReleased(.d)) try self.graph.deleteNode(alloc, node_id);
         }
 
         // create new conns by passing an empty dummy connections struct to be populated with values
@@ -185,18 +177,18 @@ pub fn render(
 
             // construct the in- and output the slots involved (see composite key)
             const input_slot: node.Slot = try node.Slot.init(
-                allocator,
+                alloc,
                 input_node_id,
                 new_conn.input_slot_title,
             );
             const output_slot: node.Slot = try node.Slot.init(
-                allocator,
+                alloc,
                 output_node_id,
                 new_conn.output_slot_title,
             );
 
             // create new connection
-            try self.graph.addConnection(output_slot, input_slot);
+            try self.graph.addConnection(alloc, output_slot, input_slot);
         }
 
         // render existing connections
@@ -218,7 +210,7 @@ pub fn render(
                     conn.output_slot.title,
                 );
                 if (double_clicked) {
-                    conn.deinit(allocator);
+                    conn.deinit(alloc);
                     _ = self.graph.connections.swapRemove(i);
                 }
             }

@@ -88,11 +88,12 @@ pub const Entity = struct {
         sim_data: SimData,
         settings: Settings,
     ) !EntityAction {
-        switch (self.kind) {
-            .revolver => |*r| return r.update(dt, sim_data, settings),
-            .queue => |*r| return r.update(alloc, dt, agent_data, sim_data, settings),
-            inline else => |*kind| return kind.update(sim_data, settings),
-        }
+        return switch (self.kind) {
+            .revolver => |*r| r.update(dt, sim_data, settings),
+            .queue => |*r| r.update(alloc, dt, agent_data, sim_data, settings),
+            inline .contour, .area => |*kind| kind.update(alloc, sim_data, settings),
+            inline else => |*kind| kind.update(sim_data, settings),
+        };
     }
 
     pub fn setName(self: *Entity, alloc: std.mem.Allocator, new_name: [:0]const u8) !void {
@@ -100,84 +101,32 @@ pub const Entity = struct {
         self.name = try alloc.dupeZ(u8, new_name);
     }
 
-    pub fn initContour(allocator: std.mem.Allocator, id: usize) !Entity {
-        const contour = try Contour.init(allocator);
-        const name = try std.fmt.allocPrintZ(allocator, "Contour{}", .{id});
+    pub fn init(
+        comptime K: std.meta.Tag(Entity.Kind),
+        alloc: std.mem.Allocator,
+        id: usize,
+    ) !Entity {
+        const T = switch (K) {
+            .contour => Contour,
+            .spawner => Spawner,
+            .area => Area,
+            .revolver => Revolver,
+            .queue => Queue,
+            .portal => Portal,
+        };
+        const entity = T.init();
+        const name = try std.fmt.allocPrintSentinel(alloc, "{s}{}", .{ @typeName(T), id }, 0);
         return .{
             .uuid = UUID.init(),
             .name = name,
-            .kind = .{
-                .contour = contour,
-            },
+            .kind = @unionInit(Entity.Kind, @tagName(K), entity),
         };
     }
 
-    pub fn initSpawner(allocator: std.mem.Allocator, id: usize) !Entity {
-        const spawner = Spawner.init();
-        const name = try std.fmt.allocPrintZ(allocator, "Spawner{}", .{id});
-        return .{
-            .uuid = UUID.init(),
-            .name = name,
-            .kind = .{
-                .spawner = spawner,
-            },
-        };
-    }
-
-    pub fn initArea(allocator: std.mem.Allocator, id: usize) !Entity {
-        const area = Area.init();
-        const name = try std.fmt.allocPrintZ(allocator, "Area{}", .{id});
-        return .{
-            .uuid = UUID.init(),
-            .name = name,
-            .kind = .{
-                .area = area,
-            },
-        };
-    }
-
-    pub fn initRevolver(allocator: std.mem.Allocator, id: usize) !Entity {
-        const revolver = Revolver.init();
-        const name = try std.fmt.allocPrintZ(allocator, "Revolver{}", .{id});
-        return .{
-            .uuid = UUID.init(),
-            .name = name,
-            .kind = .{
-                .revolver = revolver,
-            },
-        };
-    }
-
-    pub fn initQueue(allocator: std.mem.Allocator, id: usize) !Entity {
-        const queue = try Queue.init(allocator);
-        const name = try std.fmt.allocPrintZ(allocator, "Queue{}", .{id});
-        return .{
-            .uuid = UUID.init(),
-            .name = name,
-            .kind = .{
-                .queue = queue,
-            },
-        };
-    }
-
-    pub fn initPortal(allocator: std.mem.Allocator, id: usize) !Entity {
-        const portal = Portal.init();
-        const name = try std.fmt.allocPrintZ(allocator, "Portal{}", .{id});
-        return .{
-            .uuid = UUID.init(),
-            .name = name,
-            .kind = .{
-                .portal = portal,
-            },
-        };
-    }
-
-    pub fn deinit(self: *Entity, allocator: std.mem.Allocator) void {
-        allocator.free(self.name);
+    pub fn deinit(self: *Entity, alloc: std.mem.Allocator) void {
+        alloc.free(self.name);
         switch (self.kind) {
-            .contour => |*c| c.deinit(),
-            .queue => |*q| q.deinit(),
-            .area => |*a| a.deinit(),
+            inline .contour, .queue, .area => |*kind| kind.deinit(alloc),
             else => {},
         }
     }
@@ -233,19 +182,20 @@ pub const Entity = struct {
         switch (self.kind) {
             .contour => {},
             .queue => |*q| try q.confirm(alloc, sim_data, agent_data),
+            .revolver => |*k| try k.confirm(alloc),
             inline else => |*k| k.confirm(),
         }
     }
 
-    pub fn edit(self: *Entity) !void {
+    pub fn edit(self: *Entity, alloc: std.mem.Allocator) !void {
         // all entities
         z.separatorText(self.name);
 
         // specialization
         switch (self.kind) {
             .contour => {},
-            .area => |*a| try a.edit(),
-            inline else => |*k| k.edit(),
+            inline .spawner, .queue, .portal => |*kind| kind.edit(),
+            inline else => |*kind| try kind.edit(alloc),
         }
     }
 };

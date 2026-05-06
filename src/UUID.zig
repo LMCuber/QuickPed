@@ -9,8 +9,11 @@ pub const UUIDSnapshot = struct {
 
 pub fn init() Self {
     // UUIDv4
+    var prng = std.Random.DefaultPrng.init(0);
+    const rand = prng.random();
+
     var bytes: [16]u8 = undefined;
-    std.crypto.random.bytes(&bytes);
+    rand.bytes(&bytes);
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
     return .{ .bytes = bytes };

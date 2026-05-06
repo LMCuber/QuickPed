@@ -105,9 +105,10 @@ pub const Node = struct {
         return .none;
     }
 
-    pub fn draw(self: *Node) void {
+    pub fn draw(self: *Node, alloc: std.mem.Allocator) !void {
         switch (self.kind) {
-            inline else => |*n| n.draw(self),
+            .spawner => |*n| try n.draw(alloc, self),
+            inline else => |*kind| kind.draw(self),
         }
     }
 
@@ -402,7 +403,7 @@ pub const SpawnerNode = struct {
         return self.env.spawners.items[@as(usize, @intCast(self.spawner_index))];
     }
 
-    pub fn draw(self: *SpawnerNode, parent: *Node) void {
+    pub fn draw(self: *SpawnerNode, alloc: std.mem.Allocator, parent: *Node) !void {
         // style setup
         const node_width: f32 = 160;
         imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.green));
@@ -469,7 +470,7 @@ pub const SpawnerNode = struct {
                 _ = z.sliderFloat("lambda", .{ .min = 0.1, .max = 8, .v = &weibull.lambda });
 
                 setNextItemWidth(node_width);
-                z.textSl("plot", .{});
+                try z.textSl(alloc, "plot", .{});
                 _ = z.checkbox("##weibull-plot", .{ .v = &weibull.show_plot });
                 if (weibull.show_plot) {
                     if (implot.beginPlot("Distribution", 0.0, 0.0, implot.Flags.none)) {
@@ -503,7 +504,7 @@ pub const SpawnerNode = struct {
         }
 
         // has limit checkbox
-        z.textSl("limit", .{});
+        try z.textSl(alloc, "limit", .{});
         _ = z.checkbox("##has-limit-checkbox", .{ .v = &self.has_limit });
         z.sameLine(.{});
         if (self.has_limit) {
@@ -542,7 +543,7 @@ pub const SpawnerNode = struct {
                 graph,
                 env,
             );
-            try env.agents.append(a);
+            try env.agents.append(alloc, a);
 
             // reset timer and get next interarrival time
             self.last_spawn = commons.getTimeMillis();
@@ -1027,8 +1028,8 @@ pub const QueueForkNode = struct {
         nodes: *Graph.NodeManager,
         conns: *std.ArrayList(Connection),
     ) !?UUID {
-        var queue_nodes = std.ArrayList(UUID).init(alloc);
-        defer queue_nodes.deinit();
+        var queue_nodes: std.ArrayList(UUID) = .empty;
+        defer queue_nodes.deinit(alloc);
 
         // find connection whose output slot is same as current node's output slot
         // and save
@@ -1036,11 +1037,8 @@ pub const QueueForkNode = struct {
             // must also be a queue first
             const connected_node: *Node = nodes.getByUUID(conn.input_slot.node_id);
             switch (connected_node.kind) {
-                .queue => {
-                    if (output_slot.equals(conn.output_slot)) {
-                        try queue_nodes.append(conn.input_slot.node_id);
-                    }
-                },
+                .queue => if (output_slot.equals(conn.output_slot))
+                    try queue_nodes.append(alloc, conn.input_slot.node_id),
                 else => continue,
             }
         }

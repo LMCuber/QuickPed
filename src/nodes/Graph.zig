@@ -26,22 +26,20 @@ pub fn init(allocator: std.mem.Allocator) Self {
     return .{
         .allocator = allocator,
         .nodes = Manager(node.Node).init(allocator),
-        .connections = std.ArrayList(node.Connection).init(allocator),
+        .connections = .empty,
     };
 }
 
-pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
-    for (self.connections.items) |*conn| {
-        conn.deinit(allocator);
-    }
-    self.connections.deinit();
-    self.nodes.deinit();
+pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
+    for (self.connections.items) |*conn| conn.deinit(alloc);
+    self.connections.deinit(alloc);
+    self.nodes.deinit(alloc);
 }
 
-pub fn addNode(self: *Self, n: node.Node) !void {
+pub fn addNode(self: *Self, alloc: std.mem.Allocator, n: node.Node) !void {
     // creates node and positions it inside the canvas
     // ONLY CALL WHEN CANVAS EXISTS!
-    try self.nodes.append(n);
+    try self.nodes.append(alloc, n);
     imnodes.autoPositionNode(self.nodes.getByUUID(n.uuid));
 }
 
@@ -60,8 +58,13 @@ pub fn deleteNode(self: *Self, alloc: std.mem.Allocator, node_id: UUID) !void {
     try self.nodes.deleteByUUID(node_id);
 }
 
-pub fn addConnection(self: *Self, output_slot: node.Slot, input_slot: node.Slot) !void {
-    try self.connections.append(.{
+pub fn addConnection(
+    self: *Self,
+    alloc: std.mem.Allocator,
+    output_slot: node.Slot,
+    input_slot: node.Slot,
+) !void {
+    try self.connections.append(alloc, .{
         .output_slot = output_slot,
         .input_slot = input_slot,
     });
@@ -125,20 +128,18 @@ pub fn getNextNodeId(self: *Self, alloc: std.mem.Allocator, current_node_id: UUI
 
 pub fn saveNodes(
     self: *Self,
-    allocator: std.mem.Allocator,
+    alloc: std.mem.Allocator,
+    io: std.Io,
     path: []const u8,
 ) !void {
-    var conn_snaps = std.ArrayList(node.ConnectionSnapshot).init(allocator);
-    defer conn_snaps.deinit();
-    var node_snaps = std.ArrayList(node.NodeSnapshot).init(allocator);
-    defer node_snaps.deinit();
+    var conn_snaps: std.ArrayList(node.ConnectionSnapshot) = .empty;
+    defer conn_snaps.deinit(alloc);
 
-    for (self.nodes.items()) |*n| {
-        try node_snaps.append(n.getSnapshot());
-    }
-    for (self.connections.items) |conn| {
-        try conn_snaps.append(conn.getSnapshot());
-    }
+    var node_snaps: std.ArrayList(node.NodeSnapshot) = .empty;
+    defer node_snaps.deinit(alloc);
+
+    for (self.nodes.items()) |*n| try node_snaps.append(alloc, n.getSnapshot());
+    for (self.connections.items) |conn| try conn_snaps.append(alloc, conn.getSnapshot());
 
     const graph_snap: GraphSnapshot = .{
         .version = "0.1.0",
@@ -146,27 +147,19 @@ pub fn saveNodes(
         .connections = conn_snaps.items,
     };
 
-    // create buffer to write the snap data into as JSON
-    var buf = std.ArrayList(u8).init(allocator);
-    defer buf.deinit();
-
-    try std.json.stringify(graph_snap, .{ .whitespace = .indent_2 }, buf.writer());
-
-    // create file it it doesn't exist
-    const file = try std.fs.cwd().createFile(path, .{ .truncate = true });
-    defer file.close();
-    try file.writeAll(buf.items);
+    try commons.writeFile(alloc, io, graph_snap, path);
 }
 
 pub fn loadNodes(
     self: *Self,
-    allocator: std.mem.Allocator,
+    alloc: std.mem.Allocator,
+    io: std.Io,
     path: []const u8,
     env: *Environment,
 ) !void {
     // parse file into JSON
-    const json = try commons.readFile(allocator, path);
-    defer allocator.free(json);
+    const json = try commons.readFile(alloc, io, path);
+    defer alloc.free(json);
 
     // empty existing graph G = (V, E)
     self.nodes.clear();
@@ -180,7 +173,7 @@ pub fn loadNodes(
     // get parsed scene
     const parsed = try std.json.parseFromSlice(
         GraphSnapshot,
-        allocator,
+        alloc,
         json,
         .{},
     );
@@ -188,15 +181,10 @@ pub fn loadNodes(
     const graph: GraphSnapshot = parsed.value;
 
     // repopulate nodes and connections
-    for (graph.nodes) |node_snap| {
-        try self.nodes.append(node.Node.fromSnapshot(node_snap, env));
-    }
+    for (graph.nodes) |node_snap|
+        try self.nodes.append(alloc, node.Node.fromSnapshot(node_snap, env));
 
     // connect shit
-    for (graph.connections) |conn_snap| {
-        try self.connections.append(try node.Connection.fromSnapshot(
-            allocator,
-            conn_snap,
-        ));
-    }
+    for (graph.connections) |conn_snap|
+        try self.connections.append(alloc, try node.Connection.fromSnapshot(alloc, conn_snap));
 }

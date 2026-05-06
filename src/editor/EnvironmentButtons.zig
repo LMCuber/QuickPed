@@ -13,7 +13,7 @@ const palette = struct {
     const active: u32 = 0xFF613d1b;
 };
 
-pub fn contourButton(bs: f32) bool {
+pub fn contourButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const clicked = z.invisibleButton("##contour", .{ .w = bs, .h = bs });
 
     const min = z.getItemRectMin();
@@ -24,7 +24,7 @@ pub fn contourButton(bs: f32) bool {
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
-        z.text("contour", .{});
+        try z.text(alloc, "contour", .{});
         z.endTooltip();
     }
     const active = z.isItemActive();
@@ -70,7 +70,7 @@ pub fn contourButton(bs: f32) bool {
     return clicked;
 }
 
-pub fn spawnerButton(bs: f32) bool {
+pub fn spawnerButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const clicked = z.invisibleButton("##spawner", .{ .w = bs, .h = bs });
 
     const min = z.getItemRectMin();
@@ -81,7 +81,7 @@ pub fn spawnerButton(bs: f32) bool {
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
-        z.text("spawner", .{});
+        try z.text(alloc, "spawner", .{});
         z.endTooltip();
     }
     const active = z.isItemActive();
@@ -111,7 +111,7 @@ pub fn spawnerButton(bs: f32) bool {
     return clicked;
 }
 
-pub fn areaButton(bs: f32) bool {
+pub fn areaButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const clicked = z.invisibleButton("##area", .{ .w = bs, .h = bs });
 
     const min = z.getItemRectMin();
@@ -122,7 +122,7 @@ pub fn areaButton(bs: f32) bool {
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
-        z.text("area", .{});
+        try z.text(alloc, "area", .{});
         z.endTooltip();
     }
     const active = z.isItemActive();
@@ -156,7 +156,7 @@ pub fn areaButton(bs: f32) bool {
     return clicked;
 }
 
-pub fn revolverButton(bs: f32) bool {
+pub fn revolverButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const clicked = z.invisibleButton("##cross", .{ .w = bs, .h = bs });
 
     const min = z.getItemRectMin();
@@ -167,7 +167,7 @@ pub fn revolverButton(bs: f32) bool {
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
-        z.text("Revolver", .{});
+        try z.text(alloc, "Revolver", .{});
         z.endTooltip();
     }
     const active = z.isItemActive();
@@ -191,7 +191,7 @@ pub fn revolverButton(bs: f32) bool {
     return clicked;
 }
 
-pub fn portalButton(bs: f32) bool {
+pub fn portalButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const clicked = z.invisibleButton("##portal", .{ .w = bs, .h = bs });
     const min = z.getItemRectMin();
     const max = z.getItemRectMax();
@@ -199,7 +199,7 @@ pub fn portalButton(bs: f32) bool {
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
-        z.text("Portal", .{});
+        try z.text(alloc, "Portal", .{});
         z.endTooltip();
     }
     const active = z.isItemActive();
@@ -243,7 +243,7 @@ pub fn portalButton(bs: f32) bool {
     return clicked;
 }
 
-pub fn queueButton(bs: f32) bool {
+pub fn queueButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const clicked = z.invisibleButton("##queue", .{ .w = bs, .h = bs });
     const min = z.getItemRectMin();
     const max = z.getItemRectMax();
@@ -252,7 +252,7 @@ pub fn queueButton(bs: f32) bool {
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
-        z.text("Queue", .{});
+        try z.text(alloc, "Queue", .{});
         z.endTooltip();
     }
     const active = z.isItemActive();

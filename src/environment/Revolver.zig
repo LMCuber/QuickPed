@@ -54,37 +54,37 @@ pub fn update(self: *Self, dt: f32, sim_data: SimData, settings: Settings) !Enti
     }
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left)) {
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
             self.placed = true;
             return .confirm;
         }
         return .none;
     } else {
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left) and self.checkHover()) {
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left) and self.checkHover()) {
             return .selected;
         }
     }
     return .none;
 }
 
-pub fn confirm(self: *Self) void {
+pub fn confirm(self: *Self, alloc: std.mem.Allocator) !void {
     const w: f32 = 100;
     z.setNextItemWidth(w);
     _ = z.inputInt("length", .{ .v = &self.length });
     z.setNextItemWidth(w);
     _ = z.inputInt("##revolver-speed", .{ .v = &self.speed });
     z.sameLine(.{});
-    _ = z.text("speed", .{});
+    try z.text(alloc, "speed", .{});
     if (z.isItemHovered(.{})) {
         _ = z.beginTooltip();
         defer z.endTooltip();
-        _ = z.text("in degrees/second", .{});
+        try z.text(alloc, "in degrees/second", .{});
     }
     _ = z.checkbox("clockwise", .{ .v = &self.clockwise });
 }
 
-pub fn edit(self: *Self) void {
-    self.confirm();
+pub fn edit(self: *Self, alloc: std.mem.Allocator) !void {
+    try self.confirm(alloc);
 }
 
 pub fn getRotatedVector(self: Self, a: f32) rl.Vector2 {

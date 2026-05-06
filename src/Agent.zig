@@ -205,7 +205,7 @@ pub fn processCurrentNode(
 
                     // check if needs to release waiting spot
                     switch (a_obj.style) {
-                        .individual => |*data| try data.freeSeatIndex(area_payload.seat_index.?),
+                        .individual => |*data| try data.freeSeatIndex(alloc, area_payload.seat_index.?),
                         else => {},
                     }
 
@@ -343,6 +343,7 @@ fn calculateObstacleForce(
 
 fn calculateInteractiveForce(
     self: *Self,
+    alloc: std.mem.Allocator,
     env: *Environment,
     sim_data: SimData,
     agent_data: AgentData,
@@ -353,11 +354,11 @@ fn calculateInteractiveForce(
 
     // get all close agents to check collision with
     scratch_buf.clearRetainingCapacity();
-    try env.quadtree.query(self.pos, self.getAABB(agent_data, sim_data), scratch_buf);
+    try env.quadtree.query(alloc, self.pos, self.getAABB(agent_data, sim_data), scratch_buf);
 
     for (scratch_buf.items) |other_point| {
         check_count.* += 1;
-        if (other_point.equals(self.pos) != 0) continue;
+        if (other_point.equals(self.pos)) continue;
 
         const n = self.pos.subtract(other_point);
         const sum_radii: f32 = agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2.0;
@@ -394,7 +395,7 @@ pub fn update(
 ) !void {
     // get force components
     const drive_force = self.calculateDriveForce(sim_data, agent_data);
-    const interactive_force = try self.calculateInteractiveForce(env, sim_data, agent_data, check_count, scratch_buf);
+    const interactive_force = try self.calculateInteractiveForce(alloc, env, sim_data, agent_data, check_count, scratch_buf);
     const obstacle_force = self.calculateObstacleForce(env, sim_data, agent_data);
     self.acc = drive_force
         .add(interactive_force)

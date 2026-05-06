@@ -4,49 +4,52 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSafe });
 
-    const exe = b.addExecutable(.{
-        .name = "main",
+    const exe_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
+        .link_libcpp = true,
     });
-    exe.linkLibCpp();
+    const exe = b.addExecutable(.{
+        .name = "quickped",
+        .root_module = exe_mod,
+    });
 
-    const raylib_zig = b.dependency("raylib-zig", .{
+    const raylib_zig = b.dependency("raylib_zig", .{
         .target = target,
         .optimize = optimize,
     });
     const raylib = raylib_zig.module("raylib");
     const raylib_artifact = raylib_zig.artifact("raylib");
-    exe.linkLibrary(raylib_artifact);
-    exe.root_module.addImport("raylib", raylib);
+    exe_mod.linkLibrary(raylib_artifact);
+    exe_mod.addImport("raylib", raylib);
 
     const zgui = b.dependency("zgui", .{
         .shared = false,
         .with_implot = false,
         .backend = .no_backend,
     });
-    exe.root_module.addImport("zgui", zgui.module("root"));
-    exe.linkLibrary(zgui.artifact("imgui"));
-    exe.addIncludePath(b.path("vendor/zgui/libs/imgui"));
+    exe_mod.addImport("zgui", zgui.module("root"));
+    exe_mod.linkLibrary(zgui.artifact("imgui"));
+    exe_mod.addIncludePath(b.path("vendor/zgui/libs/imgui"));
 
     // implot ==============================================================
     const implot = b.dependency("implot", .{});
-    exe.root_module.addImport("implot", implot.module("root"));
-    exe.linkLibrary(implot.artifact("implot"));
+    exe_mod.addImport("implot", implot.module("root"));
+    exe_mod.linkLibrary(implot.artifact("implot"));
     // =====================================================================
 
     // imnodesez ==============================================================
     const imnodesez = b.dependency("imnodesez", .{});
-    exe.root_module.addImport("imnodesez", imnodesez.module("root"));
-    exe.linkLibrary(imnodesez.artifact("imnodesez"));
+    exe_mod.addImport("imnodesez", imnodesez.module("root"));
+    exe_mod.linkLibrary(imnodesez.artifact("imnodesez"));
     // =====================================================================
 
     const rlimgui = b.dependency("rlimgui", .{
         .target = target,
         .optimize = optimize,
     });
-    exe.root_module.addCSourceFile(.{
+    exe_mod.addCSourceFile(.{
         .file = rlimgui.path("rlImGui.cpp"),
         .flags = &.{
             "-fno-sanitize=undefined",
@@ -55,7 +58,7 @@ pub fn build(b: *std.Build) !void {
             "-DNO_FONT_AWESOME",
         },
     });
-    exe.addIncludePath(rlimgui.path("."));
+    exe_mod.addIncludePath(rlimgui.path("."));
 
     b.installArtifact(exe);
 
