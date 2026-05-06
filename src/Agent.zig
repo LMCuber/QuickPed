@@ -31,8 +31,8 @@ uuid: UUID,
 pos: rl.Vector2,
 target: rl.Vector2,
 col: rl.Color,
-vel: rl.Vector2 = .{ .x = 0, .y = 0 },
-acc: rl.Vector2 = .{ .x = 0, .y = 0 },
+vel: rl.Vector2 = .zero(),
+acc: rl.Vector2 = .zero(),
 
 // use marked instead of deleting immediately inside the struct because
 // 1: the struct knowing the container its inside is kind of an antipattern
@@ -129,6 +129,7 @@ pub fn traverseFromCurrent(
                         .area_id = area_node.getAreaUUID(),
                     },
                 };
+
                 switch (a_obj.style) {
                     .individual => |*data| {
                         self.payload.?.area.seat_index = data.getSeatIndex();
@@ -146,10 +147,8 @@ pub fn traverseFromCurrent(
                 };
                 self.target = env.entities.getByUUID(portal_node.getPortalUUID()).kind.portal.getSourcePosFromU(self.payload.?.portal.u);
             },
-            .sink => {
-                // delete ourselves
-                self.marked = true;
-            },
+            // delete ourselves
+            .sink => self.marked = true,
             inline .fork, .queue_fork => {
                 self.current_node_id = next_node_id;
                 try self.traverseFromCurrent(alloc, nodes, env);
@@ -197,21 +196,19 @@ pub fn processCurrentNode(
                 if (a_obj.checkCollision(self.pos, self.target)) {
                     self.wait.setWait(area_node.getWaitTime());
                 }
-            } else {
+            } else if (time - self.wait.last_wait >= @as(f64, @floatFromInt(self.wait.wait))) {
                 // is already waiting; check if waited long enough in the area
-                if (time - self.wait.last_wait >= @as(f64, @floatFromInt(self.wait.wait))) {
-                    // waited long enough. continue
-                    self.wait.waiting = false;
+                // waited long enough. continue
+                self.wait.waiting = false;
 
-                    // check if needs to release waiting spot
-                    switch (a_obj.style) {
-                        .individual => |*data| try data.freeSeatIndex(alloc, area_payload.seat_index.?),
-                        else => {},
-                    }
-
-                    // traverse to next
-                    try self.traverseFromCurrent(alloc, nodes, env);
+                // check if needs to release waiting spot
+                switch (a_obj.style) {
+                    .individual => |*data| try data.freeSeatIndex(alloc, area_payload.seat_index.?),
+                    else => {},
                 }
+
+                // traverse to next
+                try self.traverseFromCurrent(alloc, nodes, env);
             }
         },
         .portal => {
@@ -229,18 +226,15 @@ pub fn processCurrentNode(
             var q_obj: *Queue = &env.entities.getByUUID(q.queue_index).kind.queue;
 
             // "waiting" means in the queue
-            if (self.wait.waiting) {
-                // is waiting
-                if (q.spot_index == 0) {
-                    // is at front
-                    if (time - self.wait.last_wait >= @as(f64, @floatFromInt(self.wait.wait))) {
-                        if (q.stationary) {
-                            // can only dispatch if it is stationary
-                            q_obj.freeIndex(q.spot_index);
-                            self.wait.waiting = false;
-                            try self.traverseFromCurrent(alloc, nodes, env);
-                        }
-                    }
+            if (self.wait.waiting and
+                q.spot_index == 0 and // is waiting
+                time - self.wait.last_wait >= @as(f64, @floatFromInt(self.wait.wait))) // is at front
+            {
+                if (q.stationary) {
+                    // can only dispatch if it is stationary
+                    q_obj.freeIndex(q.spot_index);
+                    self.wait.waiting = false;
+                    try self.traverseFromCurrent(alloc, nodes, env);
                 }
             }
 
@@ -448,16 +442,14 @@ pub fn draw(self: *Self, env: *Environment, sim_data: SimData, agent_data: Agent
         }
     }
 
-    if (self.payload) |payload| {
-        switch (payload) {
-            .queue => |q| {
-                if (q.stationary) {
-                    rl.drawCircleV(self.pos, 2, palette.env.black);
-                }
-            },
-            else => {},
-        }
-    }
+    if (self.payload) |payload| switch (payload) {
+        .queue => |q| {
+            if (q.stationary) {
+                rl.drawCircleV(self.pos, 2, palette.env.black);
+            }
+        },
+        else => {},
+    };
 
     if (agent_data.show_vectors) {
         const m: u32 = 12;

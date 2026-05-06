@@ -74,12 +74,7 @@ pub fn Manager(comptime T: type) type {
 
         pub fn getByUUID(self: *Self, uuid: UUID) *T {
             // *T so that the caller can edit the object T
-            const index: ?usize = self.map.get(uuid.toInt());
-            if (index) |i| {
-                return &self.list.items[i];
-            } else {
-                unreachable;
-            }
+            return &self.list.items[self.map.get(uuid.toInt()).?];
         }
 
         pub fn getByIndex(self: *Self, index: usize) *T {
@@ -87,11 +82,9 @@ pub fn Manager(comptime T: type) type {
         }
 
         pub fn scan(self: *Self, other: *T) ?UUID {
-            for (self.items()) |*item| {
-                if (item.equals(other)) {
-                    return item.uuid;
-                }
-            }
+            for (self.items()) |*item| if (item.equals(other))
+                return item.uuid;
+
             return null;
         }
 

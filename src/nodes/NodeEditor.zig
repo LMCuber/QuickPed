@@ -176,16 +176,8 @@ pub fn render(
             const output_node_id = self.graph.nodes.scan(new_conn.output_node.?).?;
 
             // construct the in- and output the slots involved (see composite key)
-            const input_slot: node.Slot = try node.Slot.init(
-                alloc,
-                input_node_id,
-                new_conn.input_slot_title,
-            );
-            const output_slot: node.Slot = try node.Slot.init(
-                alloc,
-                output_node_id,
-                new_conn.output_slot_title,
-            );
+            const input_slot: node.Slot = try node.Slot.init(alloc, input_node_id, new_conn.input_slot_title);
+            const output_slot: node.Slot = try node.Slot.init(alloc, output_node_id, new_conn.output_slot_title);
 
             // create new connection
             try self.graph.addConnection(alloc, output_slot, input_slot);

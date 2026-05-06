@@ -1,15 +1,15 @@
 const rl = @import("raylib");
 const commons = @import("commons.zig");
 
-pub const navy_t: rl.Color = .{ .r = 15, .g = 42, .b = 65, .a = 140 };
-pub const navy: rl.Color = .{ .r = 173, .g = 216, .b = 230, .a = 255 };
-pub const light_gray: rl.Color = .{ .r = 160, .g = 160, .b = 160, .a = 255 };
-pub const white: rl.Color = .{ .r = 204, .g = 204, .b = 204, .a = 255 };
-pub const white_t: rl.Color = .{ .r = 204, .g = 204, .b = 204, .a = 120 };
-pub const black: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
-pub const orange: rl.Color = .{ .r = 255, .g = 144, .b = 0, .a = 255 };
-pub const green: rl.Color = .{ .r = 0, .g = 190, .b = 0, .a = 255 };
-pub const green_t: rl.Color = .{ .r = 0, .g = 245, .b = 0, .a = 120 };
+pub const navy_t = rl.Color.init(15, 42, 65, 140);
+pub const navy = rl.Color.init(173, 216, 230, 255);
+pub const light_gray = rl.Color.init(160, 160, 160, 255);
+pub const white = rl.Color.init(204, 204, 204, 255);
+pub const white_t = rl.Color.init(204, 204, 204, 120);
+pub const black = rl.Color.init(0, 0, 0, 255);
+pub const orange = rl.Color.init(255, 144, 0, 255);
+pub const green = rl.Color.init(0, 190, 0, 255);
+pub const green_t = rl.Color.init(0, 245, 0, 120);
 pub const palette = [_][]const u8{
     "#73464c",
     "#ab5675",
@@ -48,12 +48,12 @@ pub fn getAgentColor() rl.Color {
 }
 
 pub fn arrToColor(col: [4]f32) rl.Color {
-    return .{
-        .r = @intFromFloat(col[0] * 255),
-        .g = @intFromFloat(col[1] * 255),
-        .b = @intFromFloat(col[2] * 255),
-        .a = @intFromFloat(col[3] * 255),
-    };
+    return .init(
+        @intFromFloat(col[0] * 255),
+        @intFromFloat(col[1] * 255),
+        @intFromFloat(col[2] * 255),
+        @intFromFloat(col[3] * 255),
+    );
 }
 
 fn hexCharToInt(c: u8) u8 {

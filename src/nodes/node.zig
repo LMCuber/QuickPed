@@ -80,10 +80,7 @@ pub const Node = struct {
         };
     }
 
-    pub fn fromSnapshot(
-        snap: NodeSnapshot,
-        env: *Environment,
-    ) Node {
+    pub fn fromSnapshot(snap: NodeSnapshot, env: *Environment) Node {
         return .{
             .uuid = UUID.fromSnapshot(snap.uuid.data),
             .pos = snap.pos,
@@ -110,6 +107,13 @@ pub const Node = struct {
             .spawner => |*n| try n.draw(alloc, self),
             inline else => |*kind| kind.draw(self),
         }
+    }
+
+    pub fn init(kind: Node.Kind) Node {
+        return .{
+            .uuid = UUID.init(),
+            .kind = kind,
+        };
     }
 
     pub fn initSpawner(env: *Environment, wait: SpawnerWait) Node {

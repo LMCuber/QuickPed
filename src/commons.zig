@@ -62,11 +62,7 @@ pub fn getRandomPointBetweenVectors(p1: rl.Vector2, p2: rl.Vector2) rl.Vector2 {
 
 pub fn vecToLineSegment(pos: rl.Vector2, A: rl.Vector2, B: rl.Vector2) rl.Vector2 {
     const AB = B.subtract(A);
-    const t: f32 = std.math.clamp(
-        pos.subtract(A).dotProduct(AB) / AB.dotProduct(AB),
-        0,
-        1,
-    );
+    const t: f32 = std.math.clamp(pos.subtract(A).dotProduct(AB) / AB.dotProduct(AB), 0, 1);
     const C = A.add(AB.scale(t));
     const D = pos.subtract(C);
     return D;
@@ -82,10 +78,10 @@ pub fn mousePos() rl.Vector2 {
 }
 
 pub fn roundMousePos(sim_data: SimData) rl.Vector2 {
-    return .{
-        .x = @floatFromInt(roundN(@intFromFloat(mousePos().x), sim_data.grid_size)),
-        .y = @floatFromInt(roundN(@intFromFloat(mousePos().y), sim_data.grid_size)),
-    };
+    return .init(
+        @floatFromInt(roundN(@intFromFloat(mousePos().x), sim_data.grid_size)),
+        @floatFromInt(roundN(@intFromFloat(mousePos().y), sim_data.grid_size)),
+    );
 }
 
 //

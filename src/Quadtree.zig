@@ -55,7 +55,7 @@ pub fn rebuild(
 
     const allocator = self.arena.allocator();
     self.root = try allocator.create(Node);
-    self.root.?.* = Node{
+    self.root.?.* = .{
         .rect = bounds,
         .points = .empty,
         .children = null,
@@ -74,9 +74,8 @@ fn insert(self: *Self, alloc: std.mem.Allocator, node: *Node, point: rl.Vector2)
     }
 
     // if is leaf but is full, split it!
-    if (node.children == null and node.points.items.len >= self.cap) {
+    if (node.children == null and node.points.items.len >= self.cap)
         try self.splitNode(alloc, node);
-    }
 
     // else: it is not leaf, so we need to traverse further
     if (node.children) |children| {
@@ -95,20 +94,19 @@ fn splitNode(self: *Self, alloc: std.mem.Allocator, node: *Node) !void {
     const x = node.rect.x;
     const y = node.rect.y;
     const rects = [4]rl.Rectangle{
-        .{ .x = x, .y = y, .width = half_w, .height = half_h }, // topleft
-        .{ .x = x + half_w, .y = y, .width = half_w, .height = half_h }, // topright
-        .{ .x = x, .y = y + half_h, .width = half_w, .height = half_h }, // bottomleft
-        .{ .x = x + half_w, .y = y + half_h, .width = half_w, .height = half_h }, // bottomright
+        .init(x, y, half_w, half_h), // topleft
+        .init(x + half_w, y, half_w, half_h), // topright
+        .init(x, y + half_h, half_w, half_h), // bottomleft
+        .init(x + half_w, y + half_h, half_w, half_h), // bottomright
     };
 
     // for each children, make a new node with the previously made rects
-    for (rects, 0..) |rect, i| {
-        children[i] = Node{
+    for (rects, 0..) |rect, i|
+        children[i] = .{
             .rect = rect,
             .points = .empty,
             .children = null,
         };
-    }
 
     // set the children of the current node to the ones we just created
     node.children = children;
@@ -132,11 +130,9 @@ fn draw(node: *Node) void {
     rl.drawRectangleLinesEx(node.rect, thick, palette.env.yellow);
 
     // recursive step
-    if (node.children) |children| {
-        for (children) |*child| {
+    if (node.children) |children|
+        for (children) |*child|
             draw(child);
-        }
-    }
 }
 
 pub fn query(

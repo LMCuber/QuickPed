@@ -73,12 +73,7 @@ pub fn addConnection(
 pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
     for (self.nodes.items()) |*n| {
         switch (n.kind) {
-            .spawner => |*spawner| try spawner.update(
-                alloc,
-                n,
-                self,
-                env,
-            ),
+            .spawner => |*spawner| try spawner.update(alloc, n, self, env),
             else => {},
         }
     }
@@ -97,11 +92,7 @@ pub fn getNextNodeId(self: *Self, alloc: std.mem.Allocator, current_node_id: UUI
     // construct current (output) slot
     // as a combination of (node_ptr, title)
     // (we need allocator since it needs to create a [:0] from a [*c])
-    var current_output_slot: node.Slot = try node.Slot.init(
-        alloc,
-        current_node_id,
-        current_title,
-    );
+    var current_output_slot: node.Slot = try node.Slot.init(alloc, current_node_id, current_title);
     defer current_output_slot.deinit(alloc);
 
     // all nodes except for the queue fork give a singular child node
@@ -112,12 +103,10 @@ pub fn getNextNodeId(self: *Self, alloc: std.mem.Allocator, current_node_id: UUI
             &self.nodes,
             &self.connections,
         ),
-        else => {
-            // find connection whose output slot is same as current node's output slot
-            for (self.connections.items) |*conn| {
-                if (current_output_slot.equals(conn.output_slot)) {
-                    return conn.input_slot.node_id;
-                }
+        // find connection whose output slot is same as current node's output slot
+        else => for (self.connections.items) |*conn| {
+            if (current_output_slot.equals(conn.output_slot)) {
+                return conn.input_slot.node_id;
             }
         },
     }
@@ -126,12 +115,7 @@ pub fn getNextNodeId(self: *Self, alloc: std.mem.Allocator, current_node_id: UUI
     return null;
 }
 
-pub fn saveNodes(
-    self: *Self,
-    alloc: std.mem.Allocator,
-    io: std.Io,
-    path: []const u8,
-) !void {
+pub fn saveNodes(self: *Self, alloc: std.mem.Allocator, io: std.Io, path: []const u8) !void {
     var conn_snaps: std.ArrayList(node.ConnectionSnapshot) = .empty;
     defer conn_snaps.deinit(alloc);
 
@@ -171,12 +155,7 @@ pub fn loadNodes(
     }
 
     // get parsed scene
-    const parsed = try std.json.parseFromSlice(
-        GraphSnapshot,
-        alloc,
-        json,
-        .{},
-    );
+    const parsed = try std.json.parseFromSlice(GraphSnapshot, alloc, json, .{});
     defer parsed.deinit();
     const graph: GraphSnapshot = parsed.value;
 

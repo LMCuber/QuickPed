@@ -271,14 +271,12 @@ pub fn main(init: std.process.Init) !void {
                 }
 
                 // render the in-progress selected entity
-                if (current_entity) |*ent| {
+                if (current_entity) |*ent|
                     ent.draw(sim_data, agent_data, node_editor.active);
-                }
 
                 // render all pedestrians
-                for (env.agents.items()) |*agent| {
+                for (env.agents.items()) |*agent|
                     agent.draw(&env, sim_data, agent_data);
-                }
 
                 // render sim data misc. things
                 sim_data.render();
@@ -326,6 +324,19 @@ pub fn main(init: std.process.Init) !void {
                     if (z.collapsingHeader("Environment", .{ .default_open = true })) {
                         const button_size: i32 = 50;
                         const next_id: usize = 0;
+
+                        // todo: this is literally the best (worst) thing of all time
+                        inline for (@typeInfo(std.meta.Tag(entity.Entity.Kind)).@"enum".fields, 0..) |field, i| {
+                            if (i != 0) z.sameLine(.{});
+                            if (try @field(EB, field.name ++ "Button")(alloc, button_size)) {
+                                resetCurrentEntity(alloc, &current_entity);
+                                current_entity = try entity.Entity.init(
+                                    std.meta.stringToEnum(std.meta.Tag(entity.Entity.Kind), field.name).?,
+                                    alloc,
+                                    next_id,
+                                );
+                            }
+                        }
 
                         // contour
                         if (try EB.contourButton(alloc, button_size)) {
