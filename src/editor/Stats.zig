@@ -28,23 +28,23 @@ n_rows: i32,
 decay: f32 = 0.003,
 current_heatmap_index: i32 = 0,
 
-pub fn init(alloc: std.mem.Allocator, buffer: []f32, cols: i32, rows: i32) Self {
+pub fn init(buffer: []f32, cols: i32, rows: i32) Self {
     return .{
-        .x_data = std.ArrayList(f64).init(alloc),
-        .num_agents = std.ArrayList(f64).init(alloc),
-        .num_waiting_area_agents = std.ArrayList(f64).init(alloc),
-        .num_waiting_queue_agents = std.ArrayList(f64).init(alloc),
+        .x_data = .empty,
+        .num_agents = .empty,
+        .num_waiting_area_agents = .empty,
+        .num_waiting_queue_agents = .empty,
         .heatmap = buffer,
         .n_cols = cols,
         .n_rows = rows,
     };
 }
 
-pub fn deinit(self: *Self) void {
-    self.x_data.deinit();
-    self.num_agents.deinit();
-    self.num_waiting_area_agents.deinit();
-    self.num_waiting_queue_agents.deinit();
+pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
+    self.x_data.deinit(alloc);
+    self.num_agents.deinit(alloc);
+    self.num_waiting_area_agents.deinit(alloc);
+    self.num_waiting_queue_agents.deinit(alloc);
 }
 
 ///
@@ -96,7 +96,7 @@ pub fn decay_map(self: *Self) void {
     }
 }
 
-pub fn updateUi(self: *Self, agents: *Environment.AgentManager, paused: bool) !void {
+pub fn updateUi(self: *Self, alloc: std.mem.Allocator, agents: *Environment.AgentManager, paused: bool) !void {
     if (z.collapsingHeader("Statistics", .{ .default_open = false })) {
         _ = z.checkbox("Graph", .{ .v = &self.render_checks.graph });
         z.sameLine(.{});
@@ -111,12 +111,12 @@ pub fn updateUi(self: *Self, agents: *Environment.AgentManager, paused: bool) !v
                 const time: f64 = commons.getTimeMillis();
                 if (time - self.last_update >= @as(f64, @floatFromInt(self.update_interval))) {
                     // make a new point pair
-                    try self.x_data.append(rl.getTime());
-                    try self.num_agents.append(@floatFromInt(agents.len()));
+                    try self.x_data.append(alloc, rl.getTime());
+                    try self.num_agents.append(alloc, @floatFromInt(agents.len()));
 
                     const num_waiting: NumWaiting = getNumWaitingAgents(agents);
-                    try self.num_waiting_area_agents.append(num_waiting.area);
-                    try self.num_waiting_queue_agents.append(num_waiting.queue);
+                    try self.num_waiting_area_agents.append(alloc, num_waiting.area);
+                    try self.num_waiting_queue_agents.append(alloc, num_waiting.queue);
 
                     // reset last update
                     self.last_update = commons.getTimeMillis();
@@ -151,15 +151,15 @@ pub fn updateUi(self: *Self, agents: *Environment.AgentManager, paused: bool) !v
 
                 // TEXTUAL INFO
                 // X
-                z.text("X = ", .{});
+                try z.text(alloc, "X = ", .{});
                 if (z.isItemHovered(.{})) {
                     _ = z.beginTooltip();
                     defer z.endTooltip();
-                    z.text("waiting/total ratio", .{});
+                    try z.text(alloc, "waiting/total ratio", .{});
                 }
                 z.sameLine(.{});
                 const ratio = if (self.num_agents.getLast() == 0) 0 else self.num_waiting_area_agents.getLast() / self.num_agents.getLast() * 100;
-                z.text("{d:.0}%", .{ratio});
+                try z.text(alloc, "{d:.0}%", .{ratio});
             }
         }
 
@@ -180,7 +180,7 @@ pub fn updateUi(self: *Self, agents: *Environment.AgentManager, paused: bool) !v
                 implot.setupAxisLimits(.Y1, 0.0, 1.0, .Always);
                 implot.setupAxisLimits(.X1, 0.0, 1.0, .Always);
 
-                const color = try std.meta.intToEnum(implot.Colormap, self.current_heatmap_index);
+                const color: implot.Colormap = @enumFromInt(self.current_heatmap_index);
                 implot.pushColormap(color);
                 defer implot.popColormap(1);
 
@@ -190,7 +190,7 @@ pub fn updateUi(self: *Self, agents: *Environment.AgentManager, paused: bool) !v
             // change palette
             z.setNextItemWidth(90);
             _ = z.inputInt("palette", .{ .v = &self.current_heatmap_index });
-            self.current_heatmap_index = @min(self.current_heatmap_index, @typeInfo(implot.Colormap).Enum.fields.len - 1);
+            self.current_heatmap_index = @min(self.current_heatmap_index, @typeInfo(implot.Colormap).@"enum".fields.len - 1);
             self.current_heatmap_index = @max(0, self.current_heatmap_index);
 
             // decay

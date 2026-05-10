@@ -1,3 +1,3 @@
 #!/bin/bash
 
-clear; zigup run 0.13.0 build run
+clear; zigup run 0.16.0 build run

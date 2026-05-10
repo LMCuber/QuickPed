@@ -154,16 +154,13 @@ pub const IndividualData = struct {
     last_selected_seat_index: ?usize = null,
     radius: f32 = 16,
 
-    pub fn init(alloc: std.mem.Allocator) !IndividualData {
-        return .{
-            .points = std.ArrayList(rl.Vector2).init(alloc),
-            .free_indices = std.ArrayList(usize).init(alloc),
-        };
+    pub fn init() IndividualData {
+        return .{ .points = .empty, .free_indices = .empty };
     }
 
-    pub fn deinit(self: *@This()) void {
-        self.points.deinit();
-        self.free_indices.deinit();
+    pub fn deinit(self: *@This(), alloc: std.mem.Allocator) void {
+        self.points.deinit(alloc);
+        self.free_indices.deinit(alloc);
     }
 
     pub fn getSeatIndex(self: *@This()) usize {
@@ -173,8 +170,8 @@ pub const IndividualData = struct {
         return free_index;
     }
 
-    pub fn freeSeatIndex(self: *@This(), index: usize) !void {
-        try self.free_indices.append(index);
+    pub fn freeSeatIndex(self: *@This(), alloc: std.mem.Allocator, index: usize) !void {
+        try self.free_indices.append(alloc, index);
     }
 
     pub fn getPosFromSeatIndex(self: *@This(), index: usize) rl.Vector2 {
@@ -188,14 +185,11 @@ pub const IndividualData = struct {
     }
 
     pub fn fromSnapshot(alloc: std.mem.Allocator, snap: IndividualDataSnapshot) !IndividualData {
-        var points = std.ArrayList(rl.Vector2).init(alloc);
-        for (snap.points) |point| {
-            try points.append(point);
-        }
-        var free_indices = std.ArrayList(usize).init(alloc);
-        for (0..points.items.len) |i| {
-            try free_indices.append(i);
-        }
+        var points: std.ArrayList(rl.Vector2) = .empty;
+        for (snap.points) |point| try points.append(alloc, point);
+
+        var free_indices: std.ArrayList(usize) = .empty;
+        for (0..points.items.len) |i| try free_indices.append(alloc, i);
         return .{
             .free_indices = free_indices,
             .points = points,
@@ -234,8 +228,8 @@ pub const IndividualData = struct {
         }
     }
 
-    pub fn addNewPoint(self: *@This()) !void {
-        try self.points.append(.{
+    pub fn addNewPoint(self: *@This(), alloc: std.mem.Allocator) !void {
+        try self.points.append(alloc, .{
             .x = self.points.items[self.points.items.len - 1].x + self.radius * 2,
             .y = self.points.items[self.points.items.len - 1].y,
         });
@@ -258,9 +252,9 @@ pub fn init() Self {
     };
 }
 
-pub fn deinit(self: *Self) void {
+pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
     switch (self.style) {
-        .individual => |*ind| ind.deinit(),
+        .individual => |*ind| ind.deinit(alloc),
         else => {},
     }
 }
@@ -279,7 +273,7 @@ pub fn fromSnapshot(alloc: std.mem.Allocator, snap: AreaSnapshot) !Self {
     };
 }
 
-pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.EntityAction {
+pub fn update(self: *Self, alloc: std.mem.Allocator, sim_data: SimData, settings: Settings) !Entity.EntityAction {
     if (!self.confirmed_init_popup) {
         return .confirm_init;
     }
@@ -287,7 +281,7 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.Entity
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
         self.pos = commons.roundMousePos(sim_data);
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left)) {
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
             switch (self.style) {
                 inline .standing, .seating => |*data| {
                     if (!data.anchored) {
@@ -305,30 +299,25 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.Entity
                     }
                 },
                 .individual => |*data| {
-                    try data.points.append(self.pos);
+                    try data.points.append(alloc, self.pos);
                 },
             }
         }
 
         switch (self.style) {
-            inline .standing, .seating => |*data| {
-                if (data.anchored) {
-                    data.rect = rl.Rectangle.init(
-                        data.topleft.x,
-                        data.topleft.y,
-                        self.pos.x - data.topleft.x,
-                        self.pos.y - data.topleft.y,
-                    );
-                }
+            inline .standing, .seating => |*data| if (data.anchored) {
+                data.rect = rl.Rectangle.init(
+                    data.topleft.x,
+                    data.topleft.y,
+                    self.pos.x - data.topleft.x,
+                    self.pos.y - data.topleft.y,
+                );
             },
-            .individual => |*data| {
-                if (rl.isKeyPressed(.key_enter)) {
-                    for (0..data.points.items.len) |i| {
-                        try data.free_indices.append(i);
-                    }
-                    self.placed = true;
-                    return .confirm;
-                }
+            .individual => |*data| if (rl.isKeyPressed(.enter)) {
+                for (0..data.points.items.len) |i|
+                    try data.free_indices.append(alloc, i);
+                self.placed = true;
+                return .confirm;
             },
         }
     } else {
@@ -342,13 +331,13 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.Entity
                     seat_pos.y = commons.roundMousePos(sim_data).y;
 
                     // check if not hovered anymore
-                    if (!rl.isMouseButtonDown(.mouse_button_left)) {
+                    if (!rl.isMouseButtonDown(.left)) {
                         ind.selected_seat_index = null;
                     }
                 } else {
                     // check for clicking on new seat
                     for (ind.points.items, 0..) |*seat_pos, i| {
-                        if (rl.isMouseButtonPressed(.mouse_button_left) and
+                        if (rl.isMouseButtonPressed(.left) and
                             rl.checkCollisionPointCircle(commons.mousePos(), seat_pos.*, ind.radius))
                         {
                             if (ind.selected_seat_index == null) {
@@ -363,7 +352,7 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.Entity
             else => {},
         }
 
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left) and self.checkHover()) {
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left) and self.checkHover()) {
             return .selected;
         }
     }
@@ -384,50 +373,45 @@ pub fn confirm(self: *Self) void {
     }
 }
 
-pub fn edit(self: *Self) !void {
+pub fn edit(self: *Self, alloc: std.mem.Allocator) !void {
     switch (self.style) {
-        .individual => |*ind| {
-            if (z.collapsingHeader("seats", .{})) {
-                // the current points
-                var i: usize = ind.points.items.len;
-                while (i > 0) {
-                    i -= 1;
+        .individual => |*ind| if (z.collapsingHeader("seats", .{})) {
+            // the current points
+            var i: usize = ind.points.items.len;
+            while (i > 0) {
+                i -= 1;
 
-                    // check if the index is the currently selected index for change of color
-                    if (i == ind.last_selected_seat_index) {
-                        z.pushStyleColor1u(.{ .idx = .frame_bg, .c = palette.ui.green });
-                        z.pushStyleColor1u(.{ .idx = .button, .c = palette.ui.green });
-                    }
-                    var seat_pos: *rl.Vector2 = &ind.points.items[i];
+                // check if the index is the currently selected index for change of color
+                if (i == ind.last_selected_seat_index) {
+                    z.pushStyleColor1u(.{ .idx = .frame_bg, .c = palette.ui.green });
+                    z.pushStyleColor1u(.{ .idx = .button, .c = palette.ui.green });
+                }
+                var seat_pos: *rl.Vector2 = &ind.points.items[i];
 
-                    // position input
-                    var buf: [32]u8 = undefined;
-                    var label = try std.fmt.bufPrintZ(&buf, "P{d}##delete-seat-button{d}", .{ i, i });
-                    _ = z.inputFloat2(
-                        label,
-                        .{ .v = @as(*[2]f32, @ptrCast(&seat_pos.x)) },
-                    );
+                // position input
+                var buf: [32]u8 = undefined;
+                var label = try std.fmt.bufPrintZ(&buf, "P{d}##delete-seat-button{d}", .{ i, i });
+                _ = z.inputFloat2(
+                    label,
+                    .{ .v = @as(*[2]f32, @ptrCast(&seat_pos.x)) },
+                );
 
-                    // deleting the point
-                    if (ind.points.items.len > 1) {
-                        z.sameLine(.{});
-                        label = try std.fmt.bufPrintZ(&buf, "-##delete-seat{}", .{i});
-                        if (z.button(label, .{ .w = 40 })) {
-                            _ = ind.points.orderedRemove(i);
-                        }
-                    }
-
-                    // pop the style
-                    if (i == ind.last_selected_seat_index) {
-                        z.popStyleColor(.{ .count = 2 });
+                // deleting the point
+                if (ind.points.items.len > 1) {
+                    z.sameLine(.{});
+                    label = try std.fmt.bufPrintZ(&buf, "-##delete-seat{}", .{i});
+                    if (z.button(label, .{ .w = 40 })) {
+                        _ = ind.points.orderedRemove(i);
                     }
                 }
 
-                // add new point
-                if (z.button("+", .{ .w = 80 })) {
-                    try ind.addNewPoint();
-                }
+                // pop the style
+                if (i == ind.last_selected_seat_index)
+                    z.popStyleColor(.{ .count = 2 });
             }
+
+            // add new point
+            if (z.button("+", .{ .w = 80 })) try ind.addNewPoint(alloc);
         },
         else => {},
     }
@@ -438,11 +422,11 @@ pub fn confirmInit(self: *Self) void {
     _ = z.combo("area type", .{ .current_item = &self.style_index, .items_separated_by_zeros = zeroSepTypes });
 }
 
-pub fn finishConfirm(self: *Self, alloc: std.mem.Allocator) !void {
+pub fn finishConfirm(self: *Self) !void {
     self.style = switch (self.style_index) {
         0 => .{ .standing = .{} },
         1 => .{ .seating = .{} },
-        2 => .{ .individual = try IndividualData.init(alloc) },
+        2 => .{ .individual = IndividualData.init() },
         else => unreachable,
     };
     self.confirmed_init_popup = true;

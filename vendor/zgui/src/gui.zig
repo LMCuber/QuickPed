@@ -18,7 +18,7 @@ pub const DrawVert = extern struct {
 };
 //--------------------------------------------------------------------------------------------------
 
-pub fn init(allocator: std.mem.Allocator) void {
+pub fn init(allocator: std.mem.Allocator) !void {
     if (zguiGetCurrentContext() == null) {
         mem_allocator = allocator;
         mem_allocations = std.AutoHashMap(usize, usize).init(allocator);
@@ -27,10 +27,11 @@ pub fn init(allocator: std.mem.Allocator) void {
 
         _ = zguiCreateContext(null);
 
-        temp_buffer = std.ArrayList(u8).init(allocator);
-        temp_buffer.?.resize(3 * 1024 + 1) catch unreachable;
+        temp_buffer = .empty;
+        try temp_buffer.?.resize(3 * 1024 + 1);
     }
 }
+
 pub fn deinit() void {
     if (zguiGetCurrentContext() != null) {
         temp_buffer.?.deinit();
@@ -56,16 +57,14 @@ pub fn deinit() void {
         mem_allocator = null;
     }
 }
-pub fn initNoContext(allocator: std.mem.Allocator) void {
+pub fn initNoContext(alloc: std.mem.Allocator) !void {
     if (temp_buffer == null) {
-        temp_buffer = std.ArrayList(u8).init(allocator);
-        temp_buffer.?.resize(3 * 1024 + 1) catch unreachable;
+        temp_buffer = .empty;
+        try temp_buffer.?.resize(alloc, 3 * 1024 + 1);
     }
 }
-pub fn deinitNoContext() void {
-    if (temp_buffer) |buf| {
-        buf.deinit();
-    }
+pub fn deinitNoContext(alloc: std.mem.Allocator) void {
+    if (temp_buffer) |*buf| buf.deinit(alloc);
 }
 extern fn zguiCreateContext(shared_font_atlas: ?*const anyopaque) Context;
 extern fn zguiDestroyContext(ctx: ?Context) void;
@@ -1419,17 +1418,19 @@ pub fn textUnformattedColored(color: [4]f32, txt: []const u8) void {
     popStyleColor(.{});
 }
 //--------------------------------------------------------------------------------------------------
-pub fn text(comptime fmt: []const u8, args: anytype) void {
-    const result = format(fmt, args);
+pub fn text(alloc: std.mem.Allocator, comptime fmt: []const u8, args: anytype) !void {
+    const result = try format(alloc, fmt, args);
     zguiTextUnformatted(result.ptr, result.ptr + result.len);
 }
+
 // MY OWN CODE
-pub fn textSl(comptime fmt: []const u8, args: anytype) void {
-    const result = format(fmt, args);
+pub fn textSl(alloc: std.mem.Allocator, comptime fmt: []const u8, args: anytype) !void {
+    const result = try format(alloc, fmt, args);
     zguiTextUnformatted(result.ptr, result.ptr + result.len);
     sameLine(.{});
 }
 // END MY OWN CODE
+
 pub fn textColored(color: [4]f32, comptime fmt: []const u8, args: anytype) void {
     pushStyleColor4f(.{ .idx = .text, .c = color });
     text(fmt, args);
@@ -3289,15 +3290,15 @@ extern fn zguiIsKeyDown(key: Key) bool;
 //--------------------------------------------------------------------------------------------------
 var temp_buffer: ?std.ArrayList(u8) = null;
 
-pub fn format(comptime fmt: []const u8, args: anytype) []const u8 {
+pub fn format(alloc: std.mem.Allocator, comptime fmt: []const u8, args: anytype) ![]const u8 {
     const len = std.fmt.count(fmt, args);
-    if (len > temp_buffer.?.items.len) temp_buffer.?.resize(len + 64) catch unreachable;
-    return std.fmt.bufPrint(temp_buffer.?.items, fmt, args) catch unreachable;
+    if (len > temp_buffer.?.items.len) try temp_buffer.?.resize(alloc, len + 64);
+    return try std.fmt.bufPrint(temp_buffer.?.items, fmt, args);
 }
-pub fn formatZ(comptime fmt: []const u8, args: anytype) [:0]const u8 {
+pub fn formatZ(alloc: std.mem.Allocator, comptime fmt: []const u8, args: anytype) ![:0]const u8 {
     const len = std.fmt.count(fmt ++ "\x00", args);
-    if (len > temp_buffer.?.items.len) temp_buffer.?.resize(len + 64) catch unreachable;
-    return std.fmt.bufPrintZ(temp_buffer.?.items, fmt, args) catch unreachable;
+    if (len > temp_buffer.?.items.len) try temp_buffer.?.resize(alloc, len + 64);
+    return try std.fmt.bufPrintSentinel(temp_buffer.?.items, fmt, args, 0);
 }
 //--------------------------------------------------------------------------------------------------
 pub fn typeToDataTypeEnum(comptime T: type) DataType {

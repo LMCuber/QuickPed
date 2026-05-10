@@ -1,9 +1,1 @@
-{
-  "aspect_ratio": 1e0,
-  "environment_width": 1200,
-  "environment_height": 1200,
-  "grid_size": 32,
-  "scale": 32,
-  "paused": false,
-  "show_quadtree": false
-}
+{"aspect_ratio":1,"environment_width":1200,"environment_height":1200,"grid_size":32,"scale":32,"paused":false,"show_quadtree":false}

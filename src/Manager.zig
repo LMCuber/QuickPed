@@ -10,8 +10,8 @@ pub fn Manager(comptime T: type) type {
 
         pub fn init(alloc: std.mem.Allocator) Self {
             return .{
-                .list = std.ArrayList(T).init(alloc),
-                .map = std.AutoHashMap(u128, usize).init(alloc),
+                .list = .empty,
+                .map = .init(alloc),
             };
         }
 
@@ -23,8 +23,8 @@ pub fn Manager(comptime T: type) type {
             return self.list.items.len;
         }
 
-        pub fn append(self: *Self, item: T) !void {
-            try self.list.append(item);
+        pub fn append(self: *Self, alloc: std.mem.Allocator, item: T) !void {
+            try self.list.append(alloc, item);
             const index = self.list.items.len - 1;
             try self.map.put(item.uuid.toInt(), index);
         }
@@ -74,12 +74,7 @@ pub fn Manager(comptime T: type) type {
 
         pub fn getByUUID(self: *Self, uuid: UUID) *T {
             // *T so that the caller can edit the object T
-            const index: ?usize = self.map.get(uuid.toInt());
-            if (index) |i| {
-                return &self.list.items[i];
-            } else {
-                unreachable;
-            }
+            return &self.list.items[self.map.get(uuid.toInt()).?];
         }
 
         pub fn getByIndex(self: *Self, index: usize) *T {
@@ -87,16 +82,14 @@ pub fn Manager(comptime T: type) type {
         }
 
         pub fn scan(self: *Self, other: *T) ?UUID {
-            for (self.items()) |*item| {
-                if (item.equals(other)) {
-                    return item.uuid;
-                }
-            }
+            for (self.items()) |*item| if (item.equals(other))
+                return item.uuid;
+
             return null;
         }
 
-        pub fn deinit(self: *Self) void {
-            self.list.deinit();
+        pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
+            self.list.deinit(alloc);
             self.map.deinit();
         }
     };

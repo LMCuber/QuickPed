@@ -52,8 +52,8 @@ pub fn updateUi(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) 
     }
 }
 
-pub fn loadFromFile(alloc: std.mem.Allocator, path: []const u8) !Self {
-    const json = try commons.readFile(alloc, path);
+pub fn loadFromFile(alloc: std.mem.Allocator, io: std.Io, path: []const u8) !Self {
+    const json = try commons.readFile(alloc, io, path);
     defer alloc.free(json);
 
     // if there is nothing in the file, return
@@ -70,18 +70,4 @@ pub fn loadFromFile(alloc: std.mem.Allocator, path: []const u8) !Self {
     );
     defer parsed.deinit();
     return parsed.value;
-}
-
-pub fn saveToFile(self: Self, alloc: std.mem.Allocator, path: []const u8) !void {
-    var buf = std.ArrayList(u8).init(alloc);
-    defer buf.deinit();
-
-    try std.json.stringify(self, .{
-        .whitespace = .indent_2,
-    }, buf.writer());
-
-    // create file it it doesn't exist
-    const file = try std.fs.cwd().createFile(path, .{ .truncate = true });
-    defer file.close();
-    try file.writeAll(buf.items);
 }

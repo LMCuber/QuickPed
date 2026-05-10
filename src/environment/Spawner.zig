@@ -45,7 +45,7 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityA
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
         // place new point
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left)) {
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
             if (self.point_count == 0) {
                 self.points.p1 = self.pos;
                 self.point_count += 1;
@@ -59,7 +59,7 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityA
             }
         }
     } else {
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left) and self.checkHover()) {
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left) and self.checkHover()) {
             return .selected;
         }
     }

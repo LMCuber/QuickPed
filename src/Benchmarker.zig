@@ -8,12 +8,12 @@ pub fn init(arr: std.ArrayList(f64)) Self {
     return .{ .times = arr };
 }
 
-pub fn deinit(self: *Self) void {
-    self.times.deinit();
+pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
+    self.times.deinit(alloc);
 }
 
-pub fn begin(self: *Self) !void {
-    try self.times.append(rl.getTime());
+pub fn begin(self: *Self, alloc: std.mem.Allocator) !void {
+    try self.times.append(alloc, rl.getTime());
 }
 
 pub fn end(self: *Self) !void {

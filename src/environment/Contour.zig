@@ -16,50 +16,44 @@ pub const ContourSnapshot = struct {
     points: []rl.Vector2,
 };
 
-pub fn init(allocator: std.mem.Allocator) !Self {
-    return .{
-        .points = std.ArrayList(rl.Vector2).init(allocator),
-    };
+pub fn init() Self {
+    return .{ .points = .empty };
 }
 
-pub fn deinit(self: *Self) void {
-    self.points.deinit();
+pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
+    self.points.deinit(alloc);
 }
 
 pub fn getSnapshot(self: Self) ContourSnapshot {
-    return .{
-        .points = self.points.items,
-    };
+    return .{ .points = self.points.items };
 }
 
-pub fn fromSnapshot(allocator: std.mem.Allocator, snap: ContourSnapshot) !Self {
-    var points = std.ArrayList(rl.Vector2).init(allocator);
-    for (snap.points) |point| {
-        try points.append(point);
-    }
+pub fn fromSnapshot(alloc: std.mem.Allocator, snap: ContourSnapshot) !Self {
+    var points: std.ArrayList(rl.Vector2) = .empty;
+    for (snap.points) |point| try points.append(alloc, point);
     return .{
         .points = points,
         .placed = true,
     };
 }
 
-pub fn update(self: *Self, sim_data: SimData, settings: Settings) !Entity.EntityAction {
+pub fn update(self: *Self, alloc: std.mem.Allocator, sim_data: SimData, settings: Settings) !Entity.EntityAction {
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
         // place new point
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left)) {
-            try self.points.append(self.pos);
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
+            try self.points.append(alloc, self.pos);
         }
+
         // finish points with keypress
-        if (rl.isKeyPressed(.key_enter)) {
+        if (rl.isKeyPressed(.enter)) {
             self.placed = true;
             return .placed;
         }
+
         return .none;
-    } else {
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left) and self.checkHover()) {
-            return .selected;
-        }
+    } else if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left) and self.checkHover()) {
+        return .selected;
     }
     return .none;
 }

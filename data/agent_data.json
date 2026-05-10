@@ -1,12 +1,1 @@
-{
-  "num_to_place": 10,
-  "speed": 3e0,
-  "relaxation": 1e1,
-  "radius": 2.5e-1,
-  "a_ped": 7.999999821186066e-2,
-  "b_ped": 4e0,
-  "a_ob": 2e0,
-  "b_ob": 4e0,
-  "show_vectors": false,
-  "show_targets": false
-}
+{"num_to_place":10,"speed":3,"relaxation":10,"radius":0.25,"a_ped":0.07999999821186066,"b_ped":4,"a_ob":2,"b_ob":4,"show_vectors":false,"show_targets":false}

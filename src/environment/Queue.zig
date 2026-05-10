@@ -23,18 +23,18 @@ pub const QueueSnapshot = struct {
     padding: i32,
 };
 
-pub fn init(allocator: std.mem.Allocator) !Self {
+pub fn init() Self {
     return .{
-        .points = std.ArrayList(rl.Vector2).init(allocator),
-        .waiting_spots = std.ArrayList(rl.Vector2).init(allocator),
-        .occupied_spots = std.ArrayList(bool).init(allocator),
+        .points = .empty,
+        .waiting_spots = .empty,
+        .occupied_spots = .empty,
     };
 }
 
-pub fn deinit(self: *Self) void {
-    self.points.deinit();
-    self.waiting_spots.deinit();
-    self.occupied_spots.deinit();
+pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
+    self.points.deinit(alloc);
+    self.waiting_spots.deinit(alloc);
+    self.occupied_spots.deinit(alloc);
 }
 
 pub fn getSnapshot(self: Self) QueueSnapshot {
@@ -45,20 +45,18 @@ pub fn getSnapshot(self: Self) QueueSnapshot {
 }
 
 pub fn fromSnapshot(
-    allocator: std.mem.Allocator,
+    alloc: std.mem.Allocator,
     snap: QueueSnapshot,
     sim_data: SimData,
     agent_data: AgentData,
 ) !Self {
     // repopulate points (nothing sneaky)
-    var points = std.ArrayList(rl.Vector2).init(allocator);
-    for (snap.points) |point| {
-        try points.append(point);
-    }
+    var points: std.ArrayList(rl.Vector2) = .empty;
+    for (snap.points) |point| try points.append(alloc, point);
     // waiting spots and occupied spots begin empty but get populated by calcPoints
-    const waiting_spots = std.ArrayList(rl.Vector2).init(allocator);
-    var occupied_spots = std.ArrayList(bool).init(allocator);
-    try occupied_spots.appendNTimes(false, waiting_spots.items.len);
+    const waiting_spots: std.ArrayList(rl.Vector2) = .empty;
+    var occupied_spots: std.ArrayList(bool) = .empty;
+    try occupied_spots.appendNTimes(alloc, false, waiting_spots.items.len);
 
     var ret: Self = .{
         .occupied_spots = occupied_spots,
@@ -67,7 +65,7 @@ pub fn fromSnapshot(
         .placed = true,
         .padding = snap.padding,
     };
-    try ret.calculatePoints(allocator, sim_data, agent_data);
+    try ret.calculatePoints(alloc, sim_data, agent_data);
 
     return ret;
 }
@@ -83,11 +81,11 @@ pub fn update(
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
         // place new point
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.mouse_button_left)) {
-            try self.points.append(self.pos);
+        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
+            try self.points.append(alloc, self.pos);
         }
         // finish points with keypress
-        if (rl.isKeyPressed(.key_enter)) {
+        if (rl.isKeyPressed(.enter)) {
             self.placed = true;
             try self.calculatePoints(alloc, sim_data, agent_data);
             return .confirm;
@@ -108,12 +106,12 @@ fn calculatePoints(self: *Self, alloc: std.mem.Allocator, sim_data: SimData, age
     self.waiting_spots.clearRetainingCapacity();
 
     // calculate total length and cumulative distances
-    var cum_distances: std.ArrayList(f32) = std.ArrayList(f32).init(alloc);
-    defer cum_distances.deinit();
+    var cum_distances: std.ArrayList(f32) = .empty;
+    defer cum_distances.deinit(alloc);
     for (self.points.items, 0..) |point, i| {
         if (i == 0) continue;
         const prev_cum_dist: f32 = if (i > 1) cum_distances.getLast() else 0;
-        try cum_distances.append(prev_cum_dist + point.subtract(self.points.items[i - 1]).length());
+        try cum_distances.append(alloc, prev_cum_dist + point.subtract(self.points.items[i - 1]).length());
     }
     const total_length: f32 = cum_distances.getLast();
     const step_size: f32 = self.getDistBetweenSpots(sim_data, agent_data);
@@ -135,9 +133,9 @@ fn calculatePoints(self: *Self, alloc: std.mem.Allocator, sim_data: SimData, age
                 break;
             }
         }
-        try self.waiting_spots.append(waiting_spot);
+        try self.waiting_spots.append(alloc, waiting_spot);
     }
-    try self.occupied_spots.appendNTimes(false, self.waiting_spots.items.len);
+    try self.occupied_spots.appendNTimes(alloc, false, self.waiting_spots.items.len);
 }
 
 pub fn getWaitingSpotFromIndex(self: *Self, index: usize) rl.Vector2 {
@@ -198,9 +196,9 @@ pub fn draw(self: Self, sim_data: SimData, agent_data: AgentData) void {
         for (self.waiting_spots.items, 0..) |waiting_spot, i| {
             const circle_rad =
                 if (i == 0)
-                agent_data.radius * @as(f32, @floatFromInt(sim_data.scale))
-            else
-                agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 0.7;
+                    agent_data.radius * @as(f32, @floatFromInt(sim_data.scale))
+                else
+                    agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 0.7;
             const circle_col = if (i == 0) palette.env.dark_green else palette.env.green;
             rl.drawCircleV(waiting_spot, circle_rad, circle_col);
         }
