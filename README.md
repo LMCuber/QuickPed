@@ -16,7 +16,7 @@ _AnyLogic_ (specifically the _Pedestrian Library_) is the only software I have u
 * The software looks very old and some operations are feel very janky to perform, such as configuring a custom agent profile and importing a database for arrival schedules (which broke at least 4 times when I was trying to import my dataset).
 
 ## Defining features
-Here are the seven pillars of _QuickPed_, or as I like to call them, _TSPOQ_ (pronounced: təspɔk)
+Here are the seven pillars of _QuickPed_, or as I like to call them, _TSPOQ_ (pronounced: tɪspɔk)
 
 - [x] Social force model for pedestrians based on [the works](https://www.researchgate.net/publication/1947096_Social_Force_Model_for_Pedestrian_Dynamics) of _Helbing et al_.
 Simulations don't usually tell you the underlying physics model their agents. This project uses the above model with variable parameters you can vary in the editor.
