@@ -19,9 +19,11 @@ _AnyLogic_ (specifically the _Pedestrian Library_) is the only software I have u
 Here are the seven pillars of _QuickPed_, or as I like to call them, _TSPOQ_ (pronounced: tɪspɔk)
 
 - [x] Social force model for pedestrians based on [the works](https://www.researchgate.net/publication/1947096_Social_Force_Model_for_Pedestrian_Dynamics) of _Helbing et al_.
+
 Simulations don't usually tell you the underlying physics model their agents. This project uses the above model with variable parameters you can vary in the editor.
 
 - [x] Ease-of-use.
+
 As the name suggests, _QuickPed_ should be the first book you take off the shelf when you want to prototype your agent based simulation. This philosophy come with some side effects though:
     - As powerful as scripting may be, the absolute last thing I wish upon my worst enemy is inspecting the implementation of a certain _AnyLogic_ `Node` class to find its size and find the correct method to call to change its position, just for it not to work in the end anyway.
 
@@ -31,7 +33,8 @@ As the name suggests, _QuickPed_ should be the first book you take off the shelf
 
 Optimization in this context is not just limited to the number of queues or seats, but also their shape and location. Optimizing certain parameters of your simulation should not feel like coal mining with the source code - it should be _built into the_ simulation software. _AnyLogic_, for example, has decent support for optimization of _variables_, but it has a hard time modifying the location and dimensions of, for example, a waiting area.
 
-- [ ] _Realistic_ and _easy-to-implement_ arrival schedules.\\
+- [ ] _Realistic_ and _easy-to-implement_ arrival schedules.
+
 In _AnyLogic_, arrival schedules can be imported as a dataset, for which I have to use another spreadsheet software (and tinker for hours with the formulas for the columns of arrival time, arrival rate, interarrival time). Arrival schedules are (almost always) either:
 * _Poisson_ processes where the interarrival times are exponentially distributed, e.g. $f(x) = \lambda e^{-\lambda x}$
 * Distributed according to a similar distribution with a different shape, e.g. the _Weibull_ distribution: $f(x) = \frac{k}{\lambda} \left(\frac{x}{\lambda}\right)^{k-1} \exp\left(-\left(\frac{x}{\lambda}\right)^k\right)$
@@ -39,14 +42,17 @@ In _AnyLogic_, arrival schedules can be imported as a dataset, for which I have 
 While the former one is widely supported, the latter one is mostly underrepresented, all the while being very common in establishments such as airports and movie theaters, where the arrival pattern of pedestrians are determined by a schedule, rather than being distributed in a "flat" fashion without huge peaks (such as a carnival or a shop). (Of course, airports have so many flights departing at (nearly) the same time such that the sum of all arrivals per gate can be approximated to be uniformly distributed. But for smaller establishments such as movie theaters, there are defined peaks and valleys.)
 
 - [ ] Statistics.
+
 this is the eventual reason we do agent based modeling. This should therefore very easily accessible, and the data should be easily extractable to be used for further analysis. Examples:
     - [ ] Showing the percentage of waiting pedestrians per waiting area/queue
     - [ ] Heatmap showing bottlenecks during simulation
 
 - [x] Performance.
+
 _AnyLogic_ can become quite slow when simulating a lot of entities. _FlexSim_ uses a similar approach ([BVH_'s](https://en.wikipedia.org/wiki/Bounding_volume_hierarchy)). Since there can easily be tens of thousands of people in a single point in time in an airport, optimization measures should not be thought of lightly.
 
 - [ ] Pathfinding for the pedestrians.
+
 In _AnyLogic_, pedestrians can get stuck behind corners and cause severe congestions, since they follow the shortest path in a straight line. This can be fixed by using direction objects, but this just makes it more indirect for the user and adds complexity for no reason.
 
 ## Won't haves
