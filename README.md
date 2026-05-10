@@ -27,7 +27,7 @@ Simulations don't usually tell you the underlying physics model their agents. Th
 As the name suggests, _QuickPed_ should be the first book you take off the shelf when you want to prototype your agent based simulation. This philosophy come with some side effects though:
     - As powerful as scripting may be, the absolute last thing I wish upon my worst enemy is inspecting the implementation of a certain _AnyLogic_ `Node` class to find its size and find the correct method to call to change its position, just for it not to work in the end anyway.
 
-> If the blueprint system isn't expressive enough that it requires scripting, then is it even a good blueprint system? Food for thought
+> If the blueprint system isn't expressive enough that it requires scripting, is it even a good blueprint system then? Food for thought
 
 - [ ] Built with _optimization_ in mind.
 
