@@ -31,7 +31,7 @@ As the name suggests, _QuickPed_ should be the first book you take off the shelf
 
 Optimization in this context is not just limited to the number of queues or seats, but also their shape and location. Optimizing certain parameters of your simulation should not feel like coal mining with the source code - it should be _built into the_ simulation software. _AnyLogic_, for example, has decent support for optimization of _variables_, but it has a hard time modifying the location and dimensions of, for example, a waiting area.
 
-- [ ] _Realistic_ and _easy-to-implement_ arrival schedules.
+- [ ] _Realistic_ and _easy-to-implement_ arrival schedules.\\
 In _AnyLogic_, arrival schedules can be imported as a dataset, for which I have to use another spreadsheet software (and tinker for hours with the formulas for the columns of arrival time, arrival rate, interarrival time). Arrival schedules are (almost always) either:
 * _Poisson_ processes where the interarrival times are exponentially distributed, e.g. $f(x) = \lambda e^{-\lambda x}$
 * Distributed according to a similar distribution with a different shape, e.g. the _Weibull_ distribution: $f(x) = \frac{k}{\lambda} \left(\frac{x}{\lambda}\right)^{k-1} \exp\left(-\left(\frac{x}{\lambda}\right)^k\right)$
