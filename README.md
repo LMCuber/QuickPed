@@ -1,7 +1,7 @@
 # Very quick pedestrian flow simulation
 
 > [!NOTE]
-> Thanks to the help of my dearest colleague, [dtasada](https://github.com/dtasada), the project now supports `zig 0.16` and is _NOT_ backwards compatible with older versions.
+> Thanks to the hard work of my dearest colleague, [dtasada](https://github.com/dtasada), the project now supports `zig 0.16` and is _NOT_ backwards compatible with older versions.
 
 ## Project philosopy
 To view the paper we have written on this subject: [overleaf link](https://www.overleaf.com/project/66f667ffb591f8ff65cffdd8) (broken)
