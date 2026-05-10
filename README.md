@@ -28,6 +28,7 @@ As the name suggests, _QuickPed_ should be the first book you take off the shelf
 > If the blueprint system isn't expressive enough that it requires scripting, then is it even a good blueprint system? Food for thought
 
 - [ ] Built with _optimization_ in mind.
+
 Optimization in this context is not just limited to the number of queues or seats, but also their shape and location. Optimizing certain parameters of your simulation should not feel like coal mining with the source code - it should be _built into the_ simulation software. _AnyLogic_, for example, has decent support for optimization of _variables_, but it has a hard time modifying the location and dimensions of, for example, a waiting area.
 
 - [ ] _Realistic_ and _easy-to-implement_ arrival schedules.
