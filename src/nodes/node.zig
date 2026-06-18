@@ -539,7 +539,6 @@ pub const SpawnerNode = struct {
 
         const time: f64 = commons.getTimeMillis();
         if (time - self.last_spawn >= self.inter.? * std.time.ms_per_min) {
-            std.debug.print("{}\n", .{self.getSpawnerUUID().toInt()});
             const pos: rl.Vector2 = env.entities.getByUUID(self.getSpawnerUUID()).kind.spawner.getRandomSpawnPos();
 
             const a = try Agent.init(

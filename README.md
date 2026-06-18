@@ -49,7 +49,7 @@ this is the eventual reason we do agent based modeling. This should therefore ve
 
 - [x] Performance.
 
-_AnyLogic_ can become quite slow when simulating a lot of entities. _FlexSim_ uses a similar approach ([BVH_'s](https://en.wikipedia.org/wiki/Bounding_volume_hierarchy)). Since there can easily be tens of thousands of people in a single point in time in an airport, optimization measures should not be thought of lightly.
+_AnyLogic_ can become quite slow when simulating a lot of entities. _FlexSim_ uses a similar approach ([BVH's](https://en.wikipedia.org/wiki/Bounding_volume_hierarchy)). Since there can easily be tens of thousands of people in a single point in time in an airport, optimization measures should not be thought of lightly.
 
 - [ ] Pathfinding for the pedestrians.
 

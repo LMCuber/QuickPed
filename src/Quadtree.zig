@@ -115,7 +115,7 @@ fn splitNode(self: *Self, alloc: std.mem.Allocator, node: *Node) !void {
     // redistribute the existing points from parent to the correct child
     for (node.points.items) |point| {
         const quad_index = node.getQuadrantIndex(point);
-        try node.children.?[quad_index].points.append(alloc, point);
+        try node.children.?[quad_index].points.append(allocator, point);
     }
 }
 
