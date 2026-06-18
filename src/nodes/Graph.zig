@@ -70,10 +70,21 @@ pub fn addConnection(
     });
 }
 
-pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
+pub fn processSpawners(
+    self: *Self,
+    alloc: std.mem.Allocator,
+    rand: std.Random,
+    env: *Environment,
+) !void {
     for (self.nodes.items()) |*n| {
         switch (n.kind) {
-            .spawner => |*spawner| try spawner.update(alloc, n, self, env),
+            .spawner => |*spawner| try spawner.update(
+                alloc,
+                rand,
+                n,
+                self,
+                env,
+            ),
             else => {},
         }
     }

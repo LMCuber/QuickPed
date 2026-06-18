@@ -83,6 +83,7 @@ pub const QueuePayload = struct {
 // FUNCTIONS
 pub fn init(
     alloc: std.mem.Allocator,
+    rand: std.Random,
     pos: rl.Vector2,
     spawner_node_id: UUID,
     graph: *Graph,
@@ -91,7 +92,7 @@ pub fn init(
     // INIT CAUSES TRAVERSE FROM CURRENT!
     const col: rl.Color = color.getAgentColor();
     var obj: Self = .{
-        .uuid = UUID.init(),
+        .uuid = UUID.init(rand),
         .pos = pos,
         .target = .{ .x = 100, .y = 100 },
         .col = col,

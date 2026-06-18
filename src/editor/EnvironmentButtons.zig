@@ -39,37 +39,38 @@ pub fn contourButton(alloc: std.mem.Allocator, bs: f32) !bool {
     // Draw background
     dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
 
-    // Polygon points (random-ish shape inside the button)
-    const mid_x = (min[0] + max[0]) * 0.5;
-    const mid_y = (min[1] + max[1]) * 0.5;
+    // Snap coordinates to exact pixels to eliminate jagged/uneven rendering
+    const start_x = @round(min[0]);
+    const start_y = @round(min[1]);
+    const end_x = @round(max[0]);
+    const end_y = @round(max[1]);
 
+    const mid_x = @round((start_x + end_x) * 0.5);
+    const mid_y = @round((start_y + end_y) * 0.5);
+
+    const padding: f32 = 4.0;
+    const line_color: u32 = 0xff_ff_ff_ff;
+    const line_thickness: f32 = 2.0;
+
+    // Diamond polygon points
     const points: [5][2]f32 = .{
-        .{ mid_x, min[1] + 4 },
-        .{ max[0] - 4, mid_y },
-        .{ mid_x, max[1] - 4 },
-        .{ min[0] + 4, mid_y },
-        .{ mid_x, min[1] + 4 },
+        .{ mid_x, start_y + padding },
+        .{ end_x - padding, mid_y },
+        .{ mid_x, end_y - padding },
+        .{ start_x + padding, mid_y },
+        .{ mid_x, start_y + padding },
     };
 
-    dl.addPolyline(points[0..], .{ .col = 0xff_ff_ff_ff, .thickness = 2.0 });
+    // Draw Diamond Outer Edge
+    dl.addPolyline(points[0..], .{ .col = line_color, .thickness = line_thickness });
 
-    dl.addPolyline(points[0..], .{ .col = 0xff_ff_ff_ff, .thickness = 2.0 });
+    // Draw Cross inside the diamond
+    dl.addLine(.{ .p1 = .{ mid_x, start_y + padding }, .p2 = .{ mid_x, end_y - padding }, .col = line_color, .thickness = line_thickness });
 
-    // Cross inside the diamond
-    dl.addLine(.{ .p1 = .{ mid_x, min[1] + 4 }, .p2 = .{ mid_x, max[1] - 4 }, .col = 0xff_ff_ff_ff, .thickness = 2.0 }); // vertical
-    dl.addLine(.{ .p1 = .{ min[0] + 4, mid_y }, .p2 = .{ max[0] - 4, mid_y }, .col = 0xff_ff_ff_ff, .thickness = 2.0 }); // horizontal
-
-    // // Text on top
-    // const text_size = z.calcTextSize("Ctr", .{});
-    // const pos = .{
-    //     (min[0] + max[0] - text_size[0]) * 0.5,
-    //     (min[1] + max[1] - text_size[1]) * 0.5,
-    // };
-    // dl.addText(pos, 0xff_ff_ff_ff, "{s}", .{"Ctr"});
+    dl.addLine(.{ .p1 = .{ start_x + padding, mid_y }, .p2 = .{ end_x - padding, mid_y }, .col = line_color, .thickness = line_thickness });
 
     return clicked;
 }
-
 pub fn spawnerButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const clicked = z.invisibleButton("##spawner", .{ .w = bs, .h = bs });
 

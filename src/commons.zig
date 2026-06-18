@@ -47,7 +47,7 @@ pub fn roundN(value: i32, n: i32) i32 {
     return @divTrunc(value + @divTrunc(n, 2), n) * n;
 }
 
-pub fn existsAnyObject(env: *Environment, comptime kind: std.meta.Tag(entity.Entity.Kind)) bool {
+pub fn existsAnyObject(env: *Environment, kind: std.meta.Tag(entity.Entity.Kind)) bool {
     for (env.entities.items()) |*ent| {
         if (std.meta.activeTag(ent.kind) == kind) return true;
     }
@@ -103,7 +103,7 @@ pub fn writeFile(alloc: std.mem.Allocator, io: std.Io, obj: anytype, path: []con
     var allocating = std.Io.Writer.Allocating.init(alloc);
     defer allocating.deinit();
 
-    const formatter = std.json.fmt(obj, .{});
+    const formatter = std.json.fmt(obj, .{ .whitespace = .indent_4 });
     try formatter.format(&allocating.writer);
 
     // create file it it doesn't exist

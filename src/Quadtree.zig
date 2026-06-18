@@ -67,9 +67,10 @@ pub fn rebuild(
 }
 
 fn insert(self: *Self, alloc: std.mem.Allocator, node: *Node, point: rl.Vector2) !void {
+    const allocator = self.arena.allocator();
     // if node is leaf and has room for more, just add it
     if (node.children == null and node.points.items.len < self.cap) {
-        try node.points.append(alloc, point);
+        try node.points.append(allocator, point);
         return;
     }
 

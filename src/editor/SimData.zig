@@ -18,6 +18,7 @@ pub fn init() Self {
 }
 
 pub fn render(self: *Self) void {
+    // RENDER THE SCALE INDICATOR |---| "1m"
     const start: rl.Vector2 = .{ .x = 32, .y = 32 };
     const end: rl.Vector2 = start.add(.{ .x = @floatFromInt(self.scale), .y = 0 });
     const o: rl.Vector2 = .{ .x = 0, .y = 4 };
@@ -25,7 +26,7 @@ pub fn render(self: *Self) void {
     rl.drawLineEx(start, end, thick, palette.env.white);
     rl.drawLineEx(start.subtract(o), start.add(o), thick, palette.env.white);
     rl.drawLineEx(end.subtract(o), end.add(o), thick, palette.env.white);
-    rl.drawText("1m", @intFromFloat(start.add(end.subtract(start).scale(0.5)).x), start.y + 12, 18, palette.env.white);
+    rl.drawText("1m", @intFromFloat(start.add(end.subtract(start).scale(0.5)).x), start.y + 12, 20, palette.env.white);
 }
 
 pub fn updateUi(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) void {

@@ -109,16 +109,16 @@ pub const Node = struct {
         }
     }
 
-    pub fn init(kind: Node.Kind) Node {
+    pub fn init(rand: std.Random, kind: Node.Kind) Node {
         return .{
-            .uuid = UUID.init(),
+            .uuid = UUID.init(rand),
             .kind = kind,
         };
     }
 
-    pub fn initSpawner(env: *Environment, wait: SpawnerWait) Node {
+    pub fn initSpawner(rand: std.Random, env: *Environment, wait: SpawnerWait) Node {
         return .{
-            .uuid = UUID.init(),
+            .uuid = UUID.init(rand),
             .kind = .{
                 .spawner = .{
                     .env = env,
@@ -128,9 +128,9 @@ pub const Node = struct {
         };
     }
 
-    pub fn initArea(env: *Environment, wait: utils.Wait) Node {
+    pub fn initArea(rand: std.Random, env: *Environment, wait: utils.Wait) Node {
         return .{
-            .uuid = UUID.init(),
+            .uuid = UUID.init(rand),
             .kind = .{
                 .area = .{
                     .env = env,
@@ -140,9 +140,9 @@ pub const Node = struct {
         };
     }
 
-    pub fn initPortal(env: *Environment) Node {
+    pub fn initPortal(rand: std.Random, env: *Environment) Node {
         return .{
-            .uuid = UUID.init(),
+            .uuid = UUID.init(rand),
             .kind = .{
                 .portal = .{
                     .env = env,
@@ -151,9 +151,9 @@ pub const Node = struct {
         };
     }
 
-    pub fn initQueue(env: *Environment, wait: utils.Wait) Node {
+    pub fn initQueue(rand: std.Random, env: *Environment, wait: utils.Wait) Node {
         return .{
-            .uuid = UUID.init(),
+            .uuid = UUID.init(rand),
             .kind = .{
                 .queue = .{
                     .env = env,
@@ -163,9 +163,9 @@ pub const Node = struct {
         };
     }
 
-    pub fn initQueueFork() Node {
+    pub fn initQueueFork(rand: std.Random) Node {
         return .{
-            .uuid = UUID.init(),
+            .uuid = UUID.init(rand),
             .kind = .{
                 .queue_fork = .{
                     .selection = .random,
@@ -174,18 +174,18 @@ pub const Node = struct {
         };
     }
 
-    pub fn initFork() Node {
+    pub fn initFork(rand: std.Random) Node {
         return .{
-            .uuid = UUID.init(),
+            .uuid = UUID.init(rand),
             .kind = .{
                 .fork = .{},
             },
         };
     }
 
-    pub fn initSink() Node {
+    pub fn initSink(rand: std.Random) Node {
         return .{
-            .uuid = UUID.init(),
+            .uuid = UUID.init(rand),
             .kind = .{
                 .sink = .{},
             },
@@ -523,6 +523,7 @@ pub const SpawnerNode = struct {
     pub fn update(
         self: *SpawnerNode,
         alloc: std.mem.Allocator,
+        rand: std.Random,
         parent: *Node,
         graph: *Graph,
         env: *Environment,
@@ -538,10 +539,12 @@ pub const SpawnerNode = struct {
 
         const time: f64 = commons.getTimeMillis();
         if (time - self.last_spawn >= self.inter.? * std.time.ms_per_min) {
+            std.debug.print("{}\n", .{self.getSpawnerUUID().toInt()});
             const pos: rl.Vector2 = env.entities.getByUUID(self.getSpawnerUUID()).kind.spawner.getRandomSpawnPos();
 
             const a = try Agent.init(
                 alloc,
+                rand,
                 pos,
                 parent.uuid,
                 graph,

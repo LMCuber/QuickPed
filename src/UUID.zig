@@ -7,16 +7,13 @@ pub const UUIDSnapshot = struct {
     data: u128,
 };
 
-pub fn init() Self {
+pub fn init(rand: std.Random) Self {
     // UUIDv4
-    var prng = std.Random.DefaultPrng.init(0);
-    const rand = prng.random();
-
-    var bytes: [16]u8 = undefined;
-    rand.bytes(&bytes);
-    bytes[6] = (bytes[6] & 0x0f) | 0x40;
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    return .{ .bytes = bytes };
+    var uuid = Self{ .bytes = undefined };
+    rand.bytes(&uuid.bytes);
+    uuid.bytes[6] = (uuid.bytes[6] & 0x0F) | 0x40;
+    uuid.bytes[8] = (uuid.bytes[8] & 0x3F) | 0x80;
+    return uuid;
 }
 
 pub fn getSnapshot(self: Self) UUIDSnapshot {

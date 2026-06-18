@@ -104,6 +104,7 @@ pub const Entity = struct {
     pub fn init(
         comptime K: std.meta.Tag(Entity.Kind),
         alloc: std.mem.Allocator,
+        rand: std.Random,
         id: usize,
     ) !Entity {
         const T = switch (K) {
@@ -117,7 +118,7 @@ pub const Entity = struct {
         const entity = T.init();
         const name = try std.fmt.allocPrintSentinel(alloc, "{s}{}", .{ @typeName(T), id }, 0);
         return .{
-            .uuid = UUID.init(),
+            .uuid = UUID.init(rand),
             .name = name,
             .kind = @unionInit(Entity.Kind, @tagName(K), entity),
         };
