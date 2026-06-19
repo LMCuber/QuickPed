@@ -113,10 +113,6 @@ pub fn writeFile(alloc: std.mem.Allocator, io: std.Io, obj: anytype, path: []con
     try file.writeStreamingAll(io, allocating.written());
 }
 
-pub fn rand01() f32 {
-    return @as(f32, @floatFromInt(rl.getRandomValue(0, 1_000_000))) / 1_000_000.0;
-}
-
 pub fn getTimeMillis() f64 {
     return rl.getTime() * 1000;
 }

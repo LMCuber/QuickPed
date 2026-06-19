@@ -207,6 +207,7 @@ pub fn main(init: std.process.Init) !void {
                         for (env.agents.items()) |*agent|
                             try agent.update(
                                 alloc,
+                                rand,
                                 &env,
                                 &stats,
                                 settings,

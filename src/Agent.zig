@@ -101,19 +101,20 @@ pub fn init(
         .payload = null,
     };
     obj.current_node_id = spawner_node_id;
-    try obj.traverseFromCurrent(alloc, &graph.nodes, env);
+    try obj.traverseFromCurrent(alloc, rand, &graph.nodes, env);
     return obj;
 }
 
 pub fn traverseFromCurrent(
     self: *Self,
     alloc: std.mem.Allocator,
+    rand: std.Random,
     nodes: *Graph.NodeManager,
     env: *Environment,
 ) !void {
     // get the next node from graph and then process it
     // !! getNextNodeId() take into account the next of forks !!
-    if (try self.graph.getNextNodeId(alloc, self.current_node_id.?)) |next_node_id| {
+    if (try self.graph.getNextNodeId(alloc, rand, self.current_node_id.?)) |next_node_id| {
         // set current node to next by default (might be changed by e.g. fork)
         self.current_node_id = next_node_id;
 
@@ -143,7 +144,7 @@ pub fn traverseFromCurrent(
                 self.payload = .{
                     .portal = .{
                         .portal_id = portal_node.getPortalUUID(),
-                        .u = commons.rand01(),
+                        .u = rand.float(32),
                     },
                 };
                 self.target = env.entities.getByUUID(portal_node.getPortalUUID()).kind.portal.getSourcePosFromU(self.payload.?.portal.u);
@@ -152,7 +153,7 @@ pub fn traverseFromCurrent(
             .sink => self.marked = true,
             inline .fork, .queue_fork => {
                 self.current_node_id = next_node_id;
-                try self.traverseFromCurrent(alloc, nodes, env);
+                try self.traverseFromCurrent(alloc, rand, nodes, env);
             },
             .queue => |*queue_node| {
                 self.current_node_id = next_node_id;
@@ -178,6 +179,7 @@ pub fn traverseFromCurrent(
 pub fn processCurrentNode(
     self: *Self,
     alloc: std.mem.Allocator,
+    rand: std.Random,
     sim_data: SimData,
     agent_data: AgentData,
     nodes: *Graph.NodeManager,
@@ -209,7 +211,7 @@ pub fn processCurrentNode(
                 }
 
                 // traverse to next
-                try self.traverseFromCurrent(alloc, nodes, env);
+                try self.traverseFromCurrent(alloc, rand, nodes, env);
             }
         },
         .portal => {
@@ -219,7 +221,7 @@ pub fn processCurrentNode(
             // start waiting if in bounds
             if (p_obj.checkCollision(self.pos)) {
                 self.pos = p_obj.getDestPos(portal_payload.u);
-                try self.traverseFromCurrent(alloc, nodes, env);
+                try self.traverseFromCurrent(alloc, rand, nodes, env);
             }
         },
         .queue => |queue_node| {
@@ -235,7 +237,7 @@ pub fn processCurrentNode(
                     // can only dispatch if it is stationary
                     q_obj.freeIndex(q.spot_index);
                     self.wait.waiting = false;
-                    try self.traverseFromCurrent(alloc, nodes, env);
+                    try self.traverseFromCurrent(alloc, rand, nodes, env);
                 }
             }
 
@@ -377,6 +379,7 @@ fn calculateDriveForce(self: *Self, sim_data: SimData, agent_data: AgentData) rl
 pub fn update(
     self: *Self,
     alloc: std.mem.Allocator,
+    rand: std.Random,
     env: *Environment,
     stats: *Stats,
     settings: Settings,
@@ -406,6 +409,7 @@ pub fn update(
     // process node
     try self.processCurrentNode(
         alloc,
+        rand,
         sim_data,
         agent_data,
         nodes,

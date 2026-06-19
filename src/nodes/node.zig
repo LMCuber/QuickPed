@@ -325,15 +325,16 @@ pub const SpawnerWait = union(enum) {
     pub const Constant = struct {
         lambda: f32 = 60.0,
         pub fn getInter(self: @This()) f32 {
+            std.debug.print("{}|{}\n", .{ self.lambda, 1 / self.lambda });
             return 1 / self.lambda;
         }
     };
     pub const Poisson = struct {
         lambda: f32 = 60.0,
-        pub fn getInter(self: @This()) f32 {
+        pub fn getInter(self: @This(), rand: std.Random) f32 {
             // inverse of the CDF: F(x) = 1 - exp(-lambda * t)
             // => t = -1 / lambda * ln(u)
-            const u: f32 = commons.rand01();
+            const u: f32 = rand.float(f32);
             return -1.0 / self.lambda * @log(u);
         }
     };
@@ -532,7 +533,7 @@ pub const SpawnerNode = struct {
 
         if (self.inter == null) {
             self.inter = switch (self.wait) {
-                // getInter returns interarrival time in MINUTES
+                .poisson => |p| p.getInter(rand),
                 inline else => |w| w.getInter(),
             };
         }
@@ -554,6 +555,7 @@ pub const SpawnerNode = struct {
             // reset timer and get next interarrival time
             self.last_spawn = commons.getTimeMillis();
             self.inter = switch (self.wait) {
+                .poisson => |p| p.getInter(rand),
                 inline else => |w| w.getInter(),
             };
         }
@@ -897,7 +899,7 @@ pub const ForkNode = struct {
         return .{ .values = snap.values };
     }
 
-    pub fn getOutputSlotTitle(self: ForkNode) [*c]const u8 {
+    pub fn getOutputSlotTitle(self: ForkNode, rand: std.Random) [*c]const u8 {
         var sum: f32 = 0;
         for (self.values) |prob| {
             sum += prob;
@@ -909,7 +911,7 @@ pub const ForkNode = struct {
         }
 
         // add up until larger than cumulative
-        const r: f32 = commons.rand01() * sum;
+        const r: f32 = rand.float(f32) * sum;
         var cum: f64 = 0;
         var i: usize = 0;
         for (self.values) |value| {

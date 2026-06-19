@@ -90,12 +90,17 @@ pub fn processSpawners(
     }
 }
 
-pub fn getNextNodeId(self: *Self, alloc: std.mem.Allocator, current_node_id: UUID) !?UUID {
+pub fn getNextNodeId(
+    self: *Self,
+    alloc: std.mem.Allocator,
+    rand: std.Random,
+    current_node_id: UUID,
+) !?UUID {
     const current_node: *node.Node = self.nodes.getByUUID(current_node_id);
 
     // get correct port ID from current node
     const current_title: [*c]const u8 = switch (current_node.kind) {
-        inline .fork => |f| f.getOutputSlotTitle(),
+        inline .fork => |f| f.getOutputSlotTitle(rand),
         .sink => null,
         inline else => |kind| kind.output_slots[0].title,
     };
