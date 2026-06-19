@@ -47,7 +47,6 @@ fn teardown(self: *Self) void {
 
 pub fn rebuild(
     self: *Self,
-    alloc: std.mem.Allocator,
     agents: *Environment.AgentManager,
     bounds: rl.Rectangle,
 ) !void {
@@ -62,11 +61,11 @@ pub fn rebuild(
     };
 
     for (agents.items()) |*agent| {
-        try self.insert(alloc, self.root.?, agent.pos);
+        try self.insert(self.root.?, agent.pos);
     }
 }
 
-fn insert(self: *Self, alloc: std.mem.Allocator, node: *Node, point: rl.Vector2) !void {
+fn insert(self: *Self, node: *Node, point: rl.Vector2) !void {
     const allocator = self.arena.allocator();
     // if node is leaf and has room for more, just add it
     if (node.children == null and node.points.items.len < self.cap) {
@@ -76,16 +75,16 @@ fn insert(self: *Self, alloc: std.mem.Allocator, node: *Node, point: rl.Vector2)
 
     // if is leaf but is full, split it!
     if (node.children == null and node.points.items.len >= self.cap)
-        try self.splitNode(alloc, node);
+        try self.splitNode(node);
 
     // else: it is not leaf, so we need to traverse further
     if (node.children) |children| {
         const quad_index = node.getQuadrantIndex(point);
-        return self.insert(alloc, &children[quad_index], point);
+        return self.insert(&children[quad_index], point);
     }
 }
 
-fn splitNode(self: *Self, alloc: std.mem.Allocator, node: *Node) !void {
+fn splitNode(self: *Self, node: *Node) !void {
     const allocator = self.arena.allocator();
 
     // create the 4 children

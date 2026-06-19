@@ -191,7 +191,7 @@ pub fn main(init: std.process.Init) !void {
                 {
                     // try bench.begin();
                     // defer bench.end() catch {};
-                    try env.quadtree.rebuild(alloc, &env.agents, sim_rect);
+                    try env.quadtree.rebuild(&env.agents, sim_rect);
                 }
 
                 // update the agents
