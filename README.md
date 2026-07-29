@@ -43,7 +43,7 @@ While the former one is widely supported, the latter one is mostly underrepresen
 
 - [ ] Statistics.
 
-this is the eventual reason we do agent based modeling. This should therefore very easily accessible, and the data should be easily extractable to be used for further analysis. Examples:
+This is the eventual reason we do agent based modeling. This should therefore very easily accessible, and the data should be easily extractable to be used for further analysis. Examples:
     - [ ] Showing the percentage of waiting pedestrians per waiting area/queue
     - [ ] Heatmap showing bottlenecks during simulation
 
