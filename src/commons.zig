@@ -54,9 +54,9 @@ pub fn existsAnyObject(env: *Environment, kind: std.meta.Tag(entity.Entity.Kind)
     return false;
 }
 
-pub fn getRandomPointBetweenVectors(p1: rl.Vector2, p2: rl.Vector2) rl.Vector2 {
+pub fn getRandomPointBetweenVectors(rand: std.Random, p1: rl.Vector2, p2: rl.Vector2) rl.Vector2 {
     const diff: rl.Vector2 = p2.subtract(p1);
-    const p: f32 = rand01();
+    const p: f32 = rand.float(f32);
     return p1.add(diff.scale(p));
 }
 

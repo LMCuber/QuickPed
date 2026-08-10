@@ -37,8 +37,8 @@ pub fn fromSnapshot(snap: SpawnerSnapshot) Self {
     };
 }
 
-pub fn getRandomSpawnPos(self: Self) rl.Vector2 {
-    return commons.getRandomPointBetweenVectors(self.points.p1, self.points.p2);
+pub fn getRandomSpawnPos(self: Self, rand: std.Random) rl.Vector2 {
+    return commons.getRandomPointBetweenVectors(rand, self.points.p1, self.points.p2);
 }
 
 pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityAction {

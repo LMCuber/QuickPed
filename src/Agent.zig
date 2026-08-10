@@ -144,7 +144,7 @@ pub fn traverseFromCurrent(
                 self.payload = .{
                     .portal = .{
                         .portal_id = portal_node.getPortalUUID(),
-                        .u = rand.float(32),
+                        .u = rand.float(f32),
                     },
                 };
                 self.target = env.entities.getByUUID(portal_node.getPortalUUID()).kind.portal.getSourcePosFromU(self.payload.?.portal.u);
