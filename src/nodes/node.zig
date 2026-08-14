@@ -462,7 +462,7 @@ pub const SpawnerNode = struct {
         switch (self.wait) {
             .constant => |*constant| {
                 setNextItemWidth(node_width);
-                _ = z.inputFloat("wait##constant", .{ .v = &constant.lambda });
+                _ = z.inputFloat("rate##constant", .{ .v = &constant.lambda });
             },
             .poisson => |*poisson| {
                 setNextItemWidth(node_width);

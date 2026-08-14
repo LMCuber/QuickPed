@@ -37,6 +37,26 @@ pub fn printUuid(id: [16]u8) void {
     });
 }
 
+pub fn lineIntersection(line1: [2]rl.Vector2, line2: [2]rl.Vector2) ?rl.Vector2 {
+    const p1 = line1[0];
+    const p2 = line1[1];
+    const p3 = line2[0];
+    const p4 = line2[1];
+
+    const d1 = p2.subtract(p1); // direction of line 1
+    const d2 = p4.subtract(p3); // direction of line 2
+
+    const denom = d1.x * d2.y - d1.y * d2.x;
+
+    // lines are parallel (or coincident) — no unique intersection
+    if (@abs(denom) < 1e-6) return null;
+
+    const diff = p3.subtract(p1);
+    const t = (diff.x * d2.y - diff.y * d2.x) / denom;
+
+    return p1.add(d1.scale(t));
+}
+
 pub fn editorCapturingMouse(settings: Settings) bool {
     const mouse: rl.Vector2 = rl.getMousePosition();
     return mouse.x <= @as(f32, @floatFromInt(settings.sim_width)) and

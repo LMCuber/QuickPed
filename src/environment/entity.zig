@@ -91,7 +91,8 @@ pub const Entity = struct {
         return switch (self.kind) {
             .revolver => |*r| r.update(dt, sim_data, settings),
             .queue => |*r| r.update(alloc, dt, agent_data, sim_data, settings),
-            inline .contour, .area => |*kind| kind.update(alloc, sim_data, settings),
+            .contour => |*c| c.update(alloc, sim_data, agent_data, settings),
+            .area => |*kind| kind.update(alloc, sim_data, settings),
             inline else => |*kind| kind.update(sim_data, settings),
         };
     }
@@ -106,6 +107,8 @@ pub const Entity = struct {
         alloc: std.mem.Allocator,
         rand: std.Random,
         id: usize,
+        _: SimData,
+        _: AgentData,
     ) !Entity {
         const T = switch (K) {
             .contour => Contour,
@@ -151,7 +154,7 @@ pub const Entity = struct {
             .uuid = UUID.fromSnapshot(snap.uuid.data),
             .name = try alloc.dupeZ(u8, snap.name),
             .kind = switch (snap.kind) {
-                .contour => |cs| .{ .contour = try Contour.fromSnapshot(alloc, cs) },
+                .contour => |cs| .{ .contour = try Contour.fromSnapshot(alloc, cs, sim_data, agent_data) },
                 .spawner => |ss| .{ .spawner = Spawner.fromSnapshot(ss) },
                 .area => |as| .{ .area = try Area.fromSnapshot(alloc, as) },
                 .revolver => |rs| .{ .revolver = Revolver.fromSnapshot(rs) },
@@ -164,7 +167,7 @@ pub const Entity = struct {
     pub fn draw(self: *Entity, sim_data: SimData, agent_data: AgentData, node_editor_active: bool) void {
         // draw general entity
         switch (self.kind) {
-            .queue => |*q| q.draw(sim_data, agent_data),
+            inline .contour, .queue => |*k| k.draw(sim_data, agent_data),
             inline else => |*kind| kind.draw(),
         }
         // check hover behavior (after draw)

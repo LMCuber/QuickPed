@@ -16,7 +16,7 @@ _AnyLogic_ (specifically the _Pedestrian Library_) is the only software I have u
 * The software looks very old and some operations are feel very janky to perform, such as configuring a custom agent profile and importing a database for arrival schedules (which broke at least 4 times when I was trying to import my dataset).
 
 ## Defining features
-Here are the seven pillars of _QuickPed_, or as I like to call them, _TSPOQ_ (pronounced: tɪspɔk)
+Here are the seven pillars of _QuickPed_:
 
 - [x] Social force model for pedestrians based on [the works](https://www.researchgate.net/publication/1947096_Social_Force_Model_for_Pedestrian_Dynamics) of _Helbing et al_.
 
@@ -24,14 +24,22 @@ Simulations don't usually tell you the underlying physics model their agents. Th
 
 - [x] Ease-of-use.
 
-As the name suggests, _QuickPed_ should be the first book you take off the shelf when you want to prototype your agent based simulation. This philosophy come with some side effects though:
+As the name suggests, _QuickPed_ should be the first tool you take off your toolbelt when you want to prototype your agent based simulation. This philosophy come with some side effects though:
     - As powerful as scripting may be, the absolute last thing I wish upon my worst enemy is inspecting the implementation of a certain _AnyLogic_ `Node` class to find its size and find the correct method to call to change its position, just for it not to work in the end anyway.
 
 > If the blueprint system isn't expressive enough that it requires scripting, is it even a good blueprint system then? Food for thought
 
-- [ ] Built with _optimization_ in mind.
+- [ ] Built specifically for _optimization_.
 
-Optimization in this context is not just limited to the number of queues or seats, but also their shape and location. Optimizing certain parameters of your simulation should not feel like coal mining with the source code - it should be _built into the_ simulation software. _AnyLogic_, for example, has decent support for optimization of _variables_, but it has a hard time modifying the location and dimensions of, for example, a waiting area.
+Optimizing certain parameters of your simulation should not feel like coal mining with the source code - it should be _built into the_ simulation software. _AnyLogic_, for example, has decent support for optimization of _variables_, but it has a hard time modifying the location and dimensions of, for example, a waiting area.
+
+Optimization can be split into two categories: _preemptive_ vs _reactive_:
+
+> Optimization comes up in the real world more often than you might think. For example: I have experience working a movie theatre, where there were multiple domains where optimization is possible:
+> - Workers complaining about being stripped of one of their coffee machines, claiming it makes them slower during rush hour.
+> - Managers who want to rearrange the seaing positions in the main hall and add chairs to accomodate more people.
+> - The ticket scanner being annoyed that two of the three self-check-in kiosks are broken. Does it actually increase processing time?
+> These types of questions are harder to answer intuitively, since small effects can have unintuitive consequences.
 
 - [ ] _Realistic_ and _easy-to-implement_ arrival schedules.
 
@@ -57,9 +65,7 @@ In _AnyLogic_, pedestrians can get stuck behind corners and cause severe congest
 
 ## Won't haves
 - Any type of scripting support:
-the project should maximize development time and ease of use. I might implement it later when I see that the base nodes in the editor aren't enough to express complex interactions that are complex enough.
-- Others means of agent based simulation:
-this refers to other businesses, such as transport systems and factory pipelines. Those are currently way beyond the scope of the project.
+the project should maximize development time and ease of use. Scripting will only be implemented when I am 100% sure the project has reached completion for be basic functionality, and it is missing out on being exploited logically by not having a scripting language. 
 
 > Jack of all trades, master of none, often better than a master of one, until the simulation software doesn't support revolving doors so you have to tell the the architects to scrap that idea.
 

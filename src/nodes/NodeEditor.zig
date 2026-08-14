@@ -159,7 +159,17 @@ pub fn render(
 
         // user wants to delete the currently selected node
         if (selected_node_id) |node_id| {
+            // delete the node first (graph handles actual deletion)
             if (rl.isKeyReleased(.d)) try self.graph.deleteNode(alloc, node_id);
+
+            // make sure all agents that had a pointer to the node are also killed to prevent dereferencing garbage
+            for (env.agents.items()) |*agent| {
+                if (agent.current_node_id) |current_id| {
+                    if (current_id.equals(node_id)) {
+                        agent.marked = true;
+                    }
+                }
+            }
         }
 
         // create new conns by passing an empty dummy connections struct to be populated with values

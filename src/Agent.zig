@@ -34,11 +34,12 @@ col: rl.Color,
 vel: rl.Vector2 = .zero(),
 acc: rl.Vector2 = .zero(),
 
-// use marked instead of deleting immediately inside the struct because
-// 1: the struct knowing the container its inside is kind of an antipattern
+// use marked instead of deleting immediately inside the struct because:
+// 1: the struct knowing the container it's inside is kind of an antipattern
 // 2: removing while iterating is always a headache
 // 3: when a tailless spawner creates an entity, it immediately deletes itself
 // without being inside any container (since constructor calls traverse())
+
 marked: bool = false,
 
 graph: *Graph,
@@ -175,7 +176,7 @@ pub fn traverseFromCurrent(
 }
 
 /// every frame, processCurrentNode checks what node we are on currently
-/// and then (for example) checks if we need to start waiting because we entered radius of a waiting area
+/// and then (for example:) checks if we need to start waiting because we entered radius of a waiting area
 pub fn processCurrentNode(
     self: *Self,
     alloc: std.mem.Allocator,
@@ -470,8 +471,24 @@ pub fn draw(self: *Self, env: *Environment, sim_data: SimData, agent_data: Agent
         rl.drawRectangleLinesEx(self.getAABB(agent_data, sim_data), 1, palette.env.hover);
     }
 
-    if (agent_data.show_targets) {
-        rl.drawCircleLinesV(self.target, agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2.0, palette.env.red);
-        rl.drawLineV(self.pos, self.target, palette.env.red);
+    if (sim_data.show_pathfinding) {
+        var intersection = false;
+        for (env.entities.items()) |ent| {
+            switch (ent.kind) {
+                .contour => |c| {
+                    if (c.collideRay(self.pos, self.target)) {
+                        intersection = true;
+                        break;
+                    }
+                },
+                else => {},
+            }
+        }
+        const col = if (intersection)
+            palette.env.orange
+        else
+            palette.env.light_blue;
+        rl.drawCircleLinesV(self.target, agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2.0, col);
+        rl.drawLineV(self.pos, self.target, col);
     }
 }

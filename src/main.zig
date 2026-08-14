@@ -188,11 +188,10 @@ pub fn main(init: std.process.Init) !void {
 
                 // rebuild the quadtree
                 // const last: f64 = rl.getTime();
-                {
-                    // try bench.begin();
-                    // defer bench.end() catch {};
-                    try env.quadtree.rebuild(&env.agents, sim_rect);
-                }
+                try env.quadtree.rebuild(&env.agents, sim_rect);
+
+                // rebuild the A* graph
+                try env.pathfinding.rebuildGraph(alloc, &env);
 
                 // update the agents
                 var check_count: i32 = 0;
@@ -242,9 +241,13 @@ pub fn main(init: std.process.Init) !void {
                 rl.drawRectangleRec(sim_rect, palette.env.dark_blue);
                 renderGrid();
 
+                // render the quadtree
                 if (sim_data.show_quadtree) {
                     env.quadtree.render();
                 }
+
+                // render the pathdfinding
+                env.pathfinding.draw(sim_data);
 
                 if (!gui_capturing) {
                     // if pressing ctrl, then zoom. otherwise pan
@@ -358,42 +361,42 @@ pub fn main(init: std.process.Init) !void {
                         // contour
                         if (try EB.contourButton(alloc, button_size)) {
                             resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.contour, alloc, rand, next_id);
+                            current_entity = try entity.Entity.init(.contour, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // // spawner
                         z.sameLine(.{});
                         if (try EB.spawnerButton(alloc, button_size)) {
                             resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.spawner, alloc, rand, next_id);
+                            current_entity = try entity.Entity.init(.spawner, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // area
                         z.sameLine(.{});
                         if (try EB.areaButton(alloc, button_size)) {
                             resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.area, alloc, rand, next_id);
+                            current_entity = try entity.Entity.init(.area, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // revolver
                         z.sameLine(.{});
                         if (try EB.revolverButton(alloc, button_size)) {
                             resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.revolver, alloc, rand, next_id);
+                            current_entity = try entity.Entity.init(.revolver, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // queue
                         z.sameLine(.{});
                         if (try EB.queueButton(alloc, button_size)) {
                             resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.queue, alloc, rand, next_id);
+                            current_entity = try entity.Entity.init(.queue, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // portal
                         z.sameLine(.{});
                         if (try EB.portalButton(alloc, button_size)) {
                             resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.portal, alloc, rand, next_id);
+                            current_entity = try entity.Entity.init(.portal, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // update the selected entity
@@ -412,7 +415,7 @@ pub fn main(init: std.process.Init) !void {
                     // process new popups if placing entity gave .confirm signal
                     switch (current_entity_action) {
                         .confirm => {
-                            z.openPopup("Confirm", .{});
+                            z.openPopup("Confirm##entity", .{});
                             current_entity_action = .none;
                         },
                         .confirm_init => {
@@ -424,7 +427,7 @@ pub fn main(init: std.process.Init) !void {
 
                     // POPUPS
                     // confirm close popup
-                    if (z.beginPopupModal("Confirm", .{ .flags = .{ .always_auto_resize = true } })) {
+                    if (z.beginPopupModal("Confirm##entity", .{ .flags = .{ .always_auto_resize = true } })) {
                         defer z.endPopup();
 
                         // give focus the first time it appears
@@ -465,18 +468,18 @@ pub fn main(init: std.process.Init) !void {
                             z.newLine();
 
                             // confirm and cancel
-                            if (z.button("cancel", .{})) {
-                                z.closeCurrentPopup();
-                                ent.deinit(alloc);
-                                current_entity = null;
-                            }
-                            z.sameLine(.{});
                             if (z.button("confirm", .{}) and !duplicate_name) {
                                 z.closeCurrentPopup();
 
                                 try env.createEntity(alloc, ent.*);
                                 // don't deinit!
 
+                                current_entity = null;
+                            }
+                            z.sameLine(.{});
+                            if (z.button("cancel", .{})) {
+                                z.closeCurrentPopup();
+                                ent.deinit(alloc);
                                 current_entity = null;
                             }
                         } else unreachable;
@@ -493,18 +496,18 @@ pub fn main(init: std.process.Init) !void {
                             }
 
                             // closing buttons
-                            if (z.button("cancel", .{})) {
-                                z.closeCurrentPopup();
-                                ent.deinit(alloc);
-                                current_entity = null;
-                            }
-                            z.sameLine(.{});
                             if (z.button("confirm", .{})) {
                                 switch (ent.kind) {
                                     .area => |*a| try a.finishConfirm(),
                                     else => unreachable,
                                 }
                                 z.closeCurrentPopup();
+                            }
+                            z.sameLine(.{});
+                            if (z.button("cancel", .{})) {
+                                z.closeCurrentPopup();
+                                ent.deinit(alloc);
+                                current_entity = null;
                             }
                         } else unreachable;
                     }

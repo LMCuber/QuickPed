@@ -9,9 +9,10 @@ aspect_ratio: f32 = 1,
 environment_width: i32 = 0,
 environment_height: i32 = 0,
 grid_size: i32 = 2 << 4,
-scale: i32 = 32, // this many pixels is 1 meter in simulation
+scale: i32 = 32, // 1 meter is this many pixels in simulation
 paused: bool = true,
 show_quadtree: bool = false,
+show_pathfinding: bool = true,
 
 pub fn init() Self {
     return .{};
@@ -48,6 +49,7 @@ pub fn updateUi(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) 
         _ = z.inputInt("scale", .{ .v = &self.scale });
 
         _ = z.checkbox("show quadtree", .{ .v = &self.show_quadtree });
+        _ = z.checkbox("show pathfinding", .{ .v = &self.show_pathfinding });
 
         z.newLine();
     }

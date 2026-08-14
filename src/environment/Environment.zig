@@ -11,14 +11,16 @@ const Agent = @import("../Agent.zig");
 const Manager = @import("../Manager.zig").Manager;
 const Revolver = @import("Revolver.zig");
 const Quadtree = @import("../Quadtree.zig");
+const Pathfinding = @import("../Pathfinding.zig");
 const commons = @import("../commons.zig");
 const UUID = @import("../UUID.zig");
 
 pub const EntityManager = Manager(entity.Entity);
 pub const AgentManager = Manager(Agent);
 
-entities: EntityManager,
 agents: AgentManager,
+
+entities: EntityManager,
 contours: std.ArrayList(UUID),
 spawners: std.ArrayList(UUID),
 areas: std.ArrayList(UUID),
@@ -26,6 +28,7 @@ revolvers: std.ArrayList(UUID),
 queues: std.ArrayList(UUID),
 portals: std.ArrayList(UUID),
 quadtree: Quadtree,
+pathfinding: Pathfinding,
 
 const EnvironmentSnapshot = struct {
     version: []const u8,
@@ -43,6 +46,7 @@ pub fn init(alloc: std.mem.Allocator) Self {
         .queues = .empty,
         .portals = .empty,
         .quadtree = Quadtree.init(alloc, 8),
+        .pathfinding = Pathfinding.init(),
     };
 }
 
@@ -54,6 +58,7 @@ pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
     self.queues.deinit(alloc);
     self.portals.deinit(alloc);
     self.quadtree.deinit();
+    self.pathfinding.deinit(alloc);
     self.agents.deinit(alloc);
     self.entities.deinit(alloc);
 }
