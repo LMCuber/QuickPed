@@ -56,7 +56,8 @@ _AnyLogic_ (specifically the _Pedestrian Library_) is the only software I have u
 - **Good pathfinding for the pedestrians.**  
 
     _AnyLogic_'s _Pedestrian Library_ is supposed to be a black box, but after careful observation it seems like it uses a [visibility graph](https://en.wikipedia.org/wiki/Visibility_graph) approach combined with some sort of heuristic. This visibility graph approach has 2 main drawbacks:
-    - Constructing a visibility graph is an `O(n^{2})`
+    - Constructing a visibility graph is an `O(n^{2})` operation. This is usually slower than a partition-based algorithm 
+    - 
 
 ## Won't haves
 - Any type of scripting support:
