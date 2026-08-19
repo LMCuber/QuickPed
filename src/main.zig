@@ -43,20 +43,28 @@ var ctx: ?*imnodes.ez.Context = null;
 pub fn main(init: std.process.Init) !void {
     const io = init.io;
     const alloc = init.gpa;
+    const rng_impl: std.Random.IoSource = .{ .io = io };
+    const rand = rng_impl.interface();
 
     var file = try std.Io.Dir.cwd().createFile(io, "output.txt", .{});
     defer file.close(io);
-    // var writer = file.writer();
 
-    rl.initWindow(1, 1, "QuickPed");
     // initWindow must be called BEFORE Settings.init() so we can get monitor size
+    rl.initWindow(1, 1, "QuickPed");
     const settings = Settings.init();
-    rl.setConfigFlags(.{ .vsync_hint = settings.vsync });
+    rl.closeWindow();
+
+    // create window again
+    rl.setConfigFlags(.{
+        .vsync_hint = settings.vsync,
+        .msaa_4x_hint = true,
+    });
     rl.initWindow(settings.width, settings.height, "QuickPed");
     defer rl.closeWindow();
     if (settings.vsync) {
         rl.setTargetFPS(rl.getMonitorRefreshRate(0));
     }
+    _ = try rl.getFontDefault();
 
     // imgui setup + breakdown
     c.rlImGuiSetup(true);
@@ -66,9 +74,17 @@ pub fn main(init: std.process.Init) !void {
     try z.initNoContext(alloc);
     defer z.deinitNoContext(alloc);
 
+    // change imgui style parameters to use smooth antialiasing when drawing lines
+    const style = z.getStyle();
+    style.anti_aliased_lines = true;
+    style.anti_aliased_lines_use_tex = false;
+    style.anti_aliased_fill = true;
+
+    // implot context init
     implot.createContext();
     defer implot.destroyContext();
 
+    // imnodes context init
     ctx = imnodes.ez.createContext().?;
     imnodes.ez.setContext(ctx.?);
     defer imnodes.ez.freeContext(ctx.?);
@@ -79,8 +95,8 @@ pub fn main(init: std.process.Init) !void {
         imnodes.setZoom(imnodes.ez.getState(), 1.4);
     } else {
         const font = z.io.addFontFromFile("fonts/DroidSans.ttf", 20);
-        z.io.setDefaultFont(font);
         c.rlImGuiReloadFonts();
+        z.io.setDefaultFont(font);
     }
 
     // seeding
@@ -172,11 +188,10 @@ pub fn main(init: std.process.Init) !void {
 
                 // rebuild the quadtree
                 // const last: f64 = rl.getTime();
-                {
-                    // try bench.begin();
-                    // defer bench.end() catch {};
-                    try env.quadtree.rebuild(alloc, &env.agents, sim_rect);
-                }
+                try env.quadtree.rebuild(&env.agents, sim_rect);
+
+                // rebuild the A* graph
+                try env.pathfinding.rebuildGraph(alloc, &env);
 
                 // update the agents
                 var check_count: i32 = 0;
@@ -191,6 +206,7 @@ pub fn main(init: std.process.Init) !void {
                         for (env.agents.items()) |*agent|
                             try agent.update(
                                 alloc,
+                                rand,
                                 &env,
                                 &stats,
                                 settings,
@@ -225,9 +241,13 @@ pub fn main(init: std.process.Init) !void {
                 rl.drawRectangleRec(sim_rect, palette.env.dark_blue);
                 renderGrid();
 
+                // render the quadtree
                 if (sim_data.show_quadtree) {
                     env.quadtree.render();
                 }
+
+                // render the pathdfinding
+                env.pathfinding.draw(sim_data);
 
                 if (!gui_capturing) {
                     // if pressing ctrl, then zoom. otherwise pan
@@ -326,57 +346,57 @@ pub fn main(init: std.process.Init) !void {
                         const next_id: usize = 0;
 
                         // todo: this is literally the best (worst) thing of all time
-                        inline for (@typeInfo(std.meta.Tag(entity.Entity.Kind)).@"enum".fields, 0..) |field, i| {
-                            if (i != 0) z.sameLine(.{});
-                            if (try @field(EB, field.name ++ "Button")(alloc, button_size)) {
-                                resetCurrentEntity(alloc, &current_entity);
-                                current_entity = try entity.Entity.init(
-                                    std.meta.stringToEnum(std.meta.Tag(entity.Entity.Kind), field.name).?,
-                                    alloc,
-                                    next_id,
-                                );
-                            }
-                        }
+                        // inline for (@typeInfo(std.meta.Tag(entity.Entity.Kind)).@"enum".fields, 0..) |field, i| {
+                        //     if (i != 0) z.sameLine(.{});
+                        //     if (try @field(EB, field.name ++ "Button")(alloc, button_size)) {
+                        //         resetCurrentEntity(alloc, &current_entity);
+                        //         current_entity = try entity.Entity.init(
+                        //             std.meta.stringToEnum(std.meta.Tag(entity.Entity.Kind), field.name).?,
+                        //             alloc,
+                        //             next_id,
+                        //         );
+                        //     }
+                        // }
 
                         // contour
                         if (try EB.contourButton(alloc, button_size)) {
                             resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.contour, alloc, next_id);
+                            current_entity = try entity.Entity.init(.contour, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // // spawner
                         z.sameLine(.{});
                         if (try EB.spawnerButton(alloc, button_size)) {
                             resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.spawner, alloc, next_id);
+                            current_entity = try entity.Entity.init(.spawner, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // area
                         z.sameLine(.{});
                         if (try EB.areaButton(alloc, button_size)) {
                             resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.area, alloc, next_id);
+                            current_entity = try entity.Entity.init(.area, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // revolver
                         z.sameLine(.{});
                         if (try EB.revolverButton(alloc, button_size)) {
                             resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.revolver, alloc, next_id);
+                            current_entity = try entity.Entity.init(.revolver, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // queue
                         z.sameLine(.{});
                         if (try EB.queueButton(alloc, button_size)) {
                             resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.queue, alloc, next_id);
+                            current_entity = try entity.Entity.init(.queue, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // portal
                         z.sameLine(.{});
                         if (try EB.portalButton(alloc, button_size)) {
                             resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.portal, alloc, next_id);
+                            current_entity = try entity.Entity.init(.portal, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // update the selected entity
@@ -395,7 +415,7 @@ pub fn main(init: std.process.Init) !void {
                     // process new popups if placing entity gave .confirm signal
                     switch (current_entity_action) {
                         .confirm => {
-                            z.openPopup("Confirm", .{});
+                            z.openPopup("Confirm##entity", .{});
                             current_entity_action = .none;
                         },
                         .confirm_init => {
@@ -407,7 +427,7 @@ pub fn main(init: std.process.Init) !void {
 
                     // POPUPS
                     // confirm close popup
-                    if (z.beginPopupModal("Confirm", .{ .flags = .{ .always_auto_resize = true } })) {
+                    if (z.beginPopupModal("Confirm##entity", .{ .flags = .{ .always_auto_resize = true } })) {
                         defer z.endPopup();
 
                         // give focus the first time it appears
@@ -448,18 +468,18 @@ pub fn main(init: std.process.Init) !void {
                             z.newLine();
 
                             // confirm and cancel
-                            if (z.button("cancel", .{})) {
-                                z.closeCurrentPopup();
-                                ent.deinit(alloc);
-                                current_entity = null;
-                            }
-                            z.sameLine(.{});
                             if (z.button("confirm", .{}) and !duplicate_name) {
                                 z.closeCurrentPopup();
 
                                 try env.createEntity(alloc, ent.*);
                                 // don't deinit!
 
+                                current_entity = null;
+                            }
+                            z.sameLine(.{});
+                            if (z.button("cancel", .{})) {
+                                z.closeCurrentPopup();
+                                ent.deinit(alloc);
                                 current_entity = null;
                             }
                         } else unreachable;
@@ -476,18 +496,18 @@ pub fn main(init: std.process.Init) !void {
                             }
 
                             // closing buttons
-                            if (z.button("cancel", .{})) {
-                                z.closeCurrentPopup();
-                                ent.deinit(alloc);
-                                current_entity = null;
-                            }
-                            z.sameLine(.{});
                             if (z.button("confirm", .{})) {
                                 switch (ent.kind) {
                                     .area => |*a| try a.finishConfirm(),
                                     else => unreachable,
                                 }
                                 z.closeCurrentPopup();
+                            }
+                            z.sameLine(.{});
+                            if (z.button("cancel", .{})) {
+                                z.closeCurrentPopup();
+                                ent.deinit(alloc);
+                                current_entity = null;
                             }
                         } else unreachable;
                     }
@@ -501,9 +521,9 @@ pub fn main(init: std.process.Init) !void {
                         .h = @floatFromInt(settings.height),
                     });
 
-                    try node_editor.render(alloc, settings, &env);
+                    try node_editor.render(alloc, rand, settings, &env);
                     if (!sim_data.paused) {
-                        try node_editor.update(alloc, &env);
+                        try node_editor.update(alloc, rand, &env);
                     }
                 }
             }

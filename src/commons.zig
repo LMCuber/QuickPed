@@ -37,6 +37,26 @@ pub fn printUuid(id: [16]u8) void {
     });
 }
 
+pub fn lineIntersection(line1: [2]rl.Vector2, line2: [2]rl.Vector2) ?rl.Vector2 {
+    const p1 = line1[0];
+    const p2 = line1[1];
+    const p3 = line2[0];
+    const p4 = line2[1];
+
+    const d1 = p2.subtract(p1); // direction of line 1
+    const d2 = p4.subtract(p3); // direction of line 2
+
+    const denom = d1.x * d2.y - d1.y * d2.x;
+
+    // lines are parallel (or coincident) — no unique intersection
+    if (@abs(denom) < 1e-6) return null;
+
+    const diff = p3.subtract(p1);
+    const t = (diff.x * d2.y - diff.y * d2.x) / denom;
+
+    return p1.add(d1.scale(t));
+}
+
 pub fn editorCapturingMouse(settings: Settings) bool {
     const mouse: rl.Vector2 = rl.getMousePosition();
     return mouse.x <= @as(f32, @floatFromInt(settings.sim_width)) and
@@ -47,16 +67,16 @@ pub fn roundN(value: i32, n: i32) i32 {
     return @divTrunc(value + @divTrunc(n, 2), n) * n;
 }
 
-pub fn existsAnyObject(env: *Environment, comptime kind: std.meta.Tag(entity.Entity.Kind)) bool {
+pub fn existsAnyObject(env: *Environment, kind: std.meta.Tag(entity.Entity.Kind)) bool {
     for (env.entities.items()) |*ent| {
         if (std.meta.activeTag(ent.kind) == kind) return true;
     }
     return false;
 }
 
-pub fn getRandomPointBetweenVectors(p1: rl.Vector2, p2: rl.Vector2) rl.Vector2 {
+pub fn getRandomPointBetweenVectors(rand: std.Random, p1: rl.Vector2, p2: rl.Vector2) rl.Vector2 {
     const diff: rl.Vector2 = p2.subtract(p1);
-    const p: f32 = rand01();
+    const p: f32 = rand.float(f32);
     return p1.add(diff.scale(p));
 }
 
@@ -103,7 +123,7 @@ pub fn writeFile(alloc: std.mem.Allocator, io: std.Io, obj: anytype, path: []con
     var allocating = std.Io.Writer.Allocating.init(alloc);
     defer allocating.deinit();
 
-    const formatter = std.json.fmt(obj, .{});
+    const formatter = std.json.fmt(obj, .{ .whitespace = .indent_4 });
     try formatter.format(&allocating.writer);
 
     // create file it it doesn't exist
@@ -111,10 +131,6 @@ pub fn writeFile(alloc: std.mem.Allocator, io: std.Io, obj: anytype, path: []con
     defer file.close(io);
 
     try file.writeStreamingAll(io, allocating.written());
-}
-
-pub fn rand01() f32 {
-    return @as(f32, @floatFromInt(rl.getRandomValue(0, 1_000_000))) / 1_000_000.0;
 }
 
 pub fn getTimeMillis() f64 {

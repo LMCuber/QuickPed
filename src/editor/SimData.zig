@@ -9,15 +9,17 @@ aspect_ratio: f32 = 1,
 environment_width: i32 = 0,
 environment_height: i32 = 0,
 grid_size: i32 = 2 << 4,
-scale: i32 = 32, // this many pixels is 1 meter in simulation
+scale: i32 = 32, // 1 meter is this many pixels in simulation
 paused: bool = true,
 show_quadtree: bool = false,
+show_pathfinding: bool = true,
 
 pub fn init() Self {
     return .{};
 }
 
 pub fn render(self: *Self) void {
+    // RENDER THE SCALE INDICATOR |---| "1m"
     const start: rl.Vector2 = .{ .x = 32, .y = 32 };
     const end: rl.Vector2 = start.add(.{ .x = @floatFromInt(self.scale), .y = 0 });
     const o: rl.Vector2 = .{ .x = 0, .y = 4 };
@@ -25,7 +27,7 @@ pub fn render(self: *Self) void {
     rl.drawLineEx(start, end, thick, palette.env.white);
     rl.drawLineEx(start.subtract(o), start.add(o), thick, palette.env.white);
     rl.drawLineEx(end.subtract(o), end.add(o), thick, palette.env.white);
-    rl.drawText("1m", @intFromFloat(start.add(end.subtract(start).scale(0.5)).x), start.y + 12, 18, palette.env.white);
+    rl.drawText("1m", @intFromFloat(start.add(end.subtract(start).scale(0.5)).x), start.y + 12, 20, palette.env.white);
 }
 
 pub fn updateUi(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) void {
@@ -47,6 +49,7 @@ pub fn updateUi(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) 
         _ = z.inputInt("scale", .{ .v = &self.scale });
 
         _ = z.checkbox("show quadtree", .{ .v = &self.show_quadtree });
+        _ = z.checkbox("show pathfinding", .{ .v = &self.show_pathfinding });
 
         z.newLine();
     }

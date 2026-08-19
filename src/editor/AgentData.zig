@@ -19,7 +19,6 @@ b_ped: f32 = 4,
 a_ob: f32 = 2.0,
 b_ob: f32 = 4,
 show_vectors: bool = false,
-show_targets: bool = false,
 
 const default_data = Self.init();
 
@@ -100,11 +99,19 @@ pub fn updateUi(self: *Self, alloc: std.mem.Allocator, agents: *Environment.Agen
             try z.text(alloc, "The distance the agents want to keep from the obstacles", .{});
         }
 
-        if (z.button("reset", .{}))
-            self.* = default_data;
+        if (z.button("default", .{}))
+            z.openPopup("Confirm##default", .{});
+        if (z.beginPopupModal("Confirm##default", .{ .flags = .{ .always_auto_resize = true } })) {
+            defer z.endPopup();
+            if (z.button("confirm", .{})) {
+                self.* = default_data;
+                z.closeCurrentPopup();
+            }
+            z.sameLine(.{});
+            if (z.button("cancel", .{})) z.closeCurrentPopup();
+        }
 
         _ = z.checkbox("show vectors", .{ .v = &self.show_vectors });
-        _ = z.checkbox("show targets", .{ .v = &self.show_targets });
         z.newLine();
     }
 }

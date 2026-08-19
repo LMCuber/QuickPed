@@ -5,7 +5,7 @@ pub fn Manager(comptime T: type) type {
     return struct {
         const Self = @This();
 
-        list: std.ArrayList(T),
+        list: std.ArrayList(T),  // holds the concrete objects
         map: std.AutoHashMap(u128, usize), // maps from UUID to list index
 
         pub fn init(alloc: std.mem.Allocator) Self {

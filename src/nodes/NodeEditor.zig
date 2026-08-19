@@ -47,17 +47,18 @@ pub fn loadNodes(
     try self.graph.loadNodes(alloc, io, path, env);
 }
 
-pub fn update(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
-    try self.processSpawners(alloc, env);
+pub fn update(self: *Self, alloc: std.mem.Allocator, rand: std.Random, env: *Environment) !void {
+    try self.processSpawners(alloc, rand, env);
 }
 
-pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
-    try self.graph.processSpawners(alloc, env);
+pub fn processSpawners(self: *Self, alloc: std.mem.Allocator, rand: std.Random, env: *Environment) !void {
+    try self.graph.processSpawners(alloc, rand, env);
 }
 
 pub fn render(
     self: *Self,
     alloc: std.mem.Allocator,
+    rand: std.Random,
     settings: Settings,
     env: *Environment,
 ) !void {
@@ -104,29 +105,29 @@ pub fn render(
                 defer z.endMenu();
 
                 if (z.menuItem("Spawner", .{ .enabled = commons.existsAnyObject(env, .spawner) })) {
-                    try self.graph.addNode(alloc, node.Node.initSpawner(env, .{ .constant = .{} }));
+                    try self.graph.addNode(alloc, node.Node.initSpawner(rand, env, .{ .constant = .{} }));
                 }
 
                 if (z.menuItem("Area", .{ .enabled = commons.existsAnyObject(env, .area) })) {
-                    try self.graph.addNode(alloc, node.Node.initArea(env, .{ .constant = .{} }));
+                    try self.graph.addNode(alloc, node.Node.initArea(rand, env, .{ .constant = .{} }));
                 }
 
                 if (z.menuItem("Queue", .{ .enabled = commons.existsAnyObject(env, .queue) })) {
-                    try self.graph.addNode(alloc, node.Node.initQueue(env, .{ .constant = .{ .wait = 1000 } }));
+                    try self.graph.addNode(alloc, node.Node.initQueue(rand, env, .{ .constant = .{ .wait = 1000 } }));
                 }
 
                 if (z.menuItem("Queue Fork", .{})) {
-                    try self.graph.addNode(alloc, node.Node.initQueueFork());
+                    try self.graph.addNode(alloc, node.Node.initQueueFork(rand));
                 }
 
                 // fork node
                 if (z.menuItem("Fork", .{})) {
-                    try self.graph.addNode(alloc, node.Node.initFork());
+                    try self.graph.addNode(alloc, node.Node.initFork(rand));
                 }
 
                 // sink node
                 if (z.menuItem("Sink", .{})) {
-                    try self.graph.addNode(alloc, node.Node.initSink());
+                    try self.graph.addNode(alloc, node.Node.initSink(rand));
                 }
 
                 // less frequently used environmental objects
@@ -134,7 +135,7 @@ pub fn render(
                     defer z.endMenu();
 
                     if (z.menuItem("Portal", .{ .enabled = commons.existsAnyObject(env, .portal) })) {
-                        try self.graph.addNode(alloc, node.Node.initPortal(env));
+                        try self.graph.addNode(alloc, node.Node.initPortal(rand, env));
                     }
                 }
             }
@@ -158,7 +159,17 @@ pub fn render(
 
         // user wants to delete the currently selected node
         if (selected_node_id) |node_id| {
+            // delete the node first (graph handles actual deletion)
             if (rl.isKeyReleased(.d)) try self.graph.deleteNode(alloc, node_id);
+
+            // make sure all agents that had a pointer to the node are also killed to prevent dereferencing garbage
+            for (env.agents.items()) |*agent| {
+                if (agent.current_node_id) |current_id| {
+                    if (current_id.equals(node_id)) {
+                        agent.marked = true;
+                    }
+                }
+            }
         }
 
         // create new conns by passing an empty dummy connections struct to be populated with values

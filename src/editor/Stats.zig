@@ -204,6 +204,8 @@ pub fn updateUi(self: *Self, alloc: std.mem.Allocator, agents: *Environment.Agen
 
 pub fn add_to_heatmap(self: *Self, x_pos: i32, y_pos: i32) void {
     self.heatmap[@intCast(y_pos * self.n_cols + x_pos)] += 1;
+
+    // (testing)
     // for (0..@intCast(self.n_cols)) |x| {
     //     for (0..@intCast(self.n_rows)) |y| {
     //         self.heatmap[y * @as(usize, @intCast(self.n_rows)) + x] = @sqrt(@as(f32, @floatFromInt(x * x + y * y)));

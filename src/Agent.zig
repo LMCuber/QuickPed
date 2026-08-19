@@ -34,11 +34,12 @@ col: rl.Color,
 vel: rl.Vector2 = .zero(),
 acc: rl.Vector2 = .zero(),
 
-// use marked instead of deleting immediately inside the struct because
-// 1: the struct knowing the container its inside is kind of an antipattern
+// use marked instead of deleting immediately inside the struct because:
+// 1: the struct knowing the container it's inside is kind of an antipattern
 // 2: removing while iterating is always a headache
 // 3: when a tailless spawner creates an entity, it immediately deletes itself
 // without being inside any container (since constructor calls traverse())
+
 marked: bool = false,
 
 graph: *Graph,
@@ -83,6 +84,7 @@ pub const QueuePayload = struct {
 // FUNCTIONS
 pub fn init(
     alloc: std.mem.Allocator,
+    rand: std.Random,
     pos: rl.Vector2,
     spawner_node_id: UUID,
     graph: *Graph,
@@ -91,7 +93,7 @@ pub fn init(
     // INIT CAUSES TRAVERSE FROM CURRENT!
     const col: rl.Color = color.getAgentColor();
     var obj: Self = .{
-        .uuid = UUID.init(),
+        .uuid = UUID.init(rand),
         .pos = pos,
         .target = .{ .x = 100, .y = 100 },
         .col = col,
@@ -100,19 +102,20 @@ pub fn init(
         .payload = null,
     };
     obj.current_node_id = spawner_node_id;
-    try obj.traverseFromCurrent(alloc, &graph.nodes, env);
+    try obj.traverseFromCurrent(alloc, rand, &graph.nodes, env);
     return obj;
 }
 
 pub fn traverseFromCurrent(
     self: *Self,
     alloc: std.mem.Allocator,
+    rand: std.Random,
     nodes: *Graph.NodeManager,
     env: *Environment,
 ) !void {
     // get the next node from graph and then process it
     // !! getNextNodeId() take into account the next of forks !!
-    if (try self.graph.getNextNodeId(alloc, self.current_node_id.?)) |next_node_id| {
+    if (try self.graph.getNextNodeId(alloc, rand, self.current_node_id.?)) |next_node_id| {
         // set current node to next by default (might be changed by e.g. fork)
         self.current_node_id = next_node_id;
 
@@ -142,7 +145,7 @@ pub fn traverseFromCurrent(
                 self.payload = .{
                     .portal = .{
                         .portal_id = portal_node.getPortalUUID(),
-                        .u = commons.rand01(),
+                        .u = rand.float(f32),
                     },
                 };
                 self.target = env.entities.getByUUID(portal_node.getPortalUUID()).kind.portal.getSourcePosFromU(self.payload.?.portal.u);
@@ -151,7 +154,7 @@ pub fn traverseFromCurrent(
             .sink => self.marked = true,
             inline .fork, .queue_fork => {
                 self.current_node_id = next_node_id;
-                try self.traverseFromCurrent(alloc, nodes, env);
+                try self.traverseFromCurrent(alloc, rand, nodes, env);
             },
             .queue => |*queue_node| {
                 self.current_node_id = next_node_id;
@@ -173,10 +176,11 @@ pub fn traverseFromCurrent(
 }
 
 /// every frame, processCurrentNode checks what node we are on currently
-/// and then (for example) checks if we need to start waiting because we entered radius of a waiting area
+/// and then (for example:) checks if we need to start waiting because we entered radius of a waiting area
 pub fn processCurrentNode(
     self: *Self,
     alloc: std.mem.Allocator,
+    rand: std.Random,
     sim_data: SimData,
     agent_data: AgentData,
     nodes: *Graph.NodeManager,
@@ -208,7 +212,7 @@ pub fn processCurrentNode(
                 }
 
                 // traverse to next
-                try self.traverseFromCurrent(alloc, nodes, env);
+                try self.traverseFromCurrent(alloc, rand, nodes, env);
             }
         },
         .portal => {
@@ -218,7 +222,7 @@ pub fn processCurrentNode(
             // start waiting if in bounds
             if (p_obj.checkCollision(self.pos)) {
                 self.pos = p_obj.getDestPos(portal_payload.u);
-                try self.traverseFromCurrent(alloc, nodes, env);
+                try self.traverseFromCurrent(alloc, rand, nodes, env);
             }
         },
         .queue => |queue_node| {
@@ -234,7 +238,7 @@ pub fn processCurrentNode(
                     // can only dispatch if it is stationary
                     q_obj.freeIndex(q.spot_index);
                     self.wait.waiting = false;
-                    try self.traverseFromCurrent(alloc, nodes, env);
+                    try self.traverseFromCurrent(alloc, rand, nodes, env);
                 }
             }
 
@@ -376,6 +380,7 @@ fn calculateDriveForce(self: *Self, sim_data: SimData, agent_data: AgentData) rl
 pub fn update(
     self: *Self,
     alloc: std.mem.Allocator,
+    rand: std.Random,
     env: *Environment,
     stats: *Stats,
     settings: Settings,
@@ -405,6 +410,7 @@ pub fn update(
     // process node
     try self.processCurrentNode(
         alloc,
+        rand,
         sim_data,
         agent_data,
         nodes,
@@ -465,8 +471,24 @@ pub fn draw(self: *Self, env: *Environment, sim_data: SimData, agent_data: Agent
         rl.drawRectangleLinesEx(self.getAABB(agent_data, sim_data), 1, palette.env.hover);
     }
 
-    if (agent_data.show_targets) {
-        rl.drawCircleLinesV(self.target, agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2.0, palette.env.red);
-        rl.drawLineV(self.pos, self.target, palette.env.red);
+    if (sim_data.show_pathfinding) {
+        var intersection = false;
+        for (env.entities.items()) |ent| {
+            switch (ent.kind) {
+                .contour => |c| {
+                    if (c.collideRay(self.pos, self.target)) {
+                        intersection = true;
+                        break;
+                    }
+                },
+                else => {},
+            }
+        }
+        const col = if (intersection)
+            palette.env.orange
+        else
+            palette.env.light_blue;
+        rl.drawCircleLinesV(self.target, agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2.0, col);
+        rl.drawLineV(self.pos, self.target, col);
     }
 }
