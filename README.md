@@ -16,52 +16,47 @@ _AnyLogic_ (specifically the _Pedestrian Library_) is the only software I have u
 * The software looks very old and some operations are feel very janky to perform, such as configuring a custom agent profile and importing a database for arrival schedules (which broke at least 4 times when I was trying to import my dataset).
 
 ## Defining features
-Here are the seven pillars of _QuickPed_:
+- **Social force model for pedestrians based on [the works](https://www.researchgate.net/publication/1947096_Social_Force_Model_for_Pedestrian_Dynamics) of _Helbing et al._**
 
-- [x] Social force model for pedestrians based on [the works](https://www.researchgate.net/publication/1947096_Social_Force_Model_for_Pedestrian_Dynamics) of _Helbing et al_.
+    Simulations don't usually tell you the underlying physics model their agents. This project uses the above model with variable parameters you can vary in the editor.
+<br>
+- **Ease-of-use**.
 
-Simulations don't usually tell you the underlying physics model their agents. This project uses the above model with variable parameters you can vary in the editor.
+    As the name suggests, _QuickPed_ should be the first tool you take off your toolbelt when you want to prototype your agent based simulation &mdash; you can get a basic simulation up and running in minutes. This also means that the simulation is as explicit as possible: no hidden menus with different settings you didn't know played a role. The most important stuff is right in front of your face, and you can control every bit of it.
+<br>
+- **Built specifically for _optimization_.**
 
-- [x] Ease-of-use.
+    Optimizing certain parameters of your simulation should not feel like hacking up a solution &mdash; it should be a part of the software itself.
+    _AnyLogic_, for example, has decent support for optimization of simple units (such as number of), but it has a hard time modifying the location and dimensions of, for example, a waiting area.
 
-As the name suggests, _QuickPed_ should be the first tool you take off your toolbelt when you want to prototype your agent based simulation. This philosophy come with some side effects though:
-    - As powerful as scripting may be, the absolute last thing I wish upon my worst enemy is inspecting the implementation of a certain _AnyLogic_ `Node` class to find its size and find the correct method to call to change its position, just for it not to work in the end anyway.
+    > Optimization comes up in the real world more often than you might think. For example: I have experience working at a movie theatre, where there were multiple domains where optimization is possible:
+        > - Workers complaining about being stripped of one of their coffee machines, claiming it makes them slower during rush hour.
+        > - Managers who want to rearrange the seaing positions in the main hall and add chairs to accomodate more people.
+        > - The ticket scanner being annoyed that two of the three self-check-in kiosks are broken. Does it actually increase processing time?
+    > These types of questions are harder to answer intuitively, since small effects can have unintuitive consequences.
 
-> If the blueprint system isn't expressive enough that it requires scripting, is it even a good blueprint system then? Food for thought
+- **_Realistic_ and _easy-to-implement_ arrival schedules.**
 
-- [ ] Built specifically for _optimization_.
+    In _AnyLogic_, arrival schedules can be imported as a dataset, for which I have to use another spreadsheet software (and tinker for hours with the formulas for the columns of arrival time, arrival rate, interarrival time). Arrival schedules are (almost always) either:
+    * _Poisson_ processes where the interarrival times are exponentially distributed, e.g. $f(x) = \lambda e^{-\lambda x}$
+    * Distributed according to a similar distribution with a different shape, e.g. the _Weibull_ distribution: $f(x) = \frac{k}{\lambda} \left(\frac{x}{\lambda}\right)^{k-1} \exp\left(-\left(\frac{x}{\lambda}\right)^k\right)$
 
-Optimizing certain parameters of your simulation should not feel like coal mining with the source code - it should be _built into the_ simulation software. _AnyLogic_, for example, has decent support for optimization of _variables_, but it has a hard time modifying the location and dimensions of, for example, a waiting area.
+    While the former one is widely supported, the latter one is mostly underrepresented, all the while being very common in establishments such as airports and movie theaters, where the arrival pattern of pedestrians are determined by a schedule, rather than being distributed in a "flat" fashion without huge peaks (such as a carnival or a shop). (Of course, airports have so many flights departing at (nearly) the same time such that the sum of all arrivals per gate can be approximated to be uniformly distributed. But for smaller establishments such as movie theaters, there are defined peaks and valleys.)
+<br>
+- **Statistics**.
 
-Optimization can be split into two categories: _preemptive_ vs _reactive_:
-
-> Optimization comes up in the real world more often than you might think. For example: I have experience working a movie theatre, where there were multiple domains where optimization is possible:
-> - Workers complaining about being stripped of one of their coffee machines, claiming it makes them slower during rush hour.
-> - Managers who want to rearrange the seaing positions in the main hall and add chairs to accomodate more people.
-> - The ticket scanner being annoyed that two of the three self-check-in kiosks are broken. Does it actually increase processing time?
-> These types of questions are harder to answer intuitively, since small effects can have unintuitive consequences.
-
-- [ ] _Realistic_ and _easy-to-implement_ arrival schedules.
-
-In _AnyLogic_, arrival schedules can be imported as a dataset, for which I have to use another spreadsheet software (and tinker for hours with the formulas for the columns of arrival time, arrival rate, interarrival time). Arrival schedules are (almost always) either:
-* _Poisson_ processes where the interarrival times are exponentially distributed, e.g. $f(x) = \lambda e^{-\lambda x}$
-* Distributed according to a similar distribution with a different shape, e.g. the _Weibull_ distribution: $f(x) = \frac{k}{\lambda} \left(\frac{x}{\lambda}\right)^{k-1} \exp\left(-\left(\frac{x}{\lambda}\right)^k\right)$
-
-While the former one is widely supported, the latter one is mostly underrepresented, all the while being very common in establishments such as airports and movie theaters, where the arrival pattern of pedestrians are determined by a schedule, rather than being distributed in a "flat" fashion without huge peaks (such as a carnival or a shop). (Of course, airports have so many flights departing at (nearly) the same time such that the sum of all arrivals per gate can be approximated to be uniformly distributed. But for smaller establishments such as movie theaters, there are defined peaks and valleys.)
-
-- [ ] Statistics.
-
-this is the eventual reason we do agent based modeling. This should therefore very easily accessible, and the data should be easily extractable to be used for further analysis. Examples:
+    This is the eventual reason we do agent based modeling. This should therefore very easily accessible, and the data should be easily extractable to be used for further analysis. Examples:
     - [ ] Showing the percentage of waiting pedestrians per waiting area/queue
     - [ ] Heatmap showing bottlenecks during simulation
+<br>
+- **Performance.**
 
-- [x] Performance.
+    _AnyLogic_ can become quite slow when simulating a lot of entities. _FlexSim_ uses a similar approach ([BVH's](https://en.wikipedia.org/wiki/Bounding_volume_hierarchy)). Since there can easily be tens of thousands of people in a single point in time in an airport, optimization measures should not be thought of lightly.
+<br>
+- **Good pathfinding for the pedestrians.**  
 
-_AnyLogic_ can become quite slow when simulating a lot of entities. _FlexSim_ uses a similar approach ([BVH's](https://en.wikipedia.org/wiki/Bounding_volume_hierarchy)). Since there can easily be tens of thousands of people in a single point in time in an airport, optimization measures should not be thought of lightly.
-
-- [ ] Pathfinding for the pedestrians.
-
-In _AnyLogic_, pedestrians can get stuck behind corners and cause severe congestions, since they follow the shortest path in a straight line. This can be fixed by using direction objects, but this just makes it more indirect for the user and adds complexity for no reason.
+    _AnyLogic_'s _Pedestrian Library_ is supposed to be a black box, but after careful observation it seems like it uses a [visibility graph](https://en.wikipedia.org/wiki/Visibility_graph) approach combined with some sort of heuristic. This visibility graph approach has 2 main drawbacks:
+    - Constructing a visibility graph is an `O(n^{2})`
 
 ## Won't haves
 - Any type of scripting support:

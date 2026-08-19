@@ -475,8 +475,12 @@ pub fn draw(self: *Self, env: *Environment, sim_data: SimData, agent_data: Agent
         var intersection = false;
         for (env.entities.items()) |ent| {
             switch (ent.kind) {
-                .contour => |c| {
-                    if (c.collideRay(self.pos, self.target)) {
+                .contour => {
+                    // if (c.collideRay(self.pos, self.target)) {
+                    //     intersection = true;
+                    //     break;
+                    // }
+                    if (false) {
                         intersection = true;
                         break;
                     }
