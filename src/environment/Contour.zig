@@ -64,8 +64,14 @@ pub fn update(
         // place new point
         if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
             // only add if it's not the same point twice
-            const last_point = self.points.getLast();
-            if (!self.pos.equals(last_point)) {
+            var can_add_point = false;
+            if (self.points.items.len > 0) {
+                const last_point = self.points.getLast();
+                can_add_point = !self.pos.equals(last_point);
+            } else {
+                can_add_point = true;
+            }
+            if (can_add_point) {
                 try self.points.append(alloc, self.pos);
             }
         }
