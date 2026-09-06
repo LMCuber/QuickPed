@@ -16,6 +16,7 @@ pub const env = struct {
     pub const orange_t = rl.Color.init(235, 150, 38, 180);
     pub const light_orange = rl.Color.init(209, 173, 100, 255);
     pub const yellow = rl.Color.init(238, 220, 130, 255);
+    pub const yellow_t = rl.Color.init(238, 220, 130, 60);
     pub const hover = rl.Color.init(255, 182, 193, 255);
 };
 

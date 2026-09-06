@@ -30,6 +30,7 @@ const UUID = @import("UUID.zig");
 uuid: UUID,
 pos: rl.Vector2,
 target: rl.Vector2,
+path: std.ArrayList(rl.Vector2),
 col: rl.Color,
 vel: rl.Vector2 = .zero(),
 acc: rl.Vector2 = .zero(),
@@ -97,6 +98,7 @@ pub fn init(
         .pos = pos,
         .target = .{ .x = 100, .y = 100 },
         .col = col,
+        .path = .empty,
         .graph = graph,
         .wait = .{},
         .payload = null,
@@ -104,6 +106,10 @@ pub fn init(
     obj.current_node_id = spawner_node_id;
     try obj.traverseFromCurrent(alloc, rand, &graph.nodes, env);
     return obj;
+}
+
+pub fn deinit(self: *Self, alloc: std.mem.Allocator) !void {
+    self.path.deinit(alloc);
 }
 
 pub fn traverseFromCurrent(
@@ -114,7 +120,7 @@ pub fn traverseFromCurrent(
     env: *Environment,
 ) !void {
     // get the next node from graph and then process it
-    // !! getNextNodeId() take into account the next of forks !!
+    // !! getNextNodeId() takes into account the next of forks !!
     if (try self.graph.getNextNodeId(alloc, rand, self.current_node_id.?)) |next_node_id| {
         // set current node to next by default (might be changed by e.g. fork)
         self.current_node_id = next_node_id;
@@ -169,6 +175,11 @@ pub fn traverseFromCurrent(
                 );
             },
         }
+
+        // get the shortest path from current position to target
+        self.path.clearRetainingCapacity();
+        try env.pathfinding.find(alloc, &self.path, self.pos, self.target);
+
     } else {
         // the node has no output port, so just kill the agent
         self.marked = true;
@@ -472,27 +483,9 @@ pub fn draw(self: *Self, env: *Environment, sim_data: SimData, agent_data: Agent
     }
 
     if (sim_data.show_pathfinding) {
-        var intersection = false;
-        for (env.entities.items()) |ent| {
-            switch (ent.kind) {
-                .contour => {
-                    // if (c.collideRay(self.pos, self.target)) {
-                    //     intersection = true;
-                    //     break;
-                    // }
-                    if (false) {
-                        intersection = true;
-                        break;
-                    }
-                },
-                else => {},
-            }
+        const rad: f32 = agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2.0;
+        for (self.path.items) |point| {
+            rl.drawCircleLinesV(point, rad, palette.env.orange);
         }
-        const col = if (intersection)
-            palette.env.orange
-        else
-            palette.env.light_blue;
-        rl.drawCircleLinesV(self.target, agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2.0, col);
-        rl.drawLineV(self.pos, self.target, col);
     }
 }

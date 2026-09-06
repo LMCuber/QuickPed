@@ -4,7 +4,7 @@
     "environment_height": 990,
     "grid_size": 32,
     "scale": 32,
-    "paused": true,
+    "paused": false,
     "show_quadtree": false,
     "show_pathfinding": true
 }

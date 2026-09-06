@@ -6,14 +6,23 @@ const std = @import("std");
 const rl = @import("raylib");
 
 pub const Triangle = struct {
+    // indices into the vertex arraylist
     p1: usize,
     p2: usize,
     p3: usize,
 };
 
 pub const Edge = struct {
+    // see how the points are USIZE, thus they index into a master vertex array
     p1: usize,
     p2: usize,
+
+    pub fn init(a: usize, b: usize) Edge {
+        return if (a < b)
+            .{ .p1 = a, .p2 = b }
+        else
+            .{ .p1 = b, .p2 = a };
+    }
 
     pub fn eql(a: Edge, b: Edge) bool {
         return (a.p1 == b.p1 and a.p2 == b.p2) or (a.p1 == b.p2 and a.p2 == b.p1);
@@ -28,6 +37,9 @@ pub const DelaunayResult = struct {
     }
 };
 
+// CONSTRAINED delaunay triangulation takes as argument a "planar straight-line graph" (PSLG)
+// (list of vertices, and edges connecting those vertices. simple.)
+// the resulting triangulation MUST include this given geometry
 pub fn triangulateConstrained(
     alloc: std.mem.Allocator,
     points: []const rl.Vector2,
@@ -334,7 +346,7 @@ fn flipDiagonal(triangles: []Triangle, points: []const rl.Vector2, t1_idx: usize
     return true;
 }
 
-fn isPointInPolygon(pt: rl.Vector2, poly: []const rl.Vector2) bool {
+pub fn isPointInPolygon(pt: rl.Vector2, poly: []const rl.Vector2) bool {
     var inside = false;
     var j = poly.len - 1;
     for (poly, 0..) |p_i, i| {

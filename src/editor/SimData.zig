@@ -4,6 +4,7 @@ const commons = @import("../commons.zig");
 const palette = @import("../palette.zig");
 const z = @import("zgui");
 const rl = @import("raylib");
+const utils = @import("utils.zig");
 
 aspect_ratio: f32 = 1,
 environment_width: i32 = 0,
@@ -49,6 +50,7 @@ pub fn updateUi(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) 
         _ = z.inputInt("scale", .{ .v = &self.scale });
 
         _ = z.checkbox("show quadtree", .{ .v = &self.show_quadtree });
+
         _ = z.checkbox("show pathfinding", .{ .v = &self.show_pathfinding });
 
         z.newLine();

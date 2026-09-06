@@ -190,7 +190,7 @@ pub fn main(init: std.process.Init) !void {
                 // const last: f64 = rl.getTime();
                 try env.quadtree.rebuild(&env.agents, sim_rect);
 
-                // rebuild the A* graph
+                // rebuild the navmesh used for pathfinding
                 try env.pathfinding.rebuildGraph(alloc, &env);
 
                 // update the agents

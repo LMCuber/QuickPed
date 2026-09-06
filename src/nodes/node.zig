@@ -325,7 +325,7 @@ pub const SpawnerWait = union(enum) {
     pub const Constant = struct {
         lambda: f32 = 60.0,
         pub fn getInter(self: @This()) f32 {
-            std.debug.print("{}|{}\n", .{ self.lambda, 1 / self.lambda });
+            // std.debug.print("{}|{}\n", .{ self.lambda, 1 / self.lambda });
             return 1 / self.lambda;
         }
     };

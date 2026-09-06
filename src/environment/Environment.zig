@@ -46,7 +46,7 @@ pub fn init(alloc: std.mem.Allocator) Self {
         .queues = .empty,
         .portals = .empty,
         .quadtree = Quadtree.init(alloc, 8),
-        .pathfinding = Pathfinding.init(),
+        .pathfinding = try Pathfinding.init(alloc),
     };
 }
 
@@ -59,8 +59,12 @@ pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
     self.portals.deinit(alloc);
     self.quadtree.deinit();
     self.pathfinding.deinit(alloc);
-    self.agents.deinit(alloc);
     self.entities.deinit(alloc);
+
+    for (self.agents.items()) |*agent| {
+        try agent.deinit(alloc);
+    }
+    self.agents.deinit(alloc);
 }
 
 pub fn createEntity(self: *Self, alloc: std.mem.Allocator, ent: entity.Entity) !void {
