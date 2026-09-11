@@ -30,7 +30,8 @@ const UUID = @import("UUID.zig");
 uuid: UUID,
 pos: rl.Vector2,
 target: rl.Vector2,
-path: std.ArrayList(rl.Vector2),
+paths: std.ArrayList(rl.Vector2),
+path_index: usize = 0,
 col: rl.Color,
 vel: rl.Vector2 = .zero(),
 acc: rl.Vector2 = .zero(),
@@ -60,6 +61,7 @@ pub const WaitPayload = struct {
     last_wait: f64 = 0,
 
     pub fn setWait(self: *WaitPayload, wait: i32) void {
+        // used to init all waiting variables (flag, amount of wait, timer) all at once
         self.waiting = true;
         self.wait = wait;
         self.last_wait = commons.getTimeMillis();
@@ -98,18 +100,19 @@ pub fn init(
         .pos = pos,
         .target = .{ .x = 100, .y = 100 },
         .col = col,
-        .path = .empty,
+        .paths = .empty,
         .graph = graph,
         .wait = .{},
         .payload = null,
     };
     obj.current_node_id = spawner_node_id;
     try obj.traverseFromCurrent(alloc, rand, &graph.nodes, env);
+    std.debug.print("1 : {}\n\n", .{obj.paths.items.len});
     return obj;
 }
 
 pub fn deinit(self: *Self, alloc: std.mem.Allocator) !void {
-    self.path.deinit(alloc);
+    self.paths.deinit(alloc);
 }
 
 pub fn traverseFromCurrent(
@@ -177,9 +180,15 @@ pub fn traverseFromCurrent(
         }
 
         // get the shortest path from current position to target
-        self.path.clearRetainingCapacity();
-        try env.pathfinding.find(alloc, &self.path, self.pos, self.target);
-
+        self.paths.clearRetainingCapacity();
+        try env.pathfinding.find(
+            alloc,
+            &self.paths,
+            self.pos,
+            self.target,
+        );
+        self.path_index = 0;
+        std.debug.print("0 : {}\n\n", .{self.paths.items.len});
     } else {
         // the node has no output port, so just kill the agent
         self.marked = true;
@@ -199,6 +208,11 @@ pub fn processCurrentNode(
 ) !void {
     const current_node: *node.Node = nodes.getByUUID(self.current_node_id.?);
     const time: f64 = commons.getTimeMillis();
+
+    // check if in close enough distance to the current "sub"-target (pathfinding)
+    if (rl.math.vector2Distance(self.pos, self.paths.items[self.path_index]) <= 10) {
+        self.path_index += 1;
+    }
 
     switch (current_node.kind) {
         .area => |*area_node| {
@@ -380,7 +394,8 @@ fn calculateInteractiveForce(
 }
 
 fn calculateDriveForce(self: *Self, sim_data: SimData, agent_data: AgentData) rl.Vector2 {
-    const e: rl.Vector2 = self.target.subtract(self.pos).normalize();
+    // const e: rl.Vector2 = self.target.subtract(self.pos).normalize();
+    const e: rl.Vector2 = self.paths.items[self.path_index].subtract(self.pos).normalize();
     var speed_in_pixels: f32 = @as(f32, @floatFromInt(sim_data.scale)) * agent_data.speed;
     speed_in_pixels *= (1.0 / 60.0);
     const v0_vec: rl.Vector2 = e.scale(speed_in_pixels);
@@ -403,6 +418,7 @@ pub fn update(
     check_count: *i32,
     scratch_buf: *std.ArrayList(rl.Vector2),
 ) !void {
+    std.debug.print("3 : {}\n\n", .{self.paths.items.len});
     // get force components
     const drive_force = self.calculateDriveForce(sim_data, agent_data);
     const interactive_force = try self.calculateInteractiveForce(alloc, env, sim_data, agent_data, check_count, scratch_buf);
@@ -484,7 +500,7 @@ pub fn draw(self: *Self, env: *Environment, sim_data: SimData, agent_data: Agent
 
     if (sim_data.show_pathfinding) {
         const rad: f32 = agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2.0;
-        for (self.path.items) |point| {
+        for (self.paths.items) |point| {
             rl.drawCircleLinesV(point, rad, palette.env.orange);
         }
     }

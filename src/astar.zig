@@ -3,115 +3,112 @@ const Order = std.math.Order;
 const assert = std.debug.assert;
 const rl = @import("raylib");
 const Pathfinding = @import("Pathfinding.zig");
-const Node = Pathfinding.Node;
+const delaunay = @import("delaunay.zig");
 
-pub const Context = struct {
-    g_scores: std.ArrayList(f32),
-    h_scores: std.ArrayList(f32),
-    prev_nodes: std.ArrayList(?usize),  // either index to previous or not used in traversal (null)
-
-    pub fn init(alloc: std.mem.Allocator, size: usize) !@This() {
-        var ret: @This() = .{
-            .g_scores = .empty,
-            .h_scores = .empty,
-            .prev_nodes = .empty
-        };
-        try ret.g_scores.appendNTimes(alloc, std.math.inf(f32), size);
-        try ret.h_scores.appendNTimes(alloc, std.math.inf(f32), size);
-        try ret.prev_nodes.appendNTimes(alloc, null, size);
-        return ret;
-    }
-
-    pub fn deinit(self: *@This(), alloc: std.mem.Allocator) void {
-        self.g_scores.deinit(alloc);
-        self.h_scores.deinit(alloc);
-        self.prev_nodes.deinit(alloc);
-    }
-};
-
-// comparator for the "f" value of nodes (f = g + h)
-fn lessThan(ctx: *Context, a: usize, b: usize) Order {
-    const a_g: f32 = ctx.g_scores.items[a];
-    const a_h: f32 = ctx.h_scores.items[a];
-    const b_g: f32 = ctx.g_scores.items[b];
-    const b_h: f32 = ctx.h_scores.items[b];
-
-    const a_f = a_g + a_h;
-    const b_f = b_g + b_h;
-    return std.math.order(a_f, b_f);
-}
-
+// plain old A*:
 pub fn find(
+    comptime Node: type,
     alloc: std.mem.Allocator,
-    path: *std.ArrayList(rl.Vector2),
-    nodes: []Node,
-    extra_nodes: *Pathfinding.ExtraNodes,
+    start_node: Node,
+    end_node: Node,
+    paths: *std.ArrayList(Node),
+    user_ctx: anytype,
 ) !void {
-    // A* algorithm: basically Dijkstra, but with an added heuristic h for given node
-    // (Dijkstra's is a special case of A* where h = 0)
-    // f = g + h
+    const Ctx: type = @TypeOf(user_ctx);
 
-    // 0. All nodes start with an infinitely high f (std.math.inf) inside a priority queue,
-    //    except for the source node (has a cost of 0)
-    //    + make sure to calculate their h (this h stays constant throughout)
-    // 1. Get the node with the currently lowest f (g + h) value from the priority queue
+    comptime {
+        // heuristic accepts 2 arguments: source and target
+        if (!@hasDecl(Ctx, "neighbors")) @compileError(@typeName(Ctx) ++ " must implement neighbors(node: Node) []const Node");
+        if (!@hasDecl(Ctx, "cost")) @compileError(@typeName(Ctx) ++ " must implement cost(a: Node, b: Node) f32");
+        if (!@hasDecl(Ctx, "heuristic")) @compileError(@typeName(Ctx) ++ " must implement heuristic(node: Node, goal: Node) f32");
+    }
 
-    // context
-    var ctx: Context = try .init(alloc, nodes.len);
-    defer ctx.deinit(alloc);
+    const SearchState = struct {
+        g_scores: std.AutoHashMap(Node, f32),
+        prev_nodes: std.AutoHashMap(Node, Node), // either index to previous or not used in traversal (null)
+        end_node: Node,
+        user_ctx: Ctx,
 
-    var pq = std.PriorityQueue(usize, *Context, lessThan).initContext(&ctx);
+        pub fn init(
+            _alloc: std.mem.Allocator,
+            goal: Node,
+            ctx: Ctx,
+        ) !@This() {
+            return .{
+                .g_scores = .init(_alloc),
+                .prev_nodes = .init(_alloc),
+                .user_ctx = ctx,
+                .end_node = goal,
+            };
+        }
+
+        pub fn deinit(self: *@This()) void {
+            self.g_scores.deinit();
+            self.prev_nodes.deinit();
+        }
+
+        pub fn fScore(self: @This(), node: Node) f32 {
+            const g = self.g_scores.get(node) orelse std.math.inf(f32);
+            return g + self.user_ctx.heuristic(node, self.end_node);
+        }
+
+        pub fn lessThan(ctx: *@This(), a: Node, b: Node) Order {
+            return std.math.order(ctx.fScore(a), ctx.fScore(b));
+        }
+    };
+
+    var state: SearchState = try .init(alloc, end_node, user_ctx);
+    defer state.deinit();
+
+    var pq = std.PriorityQueue(
+        Node,
+        *SearchState,
+        SearchState.lessThan,
+    ).initContext(&state);
     defer pq.deinit(alloc);
 
     // adj_src and adj_target are the nodes of the triangles where the actual
     // source and target are within.
-    const adj_src_node_index = extra_nodes.source.neighbors.items[0];
-    ctx.g_scores.items[adj_src_node_index] = 0;
-    try pq.push(alloc, adj_src_node_index);
-
-    const adj_target_node_index = extra_nodes.target.neighbors.items[0];
-    for (nodes, 0..) |node, i| {
-        // set all heuristic scores to their correct values
-        ctx.h_scores.items[i] = rl.math.vector2Distance(node.pos, nodes[adj_target_node_index].pos);
-    }
+    try state.g_scores.put(start_node, 0);
+    try pq.push(alloc, start_node);
 
     // keep popping the current lowest "f" distance
-    while (pq.pop()) |node_index| {
+    while (pq.pop()) |node| {
         // if the popped node is the goal node, stop.
-        if (node_index == adj_target_node_index) break;
+        if (node == end_node) break;
 
         // update the data of their neighbors
-        const node: Node = nodes[node_index];
-        for (node.neighbors.items) |nei_index| {
-            const link_cost = rl.math.vector2Distance(nodes[node_index].pos, nodes[nei_index].pos);
-            const cur_f = ctx.g_scores.items[nei_index] + ctx.h_scores.items[nei_index];
-            const new_f = ctx.g_scores.items[node_index] + link_cost + ctx.h_scores.items[nei_index];
+        // const node: Node = ctx.
+        for (user_ctx.neighbors(node)) |nei_node| {
+            // initialize the heuristic values for the discovered nodes
+            const link_cost = user_ctx.cost(node, nei_node);
+            const cur_f = state.fScore(nei_node);
+            const new_f = (state.g_scores.get(node) orelse std.math.inf(f32)) + link_cost + state.user_ctx.heuristic(nei_node, end_node);
             if (new_f < cur_f) {
-                // update cost (heuristic stays the same)
-                ctx.g_scores.items[nei_index] = ctx.g_scores.items[node_index] + link_cost;
+                // since we found something < infinity, the goal of
+                // master node must be in the hashmap
+                assert(state.g_scores.get(node) != null);
+
+                // update cost of neighbor (heuristic stays the same)
+                try state.g_scores.put(nei_node, state.g_scores.get(node).? + link_cost);
                 // push neighbors to pq
-                try pq.push(alloc, nei_index);
+                try pq.push(alloc, nei_node);
                 // save the path connection at relaxation (here)
-                ctx.prev_nodes.items[nei_index] = node_index;
+                try state.prev_nodes.put(nei_node, node);
             }
         }
-        //std.debug.print("{} | {} | {} | {}\n", .{ node_index, ctx.g_scores.items[node_index], ctx.h_scores.items[node_index],
-            // ctx.g_scores.items[node_index] + ctx.h_scores.items[node_index]});
     }
 
     // backtrack to find correct path and populate the given list
-    var current_node = adj_target_node_index;
+    var current_node = end_node;
     while (true) {
-        try path.append(alloc, nodes[current_node].pos);        
-        if (ctx.prev_nodes.items[current_node]) |current_index| {
-            // prev exists
-            current_node = current_index;
+        try paths.append(alloc, current_node);
+        if (state.prev_nodes.get(current_node)) |prev_node| {
+            current_node = prev_node;
         } else {
             // there is no prev for this node.
             break;
         }
     }
-
-    // actual target
-    try path.append(alloc, extra_nodes.target.pos);
+    std.mem.reverse(Node, paths.items);
 }

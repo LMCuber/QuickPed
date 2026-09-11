@@ -51,7 +51,7 @@ pub fn updateUi(self: *Self, camera: *rl.Camera2D, camera_default: rl.Camera2D) 
 
         _ = z.checkbox("show quadtree", .{ .v = &self.show_quadtree });
 
-        _ = z.checkbox("show pathfinding", .{ .v = &self.show_pathfinding });
+        _ = z.checkbox("show navmesh", .{ .v = &self.show_pathfinding });
 
         z.newLine();
     }

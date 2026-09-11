@@ -33,7 +33,8 @@ pub const Node = struct {
 
     pub fn init(pos: rl.Vector2, neighbors: std.ArrayList(usize)) @This() {
         return .{
-            .pos = pos, .neighbors = neighbors,
+            .pos = pos,
+            .neighbors = neighbors,
         };
     }
 
@@ -105,22 +106,42 @@ pub fn draw(self: Self, sim_data: SimData) void {
     }
 }
 
+const UserContext = struct {
+    nodes: *std.ArrayList(Node),
+
+    pub fn init(nodes: *std.ArrayList(Node)) @This() {
+        return .{ .nodes = nodes };
+    }
+
+    pub fn cost(self: @This(), a: usize, b: usize) f32 {
+        return rl.math.vector2Distance(self.nodes.items[a].pos, self.nodes.items[b].pos);
+    }
+
+    pub fn heuristic(self: @This(), node: usize, goal: usize) f32 {
+        return self.cost(node, goal);
+    }
+
+    pub fn neighbors(self: @This(), node: usize) []usize {
+        return self.nodes.items[node].neighbors.items;
+    }
+};
+
 pub fn find(
     self: *Self,
     alloc: std.mem.Allocator,
     path: *std.ArrayList(rl.Vector2),
-    pos: rl.Vector2,
-    target: rl.Vector2
+    start_pos: rl.Vector2,
+    end_pos: rl.Vector2,
 ) !void {
     var extra_nodes: ExtraNodes = .init(
-        .init(pos, .empty),
-        .init(target, .empty),
+        .init(start_pos, .empty),
+        .init(end_pos, .empty),
     );
     defer extra_nodes.deinit(alloc);
 
     // find what connection to make based on in which triangle the points reside
-    var pos_found = false;
-    var target_found = false;
+    var start_index: ?usize = null;
+    var end_index: ?usize = null;
     for (self.triangles.items, 0..) |tri, node_index| {
         // create slice for the polygon vertices
         const poly = [3]rl.Vector2{
@@ -130,22 +151,72 @@ pub fn find(
         };
 
         // check if the start and end point(s) is/are inside this polygon
-        if (!pos_found and delaunay.isPointInPolygon(pos, &poly)) {
-            // create SINGLE-WAY connection since a node inside the navmesh
-            // can't connect to an extra node outside the navmesh
-            try extra_nodes.source.neighbors.append(alloc, node_index);
-            pos_found = true;
+        if (start_index == null and delaunay.isPointInPolygon(start_pos, &poly)) {
+            // since this pos is in this polygon, the start node is this polygon
+            start_index = node_index;
         }
-        if (!target_found and delaunay.isPointInPolygon(target, &poly)) {
-            try extra_nodes.target.neighbors.append(alloc, node_index);
-            target_found = true;
+        if (end_index == null and delaunay.isPointInPolygon(end_pos, &poly)) {
+            end_index = node_index;
         }
-        if (pos_found and target_found) break;
+        if (start_index != null and end_index != null) break;
     }
-    assert(pos_found and target_found);
+    // they need to be SOMEWHERE
+    assert(start_index != null and end_index != null);
 
     // find the shortest path from start to end
-    try astar.find(alloc, path, self.nodes.items, &extra_nodes);
+    const user_ctx: UserContext = .{ .nodes = &self.nodes };
+
+    var index_path: std.ArrayList(usize) = .empty;
+    defer index_path.deinit(alloc);
+    try astar.find(
+        usize,
+        alloc,
+        start_index.?,
+        end_index.?,
+        &index_path,
+        user_ctx,
+    );
+
+    // (now we have the triangle indices, let's convert those to concrete points)
+    for (index_path.items, 0..) |tri_index_a, i| {
+        if (i == index_path.items.len - 1) continue;
+
+        // for each successing triangle, find their shared edge
+        const tri_index_b: usize = index_path.items[i + 1];
+        const tri_a = self.triangles.items[tri_index_a];
+        const tri_b = self.triangles.items[tri_index_b];
+
+        // check where the two vertices overlap
+        var num_overlap: usize = 0;
+        var final_edge: [2]rl.Vector2 = undefined;
+        const a_vertices: [3]rl.Vector2 = .{
+            self.obstacle_vertices.items[tri_a.p1],
+            self.obstacle_vertices.items[tri_a.p2],
+            self.obstacle_vertices.items[tri_a.p3],
+        };
+        const b_vertices: [3]rl.Vector2 = .{
+            self.obstacle_vertices.items[tri_b.p1],
+            self.obstacle_vertices.items[tri_b.p2],
+            self.obstacle_vertices.items[tri_b.p3],
+        };
+        outer: for (a_vertices) |va| {
+            for (b_vertices) |vb| {
+                if (va.equals(vb)) {
+                    final_edge[num_overlap] = va;
+                    num_overlap += 1;
+                }
+                if (num_overlap == 2) {
+                    break :outer;
+                }
+            }
+        }
+        assert(num_overlap == 2); // they must overlap SOMEWHERE
+        const center = final_edge[0].add(final_edge[1]).scale(0.5);
+        try path.append(alloc, center);
+    }
+
+    // finally, add the target the path (this wasn't in the navmesh so also not in the pathfinding)
+    try path.append(alloc, end_pos);
 }
 
 pub fn rebuildGraph(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
@@ -175,7 +246,7 @@ pub fn rebuildGraph(self: *Self, alloc: std.mem.Allocator, env: *Environment) !v
                     for (c.points.items[0..n]) |point| {
                         try self.obstacle_vertices.append(alloc, point);
                     }
-                    
+
                     const seg_count = if (closed) n else n - 1;
                     var i: usize = 0;
                     while (i < seg_count) : (i += 1) {
