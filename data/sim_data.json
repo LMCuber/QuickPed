@@ -6,5 +6,5 @@
     "scale": 30,
     "paused": false,
     "show_quadtree": false,
-    "show_pathfinding": true
+    "show_pathfinding": false
 }

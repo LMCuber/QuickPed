@@ -26,22 +26,22 @@ const Settings = @import("Settings.zig");
 const Quadtree = @import("Quadtree.zig");
 const Benchmarker = @import("Benchmarker.zig");
 const UUID = @import("UUID.zig");
+const Pathfinding = @import("Pathfinding.zig");
+const utils = @import("utils.zig");
 
 uuid: UUID,
 pos: rl.Vector2,
 target: rl.Vector2,
-paths: std.ArrayList(rl.Vector2),
-path_index: usize = 0,
+steering: Steering = .init(),
 col: rl.Color,
-vel: rl.Vector2 = .zero(),
+vel: rl.Vector2 = .init(1, 0),
 acc: rl.Vector2 = .zero(),
 
 // use marked instead of deleting immediately inside the struct because:
-// 1: the struct knowing the container it's inside is kind of an antipattern
+// 1: the struct knowing the container it's inside is kind of an antipattern (hell yeah)
 // 2: removing while iterating is always a headache
 // 3: when a tailless spawner creates an entity, it immediately deletes itself
 // without being inside any container (since constructor calls traverse())
-
 marked: bool = false,
 
 graph: *Graph,
@@ -54,6 +54,24 @@ payload: ?union(enum) {
     portal: PortalPayload,
     queue: QueuePayload,
 },
+
+pub const Steering = struct {
+    radius: f32 = 10,
+    paths: std.ArrayList(Pathfinding.Edge),
+    path_index: usize = 0,
+    projected: rl.Vector2 = .zero(),
+    predicted: rl.Vector2 = .zero(),
+    predicted_steer: rl.Vector2 = .zero(),
+    edge: struct { a: rl.Vector2, b: rl.Vector2 } = .{ .a = .zero(), .b = .zero() },
+
+    pub fn init() @This() {
+        return .{ .paths = .empty };
+    }
+
+    pub fn deinit(self: *@This(), alloc: std.mem.Allocator) void {
+        self.paths.deinit(alloc);
+    }
+};
 
 pub const WaitPayload = struct {
     waiting: bool = false,
@@ -100,19 +118,17 @@ pub fn init(
         .pos = pos,
         .target = .{ .x = 100, .y = 100 },
         .col = col,
-        .paths = .empty,
         .graph = graph,
         .wait = .{},
         .payload = null,
     };
     obj.current_node_id = spawner_node_id;
     try obj.traverseFromCurrent(alloc, rand, &graph.nodes, env);
-    std.debug.print("1 : {}\n\n", .{obj.paths.items.len});
     return obj;
 }
 
 pub fn deinit(self: *Self, alloc: std.mem.Allocator) !void {
-    self.paths.deinit(alloc);
+    self.steering.deinit(alloc);
 }
 
 pub fn traverseFromCurrent(
@@ -180,15 +196,14 @@ pub fn traverseFromCurrent(
         }
 
         // get the shortest path from current position to target
-        self.paths.clearRetainingCapacity();
+        self.steering.paths.clearRetainingCapacity();
         try env.pathfinding.find(
             alloc,
-            &self.paths,
+            &self.steering.paths,
             self.pos,
             self.target,
+            env,
         );
-        self.path_index = 0;
-        std.debug.print("0 : {}\n\n", .{self.paths.items.len});
     } else {
         // the node has no output port, so just kill the agent
         self.marked = true;
@@ -208,11 +223,6 @@ pub fn processCurrentNode(
 ) !void {
     const current_node: *node.Node = nodes.getByUUID(self.current_node_id.?);
     const time: f64 = commons.getTimeMillis();
-
-    // check if in close enough distance to the current "sub"-target (pathfinding)
-    if (rl.math.vector2Distance(self.pos, self.paths.items[self.path_index]) <= 10) {
-        self.path_index += 1;
-    }
 
     switch (current_node.kind) {
         .area => |*area_node| {
@@ -393,9 +403,70 @@ fn calculateInteractiveForce(
     return force;
 }
 
+fn calculateSteeringForce(self: *Self, sim_data: SimData, agent_data: AgentData) rl.Vector2 {
+    // REYNOLDS PATH FOLLOWING ALGORITHM
+    const target_speed: f32 = @as(f32, @floatFromInt(sim_data.scale)) * agent_data.speed * (1.0 / 60.0);
+
+    // calculate next position
+    const step: f32 = 15;
+    self.steering.predicted = self.pos.add(self.vel.normalize().scale(step));
+
+    // find closest path segment
+    var maybe_projected: ?rl.Vector2 = null;
+    var min_dist: f32 = std.math.inf(f32);
+
+    for (self.steering.paths.items, 0..) |edge, i| {
+        const edge_vec = edge.b.subtract(edge.a);
+        const rel_pos = self.steering.predicted.subtract(edge.a);
+        const edge_len_sq = edge_vec.dotProduct(edge_vec);
+
+        const raw_t = if (edge_len_sq > 0.0) rel_pos.dotProduct(edge_vec) / edge_len_sq else 0.0;
+        const t = std.math.clamp(raw_t, 0.0, 1.0);
+        const project = edge.a.add(edge_vec.scale(t));
+
+        const dist = project.distance(self.steering.predicted);
+        if (dist < min_dist) {
+            maybe_projected = project;
+            min_dist = dist;
+            self.steering.path_index = i;
+            self.steering.edge = .{ .a = edge.a, .b = edge.b };
+        }
+    }
+
+    std.debug.assert(maybe_projected != null);
+    self.steering.projected = maybe_projected.?;
+
+    // get current segment direction
+    const edge_vec = self.steering.edge.b.subtract(self.steering.edge.a);
+    const edge_len_sq = edge_vec.dotProduct(edge_vec);
+    const path_dir = if (edge_len_sq > 0.0001) edge_vec.normalize() else rl.Vector2.init(1.0, 0.0);
+
+    var desired_vel: rl.Vector2 = undefined;
+
+    const rad: f32 = self.steering.radius;
+    if (min_dist <= rad) {
+        // inside: go forward perpendicular with the edge at full agent_data.speed
+        desired_vel = path_dir.scale(target_speed);
+    } else {
+        // outside: Steer towards lookahead point along path at full agent_data.speed
+        self.steering.predicted_steer = self.steering.projected.add(path_dir.scale(step));
+
+        const steer_vec = self.steering.predicted_steer.subtract(self.pos);
+        const steer_len_sq = steer_vec.dotProduct(steer_vec);
+
+        if (steer_len_sq > 0.0001) {
+            desired_vel = steer_vec.normalize().scale(target_speed);
+        } else {
+            desired_vel = path_dir.scale(target_speed);
+        }
+    }
+
+    const steer_force = desired_vel.subtract(self.vel).scale(1.0 / agent_data.relaxation);
+    return steer_force;
+}
+
 fn calculateDriveForce(self: *Self, sim_data: SimData, agent_data: AgentData) rl.Vector2 {
-    // const e: rl.Vector2 = self.target.subtract(self.pos).normalize();
-    const e: rl.Vector2 = self.paths.items[self.path_index].subtract(self.pos).normalize();
+    const e: rl.Vector2 = self.target.subtract(self.pos).normalize();
     var speed_in_pixels: f32 = @as(f32, @floatFromInt(sim_data.scale)) * agent_data.speed;
     speed_in_pixels *= (1.0 / 60.0);
     const v0_vec: rl.Vector2 = e.scale(speed_in_pixels);
@@ -418,9 +489,9 @@ pub fn update(
     check_count: *i32,
     scratch_buf: *std.ArrayList(rl.Vector2),
 ) !void {
-    std.debug.print("3 : {}\n\n", .{self.paths.items.len});
     // get force components
-    const drive_force = self.calculateDriveForce(sim_data, agent_data);
+    // const drive_force = self.calculateDriveForce(sim_data, agent_data);
+    const drive_force = self.calculateSteeringForce(sim_data, agent_data);
     const interactive_force = try self.calculateInteractiveForce(alloc, env, sim_data, agent_data, check_count, scratch_buf);
     const obstacle_force = self.calculateObstacleForce(env, sim_data, agent_data);
     self.acc = drive_force
@@ -498,10 +569,39 @@ pub fn draw(self: *Self, env: *Environment, sim_data: SimData, agent_data: Agent
         rl.drawRectangleLinesEx(self.getAABB(agent_data, sim_data), 1, palette.env.hover);
     }
 
+    // render pathfinding steering stuff
     if (sim_data.show_pathfinding) {
-        const rad: f32 = agent_data.radius * @as(f32, @floatFromInt(sim_data.scale)) * 2.0;
-        for (self.paths.items) |point| {
-            rl.drawCircleLinesV(point, rad, palette.env.orange);
-        }
+        // path lines
+        rl.drawLineEx(
+            self.steering.paths.items[self.steering.path_index].a,
+            self.steering.paths.items[self.steering.path_index].b,
+            self.steering.radius,
+            palette.env.navy_t,
+        );
+        rl.drawLineEx(
+            self.steering.paths.items[self.steering.path_index].a,
+            self.steering.paths.items[self.steering.path_index].b,
+            2,
+            palette.env.orange,
+        );
+
+        rl.drawLineEx(
+            self.pos,
+            self.steering.predicted_steer,
+            2,
+            palette.env.light_blue,
+        );
+        rl.drawLineEx(
+            self.pos,
+            self.steering.projected,
+            2,
+            palette.env.red,
+        );
+        rl.drawLineEx(
+            self.pos,
+            self.steering.predicted,
+            2,
+            palette.env.green,
+        );
     }
 }

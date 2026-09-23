@@ -27,6 +27,11 @@ nodes: std.ArrayList(Node),
 // and then creates connection between the triangles if the edges coincide)
 edge_map: std.AutoHashMap(delaunay.Edge, usize),
 
+pub const Edge = struct {
+    a: rl.Vector2,
+    b: rl.Vector2,
+};
+
 pub const Node = struct {
     pos: rl.Vector2,
     neighbors: std.ArrayList(usize),
@@ -129,15 +134,19 @@ const UserContext = struct {
 pub fn find(
     self: *Self,
     alloc: std.mem.Allocator,
-    path: *std.ArrayList(rl.Vector2),
+    path: *std.ArrayList(Edge),
     start_pos: rl.Vector2,
     end_pos: rl.Vector2,
+    env: *Environment,
 ) !void {
     var extra_nodes: ExtraNodes = .init(
         .init(start_pos, .empty),
         .init(end_pos, .empty),
     );
     defer extra_nodes.deinit(alloc);
+
+    var path_vertices: std.ArrayList(rl.Vector2) = .empty;
+    defer path_vertices.deinit(alloc);
 
     // find what connection to make based on in which triangle the points reside
     var start_index: ?usize = null;
@@ -177,7 +186,7 @@ pub fn find(
         user_ctx,
     );
 
-    // (now we have the triangle indices, let's convert those to concrete points)
+    // now we have the triangle indices, let's convert those to concrete points
     for (index_path.items, 0..) |tri_index_a, i| {
         if (i == index_path.items.len - 1) continue;
 
@@ -212,11 +221,63 @@ pub fn find(
         }
         assert(num_overlap == 2); // they must overlap SOMEWHERE
         const center = final_edge[0].add(final_edge[1]).scale(0.5);
-        try path.append(alloc, center);
+        try path_vertices.append(alloc, center);
     }
 
-    // finally, add the target the path (this wasn't in the navmesh so also not in the pathfinding)
-    try path.append(alloc, end_pos);
+    // add the target the path (this wasn't in the navmesh so also not in the pathfinding)
+    try path_vertices.append(alloc, end_pos);
+
+    // remove unnecessary lines by checking line of sight for every
+    var current_index: usize = 0;
+    var write_index: usize = 1;
+    var test_index: usize = 2;
+    while (test_index < path_vertices.items.len) : (test_index += 1) {
+        const start_pt = path_vertices.items[current_index];
+        const candidate_pt = path_vertices.items[test_index];
+
+        const line = hasLineOfSight(start_pt, candidate_pt, env);
+        if (line) {
+            continue;
+        } else {
+            // the point before test_index is needed so we save it
+            const corner_index = test_index - 1;
+            path_vertices.items[write_index] = path_vertices.items[corner_index];
+            current_index = corner_index;
+            write_index += 1;
+        }
+    }
+    path_vertices.items[write_index] = path_vertices.items[path_vertices.items.len - 1];
+    write_index += 1;
+
+    try path_vertices.resize(alloc, write_index);
+
+    // create the path edges
+    for (path_vertices.items, 0..) |pos, i| {
+        if (i == path_vertices.items.len - 1) continue;
+        try path.append(alloc, .{
+            .a = pos,
+            .b = path_vertices.items[i + 1],
+        });
+    }
+}
+
+fn hasLineOfSight(a: rl.Vector2, b: rl.Vector2, env: *Environment) bool {
+    for (env.entities.items()) |ent| {
+        switch (ent.kind) {
+            .contour => |c| {
+                for (c.points.items, 0..) |p1, i| {
+                    if (i == c.points.items.len - 1) continue;
+                    const p2 = c.points.items[i + 1];
+                    var _collision_point: rl.Vector2 = .zero(); // throwaway
+                    if (rl.checkCollisionLines(a, b, p1, p2, &_collision_point)) {
+                        return false;
+                    }
+                }
+            },
+            else => {},
+        }
+    }
+    return true;
 }
 
 pub fn rebuildGraph(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {

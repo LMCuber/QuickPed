@@ -222,8 +222,10 @@ pub fn main(init: std.process.Init) !void {
                         var i: usize = env.agents.len();
                         while (i > 0) {
                             i -= 1;
-                            if (env.agents.getByIndex(i).marked)
+                            if (env.agents.getByIndex(i).marked) {
+                                try env.agents.items()[i].deinit(alloc);
                                 try env.agents.deleteByIndex(i);
+                            }
                         }
                     }
                 }
