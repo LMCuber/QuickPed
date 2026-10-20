@@ -416,15 +416,18 @@ pub fn selectedDraw(_: Self) void {
     // std.debug.print("ASDASD\n", .{});
 }
 
-pub fn selectedMove(self: *Self, dest: rl.Vector2, sim_data: SimData) void {
+pub fn selectedMove(self: *Self, dest: rl.Vector2, sim_data: SimData, snap: bool) void {
     switch (self.style) {
-        .standing => |*s| {
-            const snapped = commons.roundVec2(dest, sim_data);
-            s.rect = .{
+        .standing => |*standing| {
+            const snapped = if (snap)
+                commons.roundVec2(dest, sim_data)
+            else
+                dest;
+            standing.rect = .{
                 .x = snapped.x,
                 .y = snapped.y,
-                .width = s.rect.width,
-                .height = s.rect.height,
+                .width = standing.rect.width,
+                .height = standing.rect.height,
             };
         },
         else => {},

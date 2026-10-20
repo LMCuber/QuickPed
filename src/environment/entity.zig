@@ -171,9 +171,9 @@ pub const Entity = struct {
         };
     }
 
-    pub fn selectedMove(self: *@This(), dest: rl.Vector2, sim_data: SimData) void {
+    pub fn selectedMove(self: *@This(), dest: rl.Vector2, sim_data: SimData, snap: bool) void {
         switch (self.kind) {
-            .area => |*a| a.selectedMove(dest, sim_data),
+            .area => |*a| a.selectedMove(dest, sim_data, snap),
             else => {},
         }
     }

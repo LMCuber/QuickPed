@@ -136,6 +136,22 @@ pub fn update(
                     self.next_state = .{ .anchor = commons.mousePos() };
                 }
             }
+
+            // move it using arrow keys
+            var arrow_move: ?rl.Vector2 = null;
+            const m: f32 = 70.0;
+            if (rl.isKeyPressed(.a)) arrow_move = rl.Vector2.init(-1, 0).scale(m);
+            if (rl.isKeyPressed(.d)) arrow_move = rl.Vector2.init(1, 0).scale(m);
+            if (rl.isKeyPressed(.w)) arrow_move = rl.Vector2.init(0, -1).scale(m);
+            if (rl.isKeyPressed(.s)) arrow_move = rl.Vector2.init(0, 1).scale(m);
+            if (arrow_move) |vel| {
+                for (self.selected_entities.items) |*cap| {
+                    const ent = env.entities.getByUUID(cap.ent_id);
+                    ent.selectedMove(cap.origin.add(vel), sim_data, false);
+                    cap.origin = ent.getCenter();
+                    try self.recalculateBoundingBox(alloc, env);
+                }
+            }
         },
         .dragging => |dragging| {
             for (self.selected_entities.items) |cap| {
@@ -146,7 +162,7 @@ pub fn update(
 
                 // move the entity AND the selection rectangle
                 // std.debug.print("{}\n", .{mouse_diff});
-                ent.selectedMove(cap.origin.add(mouse_diff), sim_data);
+                ent.selectedMove(cap.origin.add(mouse_diff), sim_data, true);
                 const rect_dest = dragging.rect_origin.add(mouse_diff);
                 self.bounding_rect = .{
                     .x = rect_dest.x,
@@ -204,7 +220,7 @@ pub fn draw(self: Self, env: *Environment) void {
         .click_pending, .released => {
             rl.drawRectangleLinesEx(self.bounding_rect.?, 0.5, .yellow);
         },
-        .dragging => {},
+        else => {},
     }
 
     // draw the selected overlay to all highlighted entities
