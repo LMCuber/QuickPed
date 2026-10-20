@@ -244,7 +244,7 @@ pub fn main(init: std.process.Init) !void {
                 gui_capturing = z.io.getWantCaptureMouse();
 
                 // update the mouse selector
-                if (current_entity == null) {
+                if (!gui_capturing and current_entity == null) {
                     try selection.update(alloc, &env, sim_data);
                 }
             }

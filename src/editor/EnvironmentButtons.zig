@@ -1,6 +1,7 @@
 //
 // THIS ENTIRE FILE SKELETON IS BASICALLY AI SINCE I
-// REFUSE TO MANUALLY WRITE CSS IN IMGUI
+// REFUSE TO MANUALLY WRITE VECTOR GRAPHICS IN IMGUI
+// I COULDN'T LITERALLY CARE LESS HOW BAD THE CODE IS
 //
 
 const Self = @This();
@@ -60,7 +61,7 @@ pub fn evacuationButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
-        try z.text(alloc, "Evacuation plan", .{});
+        try z.text(alloc, "evacuation plan", .{});
         z.endTooltip();
     }
     const active = z.isItemActive();
@@ -97,73 +98,45 @@ pub fn evacuationButton(alloc: std.mem.Allocator, bs: f32) !bool {
     return clicked;
 }
 
-pub fn contourButton(alloc: std.mem.Allocator, bs: f32) !bool {
-    const clicked = z.invisibleButton("##contour", .{ .w = bs, .h = bs });
+const mag_col: u32 = 0xff_A0_5A_C8; // muted magenta (ABGR)
+const teal_col: u32 = 0xff_A0_B4_3C; // muted teal
+const peak_col: u32 = 0xff_6A_7A_E0; // soft coral, same as person_cols[0]
+const white_col: u32 = 0xff_E6_E6_E6;
 
-    const min = z.getItemRectMin();
-    const max = z.getItemRectMax();
-    const dl = z.getWindowDrawList();
-
-    // Hover / active detection
-    const hovered = z.isItemHovered(.{});
-    if (hovered) {
-        _ = z.beginTooltip();
-        try z.text(alloc, "contour", .{});
-        z.endTooltip();
+// Diamond drawn as 1px rows: stepped, crisp, axis-aligned
+fn pixelDiamond(dl: anytype, cx: f32, cy: f32, r: f32, dx: f32, col: u32) void {
+    if (r < 1.0) return;
+    const rows: usize = @intFromFloat(@round(2.0 * r));
+    const top = cy - r;
+    for (0..rows) |i| {
+        const fi: f32 = @floatFromInt(i);
+        const hw = @round(r - @abs(fi + 0.5 - r));
+        rect(dl, .{ cx - hw, top + fi, cx + hw, top + fi + 1.0 }, dx, col);
     }
-    const active = z.isItemActive();
+}
+const sp_purple: u32 = 0xff_C8_50_8C; // muted purple (ABGR)
+const sp_blue: u32 = 0xff_DC_78_3C; // muted blue
 
-    const bg_col: u32 = if (active)
-        palette.active
-    else if (hovered)
-        palette.hover
-    else
-        palette.default;
+const sp_green: u32 = 0xff_50_B4_5A; // muted green (ABGR), brighter than the old 4C8F4C
+const sp_cyan: u32 = 0xff_DC_C8_3C; // muted cyan
+const sp_yellow: u32 = 0xff_3C_C8_EB; // muted yellow
 
-    // Draw background
-    dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
-
-    // Snap coordinates to exact pixels to eliminate jagged/uneven rendering
-    const start_x = @round(min[0]);
-    const start_y = @round(min[1]);
-    const end_x = @round(max[0]);
-    const end_y = @round(max[1]);
-
-    const mid_x = @round((start_x + end_x) * 0.5);
-    const mid_y = @round((start_y + end_y) * 0.5);
-
-    const padding: f32 = 4.0;
-    const line_color: u32 = 0xff_ff_ff_ff;
-    const line_thickness: f32 = 2.0;
-
-    // Diamond polygon points
-    const points: [5][2]f32 = .{
-        .{ mid_x, start_y + padding },
-        .{ end_x - padding, mid_y },
-        .{ mid_x, end_y - padding },
-        .{ start_x + padding, mid_y },
-        .{ mid_x, start_y + padding },
-    };
-
-    // Draw Diamond Outer Edge
-    dl.addPolyline(points[0..], .{ .col = line_color, .thickness = line_thickness });
-
-    // Draw Cross inside the diamond
-    dl.addLine(.{ .p1 = .{ mid_x, start_y + padding }, .p2 = .{ mid_x, end_y - padding }, .col = line_color, .thickness = line_thickness });
-
-    dl.addLine(.{ .p1 = .{ start_x + padding, mid_y }, .p2 = .{ end_x - padding, mid_y }, .col = line_color, .thickness = line_thickness });
-
-    return clicked;
+// Right-pointing chevron drawn as 1px rows: crisp, axis-aligned, stepped
+fn chevron(dl: anytype, tip: f32, cy: f32, hh: f32, th: f32, dx: f32, col: u32) void {
+    const rows: usize = @intFromFloat(2.0 * hh);
+    for (0..rows) |i| {
+        const fi: f32 = @floatFromInt(i);
+        const x = tip - @round(@abs(fi + 0.5 - hh));
+        rect(dl, .{ x - th, cy - hh + fi, x, cy - hh + fi + 1.0 }, dx, col);
+    }
 }
 
 pub fn spawnerButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const clicked = z.invisibleButton("##spawner", .{ .w = bs, .h = bs });
-
     const min = z.getItemRectMin();
     const max = z.getItemRectMax();
     const dl = z.getWindowDrawList();
 
-    // Hover / active detection
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
@@ -172,84 +145,178 @@ pub fn spawnerButton(alloc: std.mem.Allocator, bs: f32) !bool {
     }
     const active = z.isItemActive();
 
-    // Matte navy background, lighter on hover, darker when pressed (ABGR)
-    const bg_col: u32 = if (active)
-        palette.active
-    else if (hovered)
-        palette.hover
-    else
-        palette.default;
-
+    const bg_col: u32 = if (active) palette.active else if (hovered) palette.hover else palette.default;
     dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
 
-    // Triangle arrow pointing right
-    const mid_x = (min[0] + max[0]) * 0.5;
-    const mid_y = (min[1] + max[1]) * 0.5;
-    const size_icon: f32 = bs * 0.2; // scale relative to button size
+    const pad = @round(bs * 0.14);
+    const off = @max(1.0, @round(bs * 0.035));
+    const th = @max(3.0, @round(bs * 0.12)); // chunky chevron thickness
+    const sp = @round(th * 1.6); // spacing between chevrons
+    const ps = @max(3.0, @round(bs * 0.09)); // person half-size
+    const hh0 = @round(bs * 0.28); // front chevron half-height
 
-    // Right-pointing triangle
-    const p1 = .{ mid_x - size_icon, mid_y - size_icon };
-    const p2 = .{ mid_x - size_icon, mid_y + size_icon };
-    const p3 = .{ mid_x + size_icon, mid_y }; // tip pointing right
+    const l = @round(min[0] + pad);
+    const r = @round(max[0] - pad);
+    const cy = @round((min[1] + max[1]) * 0.5);
 
-    dl.addTriangleFilled(.{ .p1 = p1, .p2 = p2, .p3 = p3, .col = 0xFF4C8F4C }); // muted green
-    dl.addTriangle(.{ .p1 = p1, .p2 = p2, .p3 = p3, .col = 0xFF7FAF7F, .thickness = 1.5 }); // softer border
+    // Back (cyan, smaller) then front (green, bigger)
+    const chevs = [2]struct { tip: f32, hh: f32, col: u32 }{
+        .{ .tip = r - sp, .hh = @round(hh0 * 0.75), .col = sp_cyan },
+        .{ .tip = r, .hh = hh0, .col = sp_green },
+    };
+
+    // Pass 1: shadows
+    for (chevs) |c| chevron(dl, c.tip, cy, c.hh, th, off, shadow_col);
+    rect(dl, .{ l, cy - ps, l + ps * 2.0, cy + ps }, off, shadow_col);
+
+    // Pass 2: faces
+    for (chevs) |c| chevron(dl, c.tip, cy, c.hh, th, 0, c.col);
+    rect(dl, .{ l, cy - ps, l + ps * 2.0, cy + ps }, 0, sp_yellow);
+
     return clicked;
 }
 
-pub fn areaButton(alloc: std.mem.Allocator, bs: f32) !bool {
-    const clicked = z.invisibleButton("##area", .{ .w = bs, .h = bs });
-
+pub fn contourButton(alloc: std.mem.Allocator, bs: f32) !bool {
+    const clicked = z.invisibleButton("##contour", .{ .w = bs, .h = bs });
     const min = z.getItemRectMin();
     const max = z.getItemRectMax();
     const dl = z.getWindowDrawList();
 
-    // Hover / active detection
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
-        try z.text(alloc, "area", .{});
+        try z.text(alloc, "contour", .{});
         z.endTooltip();
     }
     const active = z.isItemActive();
 
-    const bg_col: u32 = if (active)
-        palette.active
-    else if (hovered)
-        palette.hover
-    else
-        palette.default;
-
-    // Draw main background
+    const bg_col: u32 = if (active) palette.active else if (hovered) palette.hover else palette.default;
     dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
 
-    // Inner blue rectangle (keep original styling)
-    const pad: f32 = 8.0;
-    const inner_min = .{ min[0] + pad, min[1] + pad };
-    const inner_max = .{ max[0] - pad, max[1] - pad };
+    const off = @max(1.0, @round(bs * 0.035));
+    const t = @max(2.0, @round(bs * 0.07)); // ring thickness
+    const R = @round(bs * 0.42);
+    const cx = @round((min[0] + max[0]) * 0.5);
+    const cy = @round((min[1] + max[1]) * 0.5);
 
-    dl.addRectFilled(.{ .pmin = inner_min, .pmax = inner_max, .col = 0xC8803D00 });
-    dl.addRect(.{ .pmin = inner_min, .pmax = inner_max, .col = 0xFF562A1E, .thickness = 2 });
-
-    // // Text on top
-    // const text_size = z.calcTextSize("Area", .{});
-    // const pos = .{
-    //     (min[0] + max[0] - text_size[0]) * 0.5,
-    //     (min[1] + max[1] - text_size[1]) * 0.5,
-    // };
-    // dl.addText(pos, 0xff_ff_ff_ff, "{s}", .{"Area"});
+    // Shadow, then rings from outside in. Gaps are bg_col so hover still shows.
+    pixelDiamond(dl, cx, cy, R, off, shadow_col);
+    pixelDiamond(dl, cx, cy, R, 0, teal_col);
+    pixelDiamond(dl, cx, cy, R - t, 0, bg_col);
+    pixelDiamond(dl, cx, cy, R - t * 2.0, 0, white_col);
+    pixelDiamond(dl, cx, cy, R - t * 3.0, 0, bg_col);
+    pixelDiamond(dl, cx, cy, R - t * 4.0, 0, peak_col);
 
     return clicked;
 }
 
-pub fn revolverButton(alloc: std.mem.Allocator, bs: f32) !bool {
-    const clicked = z.invisibleButton("##cross", .{ .w = bs, .h = bs });
+// Shared with the other buttons: shadow_col, path_col, rect(), person_cols.
+// Only declare them once per file.
+const zone_col: u32 = 0xff_8C_5A_32; // muted blue (ABGR)
 
+fn dashH(dl: anytype, x0: f32, x1: f32, y0: f32, y1: f32, d: f32, col: u32) void {
+    var x = x0;
+    while (x < x1) : (x += 2.0 * d) {
+        rect(dl, .{ x, y0, @min(x + d, x1), y1 }, 0, col);
+    }
+}
+
+fn dashV(dl: anytype, y0: f32, y1: f32, x0: f32, x1: f32, d: f32, col: u32) void {
+    var y = y0;
+    while (y < y1) : (y += 2.0 * d) {
+        rect(dl, .{ x0, y, x1, @min(y + d, y1) }, 0, col);
+    }
+}
+
+pub fn areaButton(alloc: std.mem.Allocator, bs: f32) !bool {
+    const clicked = z.invisibleButton("##waiting_area", .{ .w = bs, .h = bs });
     const min = z.getItemRectMin();
     const max = z.getItemRectMax();
     const dl = z.getWindowDrawList();
 
-    // Hover / active detection
+    const hovered = z.isItemHovered(.{});
+    if (hovered) {
+        _ = z.beginTooltip();
+        try z.text(alloc, "waiting area", .{});
+        z.endTooltip();
+    }
+    const active = z.isItemActive();
+
+    const bg_col: u32 = if (active) palette.active else if (hovered) palette.hover else palette.default;
+    dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
+
+    const pad = @round(bs * 0.18);
+    const t = @max(2.0, 2.0 * @round(bs * 0.02)); // border thickness (even)
+    const off = @max(1.0, @round(bs * 0.035));
+    const d = @max(2.0, @round(bs * 0.07)); // dash length = gap length
+
+    const l = @round(min[0] + pad);
+    const r = @round(max[0] - pad);
+    const tp = @round(min[1] + pad);
+    const b = @round(max[1] - pad);
+
+    // Zone: shadow, then fill
+    rect(dl, .{ l, tp, r, b }, off, shadow_col);
+    rect(dl, .{ l, tp, r, b }, 0, zone_col);
+
+    // Dashed border: square corners, dashes between them
+    dashH(dl, l + t, r - t, tp, tp + t, d, path_col);
+    dashH(dl, l + t, r - t, b - t, b, d, path_col);
+    dashV(dl, tp + t, b - t, l, l + t, d, path_col);
+    dashV(dl, tp + t, b - t, r - t, r, d, path_col);
+    const corners = [4][2]f32{ .{ l, tp }, .{ r - t, tp }, .{ l, b - t }, .{ r - t, b - t } };
+    for (corners) |c| rect(dl, .{ c[0], c[1], c[0] + t, c[1] + t }, 0, path_col);
+
+    // Four people standing around, slightly off-grid so they look like they're milling
+    const ps = @round(t * 1.5);
+    const w = r - l;
+    const h = b - tp;
+    const people = [4][2]f32{
+        .{ 0.30, 0.34 },
+        .{ 0.68, 0.30 },
+        .{ 0.34, 0.70 },
+        .{ 0.70, 0.66 },
+    };
+    for (people) |p| {
+        const px = @round(l + w * p[0]);
+        const py = @round(tp + h * p[1]);
+        rect(dl, .{ px - ps, py - ps, px + ps, py + ps }, off, shadow_col);
+    }
+    for (people, 0..) |p, i| {
+        const px = @round(l + w * p[0]);
+        const py = @round(tp + h * p[1]);
+        rect(dl, .{ px - ps, py - ps, px + ps, py + ps }, 0, person_cols[i]);
+    }
+
+    return clicked;
+}
+
+const ring_col: u32 = 0xff_A0_8C_5A; // muted steel blue (ABGR)
+const void_col: u32 = 0xff_28_20_1A;
+const wing_col: u32 = 0xff_40_B0_DE; // muted amber, same as the queue path
+const hub_col: u32 = 0xff_E6_E6_E6;
+const trail_cols = [3]u32{ 0xff_E6_E6_E6, 0xff_B4_B4_B4, 0xff_82_82_82 };
+
+// Filled disc drawn as 1px rows: round but crisp
+fn pixelDisc(dl: anytype, cx: f32, cy: f32, r: f32, dx: f32, col: u32) void {
+    if (r < 1.0) return;
+    const rows: usize = @intFromFloat(@round(2.0 * r));
+    const rf: f32 = @floatFromInt(rows);
+    const top = cy - rf * 0.5;
+    for (0..rows) |i| {
+        const fi: f32 = @floatFromInt(i);
+        const u = (fi + 0.5) / rf * 2.0 - 1.0;
+        const hw = @round(r * @sqrt(1.0 - u * u));
+        rect(dl, .{ cx - hw, top + fi, cx + hw, top + fi + 1.0 }, dx, col);
+    }
+}
+
+pub fn revolverButton(alloc: std.mem.Allocator, bs: f32) !bool {
+    const clicked = z.invisibleButton("##revolver", .{ .w = bs, .h = bs });
+    const min = z.getItemRectMin();
+    const max = z.getItemRectMax();
+    const dl = z.getWindowDrawList();
+
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
@@ -258,23 +325,80 @@ pub fn revolverButton(alloc: std.mem.Allocator, bs: f32) !bool {
     }
     const active = z.isItemActive();
 
-    // Background color
-    const bg_col: u32 = if (active)
-        palette.active
-    else if (hovered)
-        palette.hover
-    else
-        palette.default;
-
+    const bg_col: u32 = if (active) palette.active else if (hovered) palette.hover else palette.default;
     dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
 
-    // Draw cross
-    const pad: f32 = 6.0; // space from edges
-    const thick: f32 = 4.0;
-    dl.addLine(.{ .p1 = .{ min[0] + pad, min[1] + pad }, .p2 = .{ max[0] - pad, max[1] - pad }, .col = 0xff_00_00_00, .thickness = thick });
-    dl.addLine(.{ .p1 = .{ min[0] + pad, max[1] - pad }, .p2 = .{ max[0] - pad, min[1] + pad }, .col = 0xff_00_00_00, .thickness = thick });
+    const off = @max(1.0, @round(bs * 0.035));
+    const t = @max(2.0, 2.0 * @round(bs * 0.03)); // wing thickness (even)
+    const h = t * 0.5;
+
+    const cx = @round((min[0] + max[0]) * 0.5);
+    const cy = @round((min[1] + max[1]) * 0.5);
+    const R = @round(bs * 0.40); // housing radius
+    const rim = @max(2.0, @round(bs * 0.045));
+    const L = @round((R - rim) * 0.88); // wing half-length
+
+    // Housing: shadow, ring, void
+    pixelDisc(dl, cx, cy, R, off, shadow_col);
+    pixelDisc(dl, cx, cy, R, 0, ring_col);
+    pixelDisc(dl, cx, cy, R - rim, 0, void_col);
+
+    // Wings (plus shape): shadows first, then faces
+    const wings = [2][4]f32{
+        .{ cx - L, cy - h, cx + L, cy + h },
+        .{ cx - h, cy - L, cx + h, cy + L },
+    };
+    for (wings) |w| rect(dl, w, off, shadow_col);
+    for (wings) |w| rect(dl, w, 0, wing_col);
+
+    // Hub
+    const hs = @round(t * 1.1);
+    rect(dl, .{ cx - hs, cy - hs, cx + hs, cy + hs }, off, shadow_col);
+    rect(dl, .{ cx - hs, cy - hs, cx + hs, cy + hs }, 0, hub_col);
+
+    // Woosh: shrinking squares trailing behind each wing tip along a circle
+    const pi: f32 = 3.14159265;
+    const lag = [3]f32{ 0.20, 0.42, 0.66 }; // radians behind the tip
+    const sizes = [3]f32{
+        @max(1.0, @round(t * 0.7)),
+        @max(1.0, @round(t * 0.5)),
+        @max(1.0, @round(t * 0.3)),
+    };
+    for (0..4) |k| {
+        const base = @as(f32, @floatFromInt(k)) * pi * 0.5;
+        for (0..3) |j| {
+            const ang = base - lag[j];
+            const px = @round(cx + L * @cos(ang));
+            const py = @round(cy + L * @sin(ang));
+            const s = sizes[j];
+            rect(dl, .{ px - s, py - s, px + s, py + s }, 0, trail_cols[j]);
+        }
+    }
 
     return clicked;
+}
+
+const blue_col: u32 = 0xff_C8_8C_3C;
+const blue_void: u32 = 0xff_40_28_14;
+const blue_core: u32 = 0xff_28_18_0C;
+const orange_col: u32 = 0xff_32_82_DC;
+const orange_void: u32 = 0xff_14_28_46;
+const orange_core: u32 = 0xff_0C_18_2E;
+const spark_col: u32 = 0xff_E6_E6_E6;
+
+// Vertical oval drawn as 1px-tall rows: smooth but still axis-aligned and crisp
+fn pixelOval(dl: anytype, cx: f32, cy: f32, a: f32, b: f32, dx: f32, col: u32) void {
+    if (a < 1.0 or b < 1.0) return;
+    const rows: usize = @intFromFloat(@round(2.0 * b));
+    const rf: f32 = @floatFromInt(rows);
+    const top = cy - rf * 0.5;
+    for (0..rows) |i| {
+        const fi: f32 = @floatFromInt(i);
+        const u = (fi + 0.5) / rf * 2.0 - 1.0;
+        const hw = @round(a * @sqrt(1.0 - u * u));
+        const y = top + fi;
+        rect(dl, .{ cx - hw, y, cx + hw, y + 1.0 }, dx, col);
+    }
 }
 
 pub fn portalButton(alloc: std.mem.Allocator, bs: f32) !bool {
@@ -282,6 +406,7 @@ pub fn portalButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const min = z.getItemRectMin();
     const max = z.getItemRectMax();
     const dl = z.getWindowDrawList();
+
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
@@ -289,44 +414,80 @@ pub fn portalButton(alloc: std.mem.Allocator, bs: f32) !bool {
         z.endTooltip();
     }
     const active = z.isItemActive();
-    const bg_col: u32 = if (active)
-        palette.active
-    else if (hovered)
-        palette.hover
-    else
-        palette.default;
+
+    const bg_col: u32 = if (active) palette.active else if (hovered) palette.hover else palette.default;
     dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
 
-    const pad: f32 = 6.0;
-    const left = min[0] + pad;
-    const right = max[0] - pad;
-    const top = min[1] + pad;
-    const bot = max[1] - pad;
-    const mid_x = (left + right) * 0.5;
+    const off = @max(1.0, @round(bs * 0.035));
+    const t = @max(2.0, @round(bs * 0.05)); // ring thickness
 
-    const col_blue: u32 = 0xff_DB_98_34;
-    const col_orange: u32 = 0xff_22_7E_E6;
-    const thick: f32 = 2.0;
+    const cy = @round((min[1] + max[1]) * 0.5);
+    const mid_x = @round((min[0] + max[0]) * 0.5);
+    const a = @round(bs * 0.14);
+    const b = @round(bs * 0.38);
+    const dist = @round(bs * 0.27);
 
-    // ---- SPACING CONTROLS ----
-    // How far apart the two lines within a single portal are (the || width)
-    const line_gap: f32 = 2.0;
-    // How far apart the two portals are from each other (center-to-center distance / 2)
-    // Increase this if the blue and orange lines are too close or touching
-    const portal_gap: f32 = 20.0;
-    // --------------------------
+    const lx = mid_x - dist;
+    const rx = mid_x + dist;
 
-    // Left portal (blue)
-    const lx = mid_x - portal_gap * 0.5;
-    dl.addLine(.{ .p1 = .{ lx - line_gap, top }, .p2 = .{ lx - line_gap, bot }, .col = col_blue, .thickness = thick });
-    dl.addLine(.{ .p1 = .{ lx + line_gap, top }, .p2 = .{ lx + line_gap, bot }, .col = col_blue, .thickness = thick });
+    // Pass 1: shadows
+    pixelOval(dl, lx, cy, a, b, off, shadow_col);
+    pixelOval(dl, rx, cy, a, b, off, shadow_col);
 
-    // Right portal (orange)
-    const rx = mid_x + portal_gap * 0.5;
-    dl.addLine(.{ .p1 = .{ rx - line_gap, top }, .p2 = .{ rx - line_gap, bot }, .col = col_orange, .thickness = thick });
-    dl.addLine(.{ .p1 = .{ rx + line_gap, top }, .p2 = .{ rx + line_gap, bot }, .col = col_orange, .thickness = thick });
+    // Pass 2: ring faces
+    pixelOval(dl, lx, cy, a, b, 0, blue_col);
+    pixelOval(dl, rx, cy, a, b, 0, orange_col);
+
+    // Pass 3: void
+    pixelOval(dl, lx, cy, a - t, b - t, 0, blue_void);
+    pixelOval(dl, rx, cy, a - t, b - t, 0, orange_void);
+
+    // Pass 4: darker core for depth
+    pixelOval(dl, lx, cy, a - t * 2.0, b - t * 2.0, 0, blue_core);
+    pixelOval(dl, rx, cy, a - t * 2.0, b - t * 2.0, 0, orange_core);
+
+    // Sparks traveling blue -> orange, shrinking
+    const gap_l = lx + a;
+    const gw = (rx - a) - gap_l;
+    const s0 = @max(1.0, @round(t * 0.8));
+    const s1 = @max(1.0, @round(t * 0.55));
+    const s2 = @max(1.0, @round(t * 0.3));
+    const sparks = [3]struct { fx: f32, s: f32 }{
+        .{ .fx = 0.20, .s = s0 },
+        .{ .fx = 0.50, .s = s1 },
+        .{ .fx = 0.80, .s = s2 },
+    };
+    for (sparks) |sp| {
+        const cx = @round(gap_l + gw * sp.fx);
+        rect(dl, .{ cx - sp.s, cy - sp.s, cx + sp.s, cy + sp.s }, off, shadow_col);
+    }
+    for (sparks) |sp| {
+        const cx = @round(gap_l + gw * sp.fx);
+        rect(dl, .{ cx - sp.s, cy - sp.s, cx + sp.s, cy + sp.s }, 0, spark_col);
+    }
 
     return clicked;
+}
+
+const shadow_col: u32 = 0xff_18_14_14;
+const path_col: u32 = 0xff_40_B0_DE; // muted amber (ABGR)
+
+// Slightly varied, muted person colors (ABGR)
+const person_cols = [6]u32{
+    0xff_6A_7A_E0, // soft coral
+    0xff_A0_D2_E6, // sand
+    0xff_8A_C8_9C, // sage
+    0xff_E4_C4_9C, // pale sky
+    0xff_D8_A4_C0, // lilac
+    0xff_E6_E6_E6, // off-white
+};
+
+fn rect(dl: anytype, r: [4]f32, dx: f32, col: u32) void {
+    dl.addRectFilled(.{
+        .pmin = .{ r[0] + dx, r[1] + dx },
+        .pmax = .{ r[2] + dx, r[3] + dx },
+        .col = col,
+    });
 }
 
 pub fn queueButton(alloc: std.mem.Allocator, bs: f32) !bool {
@@ -343,63 +504,52 @@ pub fn queueButton(alloc: std.mem.Allocator, bs: f32) !bool {
     }
     const active = z.isItemActive();
 
-    const bg_col: u32 = if (active)
-        palette.active
-    else if (hovered)
-        palette.hover
-    else
-        palette.default;
-
+    const bg_col: u32 = if (active) palette.active else if (hovered) palette.hover else palette.default;
     dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
 
-    const pad: f32 = 7.0;
-    const left = min[0] + pad;
-    const right = max[0] - pad;
-    const top = min[1] + pad;
-    const bot = max[1] - pad;
-    // const line_col: u32 = 0xff_50_50_50;
-    const line_col: u32 = 0xff_4F_86_C8;
-    const thick: f32 = 2.0;
+    const pad = @round(bs * 0.2);
+    const t = @max(2.0, 2.0 * @round(bs * 0.025)); // thin path (even)
+    const h = t * 0.5;
+    const off = @max(1.0, @round(bs * 0.035));
 
-    // Snake path: 3 horizontal rows connected by short verticals on alternating sides
-    const n_rows: usize = 3;
-    const row_h = (bot - top) / @as(f32, @floatFromInt(n_rows));
-    const ys = [3]f32{
-        top + row_h * 0.5,
-        top + row_h * 1.5,
-        top + row_h * 2.5,
+    const left = @round(min[0] + pad);
+    const right = @round(max[0] - pad);
+    const top = @round(min[1] + pad);
+    const bot = @round(max[1] - pad);
+    const mid = @round((top + bot) * 0.5);
+
+    // Snake path
+    const bars = [5][4]f32{
+        .{ left - h, top - h, right + h, top + h },
+        .{ right - h, top - h, right + h, mid + h },
+        .{ left - h, mid - h, right + h, mid + h },
+        .{ left - h, mid - h, left + h, bot + h },
+        .{ left - h, bot - h, right + h, bot + h },
+    };
+    for (bars) |b| rect(dl, b, off, shadow_col);
+    for (bars) |b| rect(dl, b, 0, path_col);
+
+    // 6 people, listed in order along the snake:
+    // row 0 left->right, row 1 right->left, row 2 left->right
+    const ps = @round(t * 1.5);
+    const w = right - left;
+    const people = [6]struct { fx: f32, y: f32 }{
+        .{ .fx = 0.30, .y = top },
+        .{ .fx = 0.70, .y = top },
+        .{ .fx = 0.70, .y = mid },
+        .{ .fx = 0.30, .y = mid },
+        .{ .fx = 0.30, .y = bot },
+        .{ .fx = 0.70, .y = bot },
     };
 
-    // Horizontal segments
-    for (0..n_rows) |i| {
-        const even = i % 2 == 0;
-        const x1: f32 = if (even) left else right;
-        const x2: f32 = if (even) right else left;
-        dl.addLine(.{ .p1 = .{ x1, ys[i] }, .p2 = .{ x2, ys[i] }, .col = line_col, .thickness = thick });
+    // Shadows first, then faces, so no shadow covers a person
+    for (people) |p| {
+        const cx = @round(left + w * p.fx);
+        rect(dl, .{ cx - ps, p.y - ps, cx + ps, p.y + ps }, off, shadow_col);
     }
-
-    // Vertical connectors
-    // row 0 -> row 1: right side
-    dl.addLine(.{ .p1 = .{ right, ys[0] }, .p2 = .{ right, ys[1] }, .col = line_col, .thickness = thick });
-    // row 1 -> row 2: left side
-    dl.addLine(.{ .p1 = .{ left, ys[1] }, .p2 = .{ left, ys[2] }, .col = line_col, .thickness = thick });
-
-    // People dots along the snake
-    const dot_r: f32 = 3.5;
-    const dot_col: u32 = 0xff_92_C85C;
-
-    // Place dots evenly: 2 per row
-    const positions = [6][2]f32{
-        .{ left + (right - left) * 0.2, ys[0] },
-        .{ left + (right - left) * 0.6, ys[0] },
-        .{ left + (right - left) * 0.8, ys[1] },
-        .{ left + (right - left) * 0.4, ys[1] },
-        .{ left + (right - left) * 0.2, ys[2] },
-        .{ left + (right - left) * 0.6, ys[2] },
-    };
-
-    for (positions) |p| {
-        dl.addCircleFilled(.{ .p = p, .r = dot_r, .col = dot_col });
+    for (people, 0..) |p, i| {
+        const cx = @round(left + w * p.fx);
+        rect(dl, .{ cx - ps, p.y - ps, cx + ps, p.y + ps }, 0, person_cols[i]);
     }
 
     return clicked;
