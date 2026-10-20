@@ -6,14 +6,23 @@ const Area = @import("Area.zig");
 const Revolver = @import("Revolver.zig");
 const Queue = @import("Queue.zig");
 const Portal = @import("Portal.zig");
+const Evac = @import("Evacuation.zig");
 const Environment = @import("Environment.zig");
 const AgentData = @import("../editor/AgentData.zig");
 const Manager = @import("../Manager.zig").Manager;
 const commons = @import("../commons.zig");
+const utils = @import("../utils.zig");
 const UUID = @import("../UUID.zig");
 const std = @import("std");
 const rl = @import("raylib");
 const z = @import("zgui");
+
+// any collision with mouse can either return entire entity (e.g. areas)
+// or a portion of it (e.g. contours, where it returns vertex indices)
+pub const CollisionResult = union(enum) { none: void, entity: void, capture: struct {
+    entity: UUID,
+    index: usize,
+} };
 
 pub const EntitySnapshot = struct {
     uuid: UUID.UUIDSnapshot,
@@ -43,6 +52,7 @@ pub const Entity = struct {
         revolver: Revolver,
         queue: Queue,
         portal: Portal,
+        // evac: Evacuaion,
     };
 
     pub const EntityAction = enum {
@@ -81,7 +91,7 @@ pub const Entity = struct {
     }
 
     pub fn update(
-        self: *Entity,
+        self: *@This(),
         alloc: std.mem.Allocator,
         dt: f32,
         agent_data: AgentData,
@@ -97,7 +107,7 @@ pub const Entity = struct {
         };
     }
 
-    pub fn setName(self: *Entity, alloc: std.mem.Allocator, new_name: [:0]const u8) !void {
+    pub fn setName(self: *@This(), alloc: std.mem.Allocator, new_name: [:0]const u8) !void {
         alloc.free(self.name);
         self.name = try alloc.dupeZ(u8, new_name);
     }
@@ -127,7 +137,7 @@ pub const Entity = struct {
         };
     }
 
-    pub fn deinit(self: *Entity, alloc: std.mem.Allocator) void {
+    pub fn deinit(self: *@This(), alloc: std.mem.Allocator) void {
         alloc.free(self.name);
         switch (self.kind) {
             inline .contour, .queue, .area => |*kind| kind.deinit(alloc),
@@ -135,7 +145,40 @@ pub const Entity = struct {
         }
     }
 
-    pub fn getSnapshot(self: *Entity) EntitySnapshot {
+    pub fn checkSelected(self: @This(), rect: rl.Rectangle) bool {
+        return switch (self.kind) {
+            .area => |c| c.checkSelected(rect),
+            .contour => |k| utils.checkCollisionRecInside(k.getRect(), rect),
+            inline else => false,
+        };
+    }
+
+    pub fn getRect(self: @This()) rl.Rectangle {
+        return switch (self.kind) {
+            inline .area, .contour => |a| a.getRect(),
+            else => unreachable,
+        };
+    }
+
+    pub fn getCenter(self: @This()) rl.Vector2 {
+        const rect = switch (self.kind) {
+            inline .area, .contour => |a| a.getRect(),
+            else => unreachable,
+        };
+        return .{
+            .x = rect.x,
+            .y = rect.y,
+        };
+    }
+
+    pub fn selectedMove(self: *@This(), dest: rl.Vector2, sim_data: SimData) void {
+        switch (self.kind) {
+            .area => |*a| a.selectedMove(dest, sim_data),
+            else => {},
+        }
+    }
+
+    pub fn getSnapshot(self: *@This()) EntitySnapshot {
         return .{
             .uuid = self.uuid.getSnapshot(),
             .name = self.name,
@@ -164,25 +207,22 @@ pub const Entity = struct {
         };
     }
 
-    pub fn draw(self: *Entity, sim_data: SimData, agent_data: AgentData, node_editor_active: bool) void {
+    pub fn selectedDraw(self: @This()) void {
+        switch (self.kind) {
+            .area => |a| a.selectedDraw(),
+            else => {},
+        }
+    }
+
+    pub fn draw(self: *@This(), sim_data: SimData, agent_data: AgentData, _: bool) void {
         // draw general entity
         switch (self.kind) {
             inline .contour, .queue => |*k| k.draw(sim_data, agent_data),
             inline else => |*kind| kind.draw(),
         }
-        // check hover behavior (after draw)
-        // split up since we don't want to pass node_editor_active to each hover() function
-        switch (self.kind) {
-            .queue => {},
-            inline else => |*ent| {
-                if (!node_editor_active and ent.placed and ent.checkHover()) {
-                    ent.hover();
-                }
-            },
-        }
     }
 
-    pub fn confirm(self: *Entity, alloc: std.mem.Allocator, sim_data: SimData, agent_data: AgentData) !void {
+    pub fn confirm(self: *@This(), alloc: std.mem.Allocator, sim_data: SimData, agent_data: AgentData) !void {
         switch (self.kind) {
             .contour => {},
             .queue => |*q| try q.confirm(alloc, sim_data, agent_data),
@@ -191,7 +231,7 @@ pub const Entity = struct {
         }
     }
 
-    pub fn edit(self: *Entity, alloc: std.mem.Allocator) !void {
+    pub fn edit(self: *@This(), alloc: std.mem.Allocator) !void {
         // all entities
         z.separatorText(self.name);
 

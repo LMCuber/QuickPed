@@ -4,6 +4,7 @@ const rl = @import("raylib");
 const color = @import("../color.zig");
 const palette = @import("../palette.zig");
 const commons = @import("../commons.zig");
+const entity = @import("entity.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../editor/SimData.zig");
 const AgentData = @import("../editor/AgentData.zig");
@@ -83,30 +84,31 @@ pub fn update(
         }
 
         return .none;
-    } else if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left) and self.checkHover()) {
-        return .selected;
     }
     return .none;
 }
 
-pub fn checkHover(self: Self) bool {
-    for (self.points.items, 0..) |point, i| {
-        if (i == self.points.items.len - 1) continue;
-        const next_point: rl.Vector2 = self.points.items[i + 1];
-        if (rl.checkCollisionPointLine(commons.mousePos(), point, next_point, 8)) {
-            return true;
-        }
-    }
-    return false;
-}
+pub fn getRect(self: Self) rl.Rectangle {
+    std.debug.assert(self.points.items.len > 0);
 
-pub fn hover(self: *Self) void {
-    const line_width = 3;
-    for (self.points.items, 0..) |point, i| {
-        if (i == self.points.items.len - 1) continue;
-        const next_point = self.points.items[i + 1];
-        rl.drawLineEx(point, next_point, line_width, palette.env.hover);
+    var min_x: f32 = self.points.items[0].x;
+    var max_x: f32 = self.points.items[0].x;
+    var min_y: f32 = self.points.items[0].y;
+    var max_y: f32 = self.points.items[0].y;
+
+    for (self.points.items[1..]) |pt| {
+        if (pt.x < min_x) min_x = pt.x;
+        if (pt.x > max_x) max_x = pt.x;
+        if (pt.y < min_y) min_y = pt.y;
+        if (pt.y > max_y) max_y = pt.y;
     }
+
+    return .{
+        .x = min_x,
+        .y = min_y,
+        .width = max_x - min_x,
+        .height = max_y - min_y,
+    };
 }
 
 pub fn draw(self: Self, _: SimData, _: AgentData) void {

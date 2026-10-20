@@ -39,17 +39,17 @@ pub const DelaunayResult = struct {
 
 // CONSTRAINED delaunay triangulation takes as argument a "planar straight-line graph" (PSLG)
 // (list of vertices, and edges connecting those vertices. simple.)
-// the resulting triangulation MUST include this given geometry
+// the resulting triangulation MUST keep in mind this given geometry
 pub fn triangulateConstrained(
     alloc: std.mem.Allocator,
     points: []const rl.Vector2,
     constraints: []const Edge,
 ) !DelaunayResult {
-    // Step 1: Perform standard Delaunay triangulation
+    // step 1: Perform standard Delaunay triangulation
     var result = try triangulate(alloc, points);
     errdefer result.deinit(alloc);
 
-    // Step 2: Enforce constraints by edge-flipping intersecting edges
+    // step 2: Enforce constraints by edge-flipping intersecting edges
     for (constraints) |constraint| {
         if (constraint.p1 == constraint.p2) continue;
 
@@ -60,7 +60,7 @@ pub fn triangulateConstrained(
             guard += 1;
             if (guard > max_iters) break; // give up on this constraint rather than hang
 
-            // Find the first triangle edge intersecting our constraint segment
+            // find the first triangle edge intersecting our constraint segment
             const c_a = points[constraint.p1];
             const c_b = points[constraint.p2];
             var flipped_any = false;
@@ -93,7 +93,7 @@ pub fn triangulateConstrained(
                 if (flipped_any) break;
             }
 
-            // Fallback safety to avoid infinite loops on invalid or overlapping constraints
+            // fallback safety to avoid infinite loops on invalid or overlapping constraints
             if (!flipped_any) break;
         }
     }

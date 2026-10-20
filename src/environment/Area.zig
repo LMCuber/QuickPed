@@ -4,6 +4,7 @@ const rl = @import("raylib");
 const color = @import("../color.zig");
 const palette = @import("../palette.zig");
 const commons = @import("../commons.zig");
+const utils = @import("../utils.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../editor/SimData.zig");
 const Settings = @import("../Settings.zig");
@@ -76,12 +77,8 @@ pub const StandingData = struct {
         };
     }
 
-    pub fn checkHover(self: *@This()) bool {
-        return rl.checkCollisionPointRec(commons.mousePos(), self.rect);
-    }
-
-    pub fn hover(self: *@This()) void {
-        rl.drawRectangleLinesEx(self.rect, 3, palette.env.hover);
+    pub fn checkSelected(self: @This(), rect: rl.Rectangle) bool {
+        return utils.checkCollisionRecInside(self.rect, rect);
     }
 };
 
@@ -132,14 +129,6 @@ pub const SeatingData = struct {
             .rect = snap.rect,
             .anchored = true,
         };
-    }
-
-    pub fn checkHover(self: *@This()) bool {
-        return rl.checkCollisionPointRec(commons.mousePos(), self.rect);
-    }
-
-    pub fn hover(_: *@This()) void {
-        return;
     }
 };
 
@@ -196,38 +185,6 @@ pub const IndividualData = struct {
         };
     }
 
-    pub fn checkHover(self: *@This()) bool {
-        for (self.points.items) |seat_pos| {
-            if (rl.checkCollisionPointCircle(commons.mousePos(), seat_pos, self.radius)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    pub fn hover(self: *@This()) void {
-        for (self.points.items) |seat_pos| {
-            // the one colliding should be highlighted color
-            if (rl.checkCollisionPointCircle(commons.mousePos(), seat_pos, self.radius)) {
-                rl.drawCircleLinesV(seat_pos, self.radius, palette.env.yellow);
-                // cross
-                const line: rl.Vector2 = .{ .x = self.radius, .y = 0 };
-                inline for (0..4) |i| {
-                    rl.drawLineV(
-                        seat_pos,
-                        seat_pos.add(line.rotate(@as(f32, @floatFromInt(i)) * std.math.pi * 0.5)),
-                        palette.env.yellow,
-                    );
-                }
-            } else {
-                // only render pink if not currently dragging
-                if (self.selected_seat_index == null) {
-                    rl.drawCircleLinesV(seat_pos, self.radius, palette.env.hover);
-                }
-            }
-        }
-    }
-
     pub fn addNewPoint(self: *@This(), alloc: std.mem.Allocator) !void {
         try self.points.append(alloc, .{
             .x = self.points.items[self.points.items.len - 1].x + self.radius * 2,
@@ -279,7 +236,6 @@ pub fn update(self: *Self, alloc: std.mem.Allocator, sim_data: SimData, settings
     }
 
     if (!self.placed) {
-        self.pos = commons.roundMousePos(sim_data);
         self.pos = commons.roundMousePos(sim_data);
         if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
             switch (self.style) {
@@ -350,10 +306,6 @@ pub fn update(self: *Self, alloc: std.mem.Allocator, sim_data: SimData, settings
                 }
             },
             else => {},
-        }
-
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left) and self.checkHover()) {
-            return .selected;
         }
     }
 
@@ -439,6 +391,20 @@ pub fn getPos(self: *Self) rl.Vector2 {
     }
 }
 
+pub fn getRect(self: Self) rl.Rectangle {
+    return switch (self.style) {
+        .standing => |s| s.rect,
+        else => unreachable,
+    };
+}
+
+pub fn checkSelected(self: Self, rect: rl.Rectangle) bool {
+    return switch (self.style) {
+        .standing => |s| s.checkSelected(rect),
+        else => false,
+    };
+}
+
 pub fn checkCollision(self: Self, pos: rl.Vector2, target: rl.Vector2) bool {
     switch (self.style) {
         inline .standing, .seating => |data| return rl.checkCollisionPointRec(pos, data.rect),
@@ -446,15 +412,22 @@ pub fn checkCollision(self: Self, pos: rl.Vector2, target: rl.Vector2) bool {
     }
 }
 
-pub fn checkHover(self: *Self) bool {
-    switch (self.style) {
-        inline else => |*style| return style.checkHover(),
-    }
+pub fn selectedDraw(_: Self) void {
+    std.debug.print("ASDASD\n", .{});
 }
 
-pub fn hover(self: *Self) void {
+pub fn selectedMove(self: *Self, dest: rl.Vector2, sim_data: SimData) void {
     switch (self.style) {
-        inline else => |*style| style.hover(),
+        .standing => |*s| {
+            const snapped = commons.roundVec2(dest, sim_data);
+            s.rect = .{
+                .x = snapped.x,
+                .y = snapped.y,
+                .width = s.rect.width,
+                .height = s.rect.height,
+            };
+        },
+        else => {},
     }
 }
 

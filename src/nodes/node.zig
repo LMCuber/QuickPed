@@ -104,7 +104,7 @@ pub const Node = struct {
 
     pub fn draw(self: *Node, alloc: std.mem.Allocator) !void {
         switch (self.kind) {
-            .spawner => |*n| try n.draw(alloc, self),
+            inline .spawner, .fork => |*n| try n.draw(alloc, self),
             inline else => |*kind| kind.draw(self),
         }
     }
@@ -875,6 +875,7 @@ pub const QueueNode = struct {
 
 pub const ForkNodeSnapshot = struct {
     values: [4]f32,
+    single: bool,
 };
 
 pub const ForkNode = struct {
@@ -888,15 +889,20 @@ pub const ForkNode = struct {
         .{ .title = "outD", .kind = 1 },
     },
     values: [4]f32 = .{ 0.25, 0.25, 0.25, 0.25 },
+    single: bool = true,
 
     pub fn getSnapshot(self: ForkNode) ForkNodeSnapshot {
         return .{
             .values = self.values,
+            .single = self.single,
         };
     }
 
     pub fn fromSnapshot(snap: ForkNodeSnapshot) ForkNode {
-        return .{ .values = snap.values };
+        return .{
+            .values = snap.values,
+            .single = snap.single,
+        };
     }
 
     pub fn getOutputSlotTitle(self: ForkNode, rand: std.Random) [*c]const u8 {
@@ -926,7 +932,7 @@ pub const ForkNode = struct {
         return self.output_slots[self.output_slots.len - 1].title;
     }
 
-    pub fn draw(self: *ForkNode, parent: *Node) void {
+    pub fn draw(self: *ForkNode, alloc: std.mem.Allocator, parent: *Node) !void {
         // style setup
         const node_width: f32 = 70;
         imnodes.ez.pushStyleColor(.node_title_bar_bg, palette.iden(palette.env.light_gray));
@@ -952,6 +958,10 @@ pub const ForkNode = struct {
                 // input changed
             }
         }
+
+        // modes
+        try z.textSl(alloc, "single", .{});
+        _ = z.checkbox("##fork-single", .{ .v = &self.single });
 
         // output slots
         imnodes.ez.outputSlots(&self.output_slots);

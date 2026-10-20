@@ -37,6 +37,25 @@ pub fn printUuid(id: [16]u8) void {
     });
 }
 
+pub fn hasLineOfSight(a: rl.Vector2, b: rl.Vector2, env: *Environment) bool {
+    for (env.entities.items()) |ent| {
+        switch (ent.kind) {
+            .contour => |c| {
+                for (c.points.items, 0..) |p1, i| {
+                    if (i == c.points.items.len - 1) continue;
+                    const p2 = c.points.items[i + 1];
+                    var _collision_point: rl.Vector2 = .zero(); // throwaway
+                    if (rl.checkCollisionLines(a, b, p1, p2, &_collision_point)) {
+                        return false;
+                    }
+                }
+            },
+            else => {},
+        }
+    }
+    return true;
+}
+
 pub fn lineIntersection(line1: [2]rl.Vector2, line2: [2]rl.Vector2) ?rl.Vector2 {
     const p1 = line1[0];
     const p2 = line1[1];
@@ -98,9 +117,13 @@ pub fn mousePos() rl.Vector2 {
 }
 
 pub fn roundMousePos(sim_data: SimData) rl.Vector2 {
+    return roundVec2(mousePos(), sim_data);
+}
+
+pub fn roundVec2(vec2: rl.Vector2, sim_data: SimData) rl.Vector2 {
     return .init(
-        @floatFromInt(roundN(@intFromFloat(mousePos().x), sim_data.grid_size)),
-        @floatFromInt(roundN(@intFromFloat(mousePos().y), sim_data.grid_size)),
+        @floatFromInt(roundN(@intFromFloat(vec2.x), sim_data.grid_size)),
+        @floatFromInt(roundN(@intFromFloat(vec2.y), sim_data.grid_size)),
     );
 }
 

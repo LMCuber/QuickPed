@@ -8,6 +8,7 @@ const SimData = @import("editor/SimData.zig");
 const palette = @import("palette.zig");
 const delaunay = @import("delaunay.zig");
 const astar = @import("astar.zig");
+const commons = @import("commons.zig");
 
 // !!! DON'T FUCKING USE POINTERS TO ARRAYLIST ITEMS! THE FUCKING ARRAYLIST
 // REALLOCATES SO YOU'RE LEFT WITH A FUCKING DANGLING FUCKING POINTER ! USE INDICES INSTEAD !!!
@@ -32,6 +33,7 @@ pub const Edge = struct {
     b: rl.Vector2,
 };
 
+// basically a triangle, but more useful for traversal (linked with other nodes)
 pub const Node = struct {
     pos: rl.Vector2,
     neighbors: std.ArrayList(usize),
@@ -45,23 +47,6 @@ pub const Node = struct {
 
     pub fn deinit(self: *@This(), alloc: std.mem.Allocator) void {
         self.neighbors.deinit(alloc);
-    }
-};
-
-pub const ExtraNodes = struct {
-    source: Node,
-    target: Node,
-
-    pub fn init(source: Node, target: Node) @This() {
-        return .{
-            .source = source,
-            .target = target,
-        };
-    }
-
-    pub fn deinit(self: *@This(), alloc: std.mem.Allocator) void {
-        self.source.deinit(alloc);
-        self.target.deinit(alloc);
     }
 };
 
@@ -139,12 +124,6 @@ pub fn find(
     end_pos: rl.Vector2,
     env: *Environment,
 ) !void {
-    var extra_nodes: ExtraNodes = .init(
-        .init(start_pos, .empty),
-        .init(end_pos, .empty),
-    );
-    defer extra_nodes.deinit(alloc);
-
     var path_vertices: std.ArrayList(rl.Vector2) = .empty;
     defer path_vertices.deinit(alloc);
 
@@ -169,8 +148,9 @@ pub fn find(
         }
         if (start_index != null and end_index != null) break;
     }
-    // they need to be SOMEWHERE
-    assert(start_index != null and end_index != null);
+    // temporary failsafe
+    if (start_index == null) start_index = 0;
+    if (end_index == null) end_index = 0;
 
     // find the shortest path from start to end
     const user_ctx: UserContext = .{ .nodes = &self.nodes };
@@ -235,7 +215,7 @@ pub fn find(
         const start_pt = path_vertices.items[current_index];
         const candidate_pt = path_vertices.items[test_index];
 
-        const line = hasLineOfSight(start_pt, candidate_pt, env);
+        const line = commons.hasLineOfSight(start_pt, candidate_pt, env);
         if (line) {
             continue;
         } else {
@@ -259,25 +239,6 @@ pub fn find(
             .b = path_vertices.items[i + 1],
         });
     }
-}
-
-fn hasLineOfSight(a: rl.Vector2, b: rl.Vector2, env: *Environment) bool {
-    for (env.entities.items()) |ent| {
-        switch (ent.kind) {
-            .contour => |c| {
-                for (c.points.items, 0..) |p1, i| {
-                    if (i == c.points.items.len - 1) continue;
-                    const p2 = c.points.items[i + 1];
-                    var _collision_point: rl.Vector2 = .zero(); // throwaway
-                    if (rl.checkCollisionLines(a, b, p1, p2, &_collision_point)) {
-                        return false;
-                    }
-                }
-            },
-            else => {},
-        }
-    }
-    return true;
 }
 
 pub fn rebuildGraph(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
@@ -374,10 +335,11 @@ pub fn rebuildGraph(self: *Self, alloc: std.mem.Allocator, env: *Environment) !v
         });
     }
 
-    // create hashmap from Edge -> triangle index (usize)
-    // we iterate over all edges of all triangles, and it the edge is already in the map,
+    // create hashmap: Edge -> triangle index
+    // iterate over all edges of all triangles, and it the edge is already in the map,
     // it means that we have a connection (the edge is already owned by another triangle)
-    // NOTE: triangle index coincides with node index!!
+    // -> connect the nodes
+    // NOTE: triangle index is same as node index!
     for (self.triangles.items, 0..) |tri, i| {
         // create direction agnostic edges
         const edges: [3]delaunay.Edge = .{

@@ -33,6 +33,7 @@ const Stats = @import("editor/Stats.zig");
 const NodeEditor = @import("nodes/NodeEditor.zig");
 const Benchmarker = @import("Benchmarker.zig");
 const UUID = @import("UUID.zig");
+const Selection = @import("editor/Selection.zig");
 
 var sim_data = SimData.init();
 var agent_data = AgentData.init();
@@ -106,7 +107,6 @@ pub fn main(init: std.process.Init) !void {
     var env: Environment = Environment.init(alloc);
     defer env.deinit(alloc);
     var current_entity: ?entity.Entity = null;
-    var selected_entity: ?UUID = null;
 
     // load saved data
     sim_data = try SimData.loadFromFile(alloc, io, "data/sim_data.json");
@@ -140,6 +140,10 @@ pub fn main(init: std.process.Init) !void {
     var bench = Benchmarker.init(.empty);
     defer bench.deinit(alloc);
 
+    // mouse selection
+    var selection: Selection = .{};
+    defer selection.deinit(alloc);
+
     // Main loop
     while (!rl.windowShouldClose()) {
         {
@@ -157,14 +161,18 @@ pub fn main(init: std.process.Init) !void {
             // UPDATE =============================================
             var current_entity_action: entity.Entity.EntityAction = .none;
             {
+
+                // update all the entities
                 if (!sim_data.paused) {
                     // update all placed entities
                     for (env.entities.items()) |*ent| {
-                        const action = try ent.update(alloc, dt, agent_data, sim_data, settings);
-                        switch (action) {
-                            .selected => selected_entity = ent.uuid,
-                            else => {},
-                        }
+                        _ = try ent.update(
+                            alloc,
+                            dt,
+                            agent_data,
+                            sim_data,
+                            settings,
+                        );
                     }
                 }
 
@@ -202,6 +210,7 @@ pub fn main(init: std.process.Init) !void {
                     var scratch_buf: std.ArrayList(rl.Vector2) = .empty;
                     defer scratch_buf.deinit(alloc);
 
+                    // update all entities
                     if (!sim_data.paused) {
                         for (env.agents.items()) |*agent|
                             try agent.update(
@@ -233,6 +242,11 @@ pub fn main(init: std.process.Init) !void {
                 // make sure to check that imgui is not capturing the mouse inputs
                 // before checking mouse inputs in raylib!
                 gui_capturing = z.io.getWantCaptureMouse();
+
+                // update the mouse selector
+                if (current_entity == null) {
+                    try selection.update(alloc, &env, sim_data);
+                }
             }
 
             // RAYLIB DRAW =============================================
@@ -300,8 +314,12 @@ pub fn main(init: std.process.Init) !void {
                 for (env.agents.items()) |*agent|
                     agent.draw(&env, sim_data, agent_data);
 
-                // render sim data misc. things
+                // render sim data stuff like the scale indicator legend
                 sim_data.render();
+
+                // render the mouse selector
+                selection.draw(&env);
+                // rl.drawText(@tagName(current_entity_action), 300, 300, 12, .white);
             }
 
             // IMGUI DRAW
@@ -337,7 +355,7 @@ pub fn main(init: std.process.Init) !void {
                     sim_data.updateUi(&commons.camera, commons.camera_default);
 
                     // schedule header
-                    try schedule.updateUi(alloc);
+                    // try schedule.updateUi(alloc);
 
                     // agent data header
                     try agent_data.updateUi(alloc, &env.agents);
@@ -401,13 +419,10 @@ pub fn main(init: std.process.Init) !void {
                             current_entity = try entity.Entity.init(.portal, alloc, rand, next_id, sim_data, agent_data);
                         }
 
-                        // update the selected entity
-                        z.newLine();
-                        if (selected_entity) |ent_id| {
-                            var ent = env.entities.getByUUID(ent_id);
-                            try ent.edit(alloc);
+                        if (try EB.evacuationButton(alloc, button_size)) {
+                            resetCurrentEntity(alloc, &current_entity);
+                            // current_entity = try entity.Entity.init(.evac, alloc, rand, next_id, sim_data, agent_data);
                         }
-                        z.newLine();
                     }
                     // ------------------------------------------------------------------
 

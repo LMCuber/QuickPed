@@ -3,6 +3,7 @@ const rl = @import("raylib");
 pub const env = struct {
     pub const black = rl.Color.init(10, 10, 10, 255);
     pub const light_gray = rl.Color.init(150, 150, 150, 255);
+    pub const light_gray_t = rl.Color.init(150, 150, 150, 120);
     pub const white = rl.Color.init(255, 240, 230, 255);
     pub const white_t = rl.Color.init(255, 240, 230, 180);
     pub const dark_blue = rl.Color.init(12, 11, 35, 255);

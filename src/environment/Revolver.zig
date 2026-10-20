@@ -59,10 +59,6 @@ pub fn update(self: *Self, dt: f32, sim_data: SimData, settings: Settings) !Enti
             return .confirm;
         }
         return .none;
-    } else {
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left) and self.checkHover()) {
-            return .selected;
-        }
     }
     return .none;
 }
@@ -92,26 +88,6 @@ pub fn getRotatedVector(self: Self, a: f32) rl.Vector2 {
     const rad: f32 = std.math.degreesToRadians(self.angle);
     var vec: rl.Vector2 = .{ .x = @floatFromInt(self.length), .y = 0 };
     return vec.rotate(rad + a);
-}
-
-pub fn checkHover(self: *Self) bool {
-    const threshold = 8;
-    for (0..4) |i| {
-        const angle: f32 = @as(f32, @floatFromInt(i)) * 0.5 * std.math.pi;
-        if (rl.checkCollisionPointLine(commons.mousePos(), self.pos, self.pos.add(self.getRotatedVector(angle)), threshold)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-pub fn hover(self: *Self) void {
-    const line_width = 6;
-
-    for (0..4) |i| {
-        const angle: f32 = @as(f32, @floatFromInt(i)) * 0.5 * std.math.pi;
-        rl.drawLineEx(self.pos, self.pos.add(self.getRotatedVector(angle)), line_width, palette.env.hover);
-    }
 }
 
 pub fn draw(self: *Self) void {

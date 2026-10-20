@@ -13,6 +13,90 @@ const palette = struct {
     const active: u32 = 0xFF613d1b;
 };
 
+const Glyph = struct { w: usize, rows: [5]u3 };
+
+// Leftmost pixel = highest bit of each row
+const exit_glyphs = [_]Glyph{
+    .{ .w = 3, .rows = .{ 0b111, 0b100, 0b111, 0b100, 0b111 } }, // E
+    .{ .w = 3, .rows = .{ 0b101, 0b101, 0b010, 0b101, 0b101 } }, // X
+    .{ .w = 1, .rows = .{ 1, 1, 1, 1, 1 } }, // I
+    .{ .w = 3, .rows = .{ 0b111, 0b010, 0b010, 0b010, 0b010 } }, // T
+};
+
+/// Fills the rect min..max with "EXIT". Cell width and height are computed
+/// independently, so the letters stretch to the rect's proportions.
+fn drawExitText(dl: anytype, min: [2]f32, max: [2]f32, col: u32) void {
+    const total_cols: f32 = 13.0; // 3 + 3 + 1 + 3 glyph columns + 3 gap columns
+    const cell_w = (max[0] - min[0]) / total_cols;
+    const cell_h = (max[1] - min[1]) / 5.0;
+
+    var col_idx: usize = 0;
+    for (exit_glyphs) |g| {
+        for (g.rows, 0..) |row, ry| {
+            for (0..g.w) |c| {
+                const bit: u2 = @intCast(g.w - 1 - c);
+                if (((row >> bit) & 1) == 1) {
+                    const gx: f32 = @floatFromInt(col_idx + c);
+                    const gy: f32 = @floatFromInt(ry);
+                    // Same expression for shared edges, so there are no seams between cells
+                    dl.addRectFilled(.{
+                        .pmin = .{ @round(min[0] + gx * cell_w), @round(min[1] + gy * cell_h) },
+                        .pmax = .{ @round(min[0] + (gx + 1.0) * cell_w), @round(min[1] + (gy + 1.0) * cell_h) },
+                        .col = col,
+                    });
+                }
+            }
+        }
+        col_idx += g.w + 1; // advance past the glyph plus one gap column
+    }
+}
+
+pub fn evacuationButton(alloc: std.mem.Allocator, bs: f32) !bool {
+    const clicked = z.invisibleButton("##evacuation", .{ .w = bs, .h = bs });
+    const min = z.getItemRectMin();
+    const max = z.getItemRectMax();
+    const dl = z.getWindowDrawList();
+
+    const hovered = z.isItemHovered(.{});
+    if (hovered) {
+        _ = z.beginTooltip();
+        try z.text(alloc, "Evacuation plan", .{});
+        z.endTooltip();
+    }
+    const active = z.isItemActive();
+
+    // Regular blue background
+    const bg_col: u32 = if (active)
+        palette.active
+    else if (hovered)
+        palette.hover
+    else
+        palette.default;
+    dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
+
+    // Green sign: dark green border rect, then the green fill inset by the border width
+    const pad = @round(bs * 0.14);
+    const g_min: [2]f32 = .{ @round(min[0] + pad), @round(min[1] + pad) };
+    const g_max: [2]f32 = .{ @round(max[0] - pad), @round(max[1] - pad) };
+    dl.addRectFilled(.{ .pmin = g_min, .pmax = g_max, .col = 0xff_1E_5A_14 }); // dark green border
+
+    const bw = @max(2.0, @round(bs * 0.04));
+    const in_min: [2]f32 = .{ g_min[0] + bw, g_min[1] + bw };
+    const in_max: [2]f32 = .{ g_max[0] - bw, g_max[1] - bw };
+    dl.addRectFilled(.{ .pmin = in_min, .pmax = in_max, .col = 0xff_43_A0_2E }); // green
+
+    // Text fills the green with only a tiny margin
+    const margin = @max(1.0, @round(bs * 0.03));
+    drawExitText(
+        dl,
+        .{ in_min[0] + margin, in_min[1] + margin },
+        .{ in_max[0] - margin, in_max[1] - margin },
+        0xff_ff_ff_ff,
+    );
+
+    return clicked;
+}
+
 pub fn contourButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const clicked = z.invisibleButton("##contour", .{ .w = bs, .h = bs });
 
@@ -71,6 +155,7 @@ pub fn contourButton(alloc: std.mem.Allocator, bs: f32) !bool {
 
     return clicked;
 }
+
 pub fn spawnerButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const clicked = z.invisibleButton("##spawner", .{ .w = bs, .h = bs });
 
@@ -168,7 +253,7 @@ pub fn revolverButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
-        try z.text(alloc, "Revolver", .{});
+        try z.text(alloc, "revolver", .{});
         z.endTooltip();
     }
     const active = z.isItemActive();
@@ -200,7 +285,7 @@ pub fn portalButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
-        try z.text(alloc, "Portal", .{});
+        try z.text(alloc, "portal", .{});
         z.endTooltip();
     }
     const active = z.isItemActive();
@@ -253,7 +338,7 @@ pub fn queueButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const hovered = z.isItemHovered(.{});
     if (hovered) {
         _ = z.beginTooltip();
-        try z.text(alloc, "Queue", .{});
+        try z.text(alloc, "queue", .{});
         z.endTooltip();
     }
     const active = z.isItemActive();

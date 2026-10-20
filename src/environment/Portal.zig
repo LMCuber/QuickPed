@@ -45,12 +45,6 @@ pub fn checkCollision(self: *Self, pos: rl.Vector2) bool {
     return commons.vecToLineSegment(pos, self.source.p1, self.source.p2).length() <= 5;
 }
 
-pub fn checkHover(self: *Self) bool {
-    const threshold = 8;
-    return rl.checkCollisionPointLine(commons.mousePos(), self.source.p1, self.source.p2, threshold) or
-        rl.checkCollisionPointLine(commons.mousePos(), self.dest.p1, self.dest.p2, threshold);
-}
-
 pub fn getSourcePosFromU(self: Self, u: f32) rl.Vector2 {
     return self.source.p1.add(self.source.p2.subtract(self.source.p1).scale(u));
 }
@@ -78,8 +72,6 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityA
                 else => unreachable,
             }
         }
-    } else if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left) and self.checkHover()) {
-        return .selected;
     }
     return .none;
 }
@@ -127,11 +119,6 @@ pub fn confirm(self: *Self) void {
 
 pub fn edit(self: *Self) void {
     self.confirm();
-}
-
-pub fn hover(self: *Self) void {
-    drawLineSpaced(self.source.p1, self.source.p2, palette.env.hover);
-    drawLineSpaced(self.dest.p1, self.dest.p2, palette.env.hover);
 }
 
 pub fn drawLineSpaced(p1: rl.Vector2, p2: rl.Vector2, col: rl.Color) void {

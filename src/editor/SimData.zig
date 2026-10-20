@@ -4,7 +4,6 @@ const commons = @import("../commons.zig");
 const palette = @import("../palette.zig");
 const z = @import("zgui");
 const rl = @import("raylib");
-const utils = @import("utils.zig");
 
 aspect_ratio: f32 = 1,
 environment_width: i32 = 0,

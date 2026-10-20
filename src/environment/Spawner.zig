@@ -58,10 +58,6 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityA
                 }
             }
         }
-    } else {
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left) and self.checkHover()) {
-            return .selected;
-        }
     }
     return .none;
 }
@@ -81,18 +77,6 @@ pub fn draw(self: Self) void {
     } else {
         unreachable;
     }
-}
-
-pub fn hover(self: *Self) void {
-    if (self.placed) {
-        if (self.checkHover()) {
-            rl.drawLineEx(self.points.p1, self.points.p2, 4, palette.env.hover);
-        }
-    }
-}
-
-pub fn checkHover(self: Self) bool {
-    return rl.checkCollisionPointLine(commons.mousePos(), self.points.p1, self.points.p2, 8);
 }
 
 pub fn confirm(self: *Self) void {
