@@ -10,16 +10,15 @@ const SimData = @import("SimData.zig");
 const UUID = @import("../UUID.zig");
 
 pub const State = union(enum) {
-    none: void,
+    none,
     anchor: rl.Vector2,
-    released: void,
+    click_pending: rl.Vector2,
+    released,
     dragging: struct {
         rect_origin: rl.Vector2,
         click_origin: rl.Vector2,
     },
 };
-
-pub const StateEnum = std.meta.Tag(State);
 
 pub const Capture = struct {
     ent_id: UUID,
@@ -29,7 +28,7 @@ pub const Capture = struct {
 state: State = .none,
 pos: rl.Vector2 = .zero(),
 bounding_rect: ?rl.Rectangle = null,
-next_state: ?StateEnum = null,
+next_state: ?State = null,
 
 // highlighted_entities: std.ArrayList(Capture) = .empty,
 selected_entities: std.ArrayList(Capture) = .empty,
@@ -48,10 +47,6 @@ pub fn update(
     // resolve unresolved state changes and initialize payloads
     if (self.next_state) |next_state| {
         switch (next_state) {
-            .none => self.state = .none,
-            .anchor => self.state = .{
-                .anchor = commons.mousePos(),
-            },
             .released => {
                 // setup our own al-lencompassing rectangle
                 var rectangles: std.ArrayList(rl.Rectangle) = .empty;
@@ -69,26 +64,17 @@ pub fn update(
 
                 self.state = .released;
             },
-            .dragging => {
-                self.state = .{
-                    .dragging = .{
-                        .rect_origin = .init(
-                            self.bounding_rect.?.x,
-                            self.bounding_rect.?.y,
-                        ),
-                        .click_origin = commons.mousePos(),
-                    },
-                };
-            },
+            else => self.state = next_state,
         }
         self.next_state = null;
     }
 
+    // process current state and check the state transitions
     switch (self.state) {
         .none => {
             if (rl.isMouseButtonPressed(.left)) {
                 self.selected_entities.clearRetainingCapacity();
-                self.next_state = .anchor;
+                self.next_state = .{ .anchor = commons.mousePos() };
             }
         },
         .anchor => |anchor| {
@@ -113,15 +99,32 @@ pub fn update(
                 }
             }
         },
+        .click_pending => |click_pos| {
+            if (rl.isMouseButtonReleased(.left)) {
+                // user releases before moving, so just highlight normal
+                self.next_state = .released;
+            } else if (!commons.mousePos().equals(click_pos)) {
+                // user moved the moise before
+                self.next_state = .{
+                    .dragging = .{
+                        .click_origin = click_pos,
+                        .rect_origin = .{
+                            .x = self.bounding_rect.?.x,
+                            .y = self.bounding_rect.?.y,
+                        },
+                    },
+                };
+            }
+        },
         .released => {
             // when clicking inside, start dragging
             if (rl.isMouseButtonPressed(.left)) {
                 if (rl.checkCollisionPointRec(commons.mousePos(), self.bounding_rect.?)) {
-                    self.next_state = .dragging;
+                    self.next_state = .{ .click_pending = commons.mousePos() };
                 } else {
                     // clicked out of bounds, so change to anchored
                     self.selected_entities.clearRetainingCapacity();
-                    self.next_state = .anchor;
+                    self.next_state = .{ .anchor = commons.mousePos() };
                 }
             }
         },
@@ -155,6 +158,29 @@ pub fn update(
             }
         },
     }
+
+    // multi-catches
+    switch (self.state) {
+        .none, .released => {
+            if (rl.isMouseButtonPressed(.left)) {
+                var any: bool = false;
+                for (env.entities.items()) |ent| {
+                    if (rl.checkCollisionPointRec(commons.mousePos(), ent.getRect())) {
+                        try self.selected_entities.append(alloc, .{
+                            .ent_id = ent.uuid,
+                            .origin = ent.getCenter(),
+                        });
+                        any = true;
+                        break;
+                    }
+                }
+                if (any) {
+                    self.next_state = .{ .click_pending = commons.mousePos() };
+                }
+            }
+        },
+        else => {},
+    }
 }
 
 pub fn draw(self: Self, env: *Environment) void {
@@ -166,7 +192,7 @@ pub fn draw(self: Self, env: *Environment) void {
             rl.drawRectangleLinesEx(rect, 0.5, .yellow);
             rl.drawCircleV(anchor, 4, .red);
         },
-        .released => {
+        .click_pending, .released => {
             rl.drawRectangleLinesEx(self.bounding_rect.?, 0.5, .yellow);
         },
         .dragging => {},

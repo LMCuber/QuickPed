@@ -413,7 +413,7 @@ pub fn checkCollision(self: Self, pos: rl.Vector2, target: rl.Vector2) bool {
 }
 
 pub fn selectedDraw(_: Self) void {
-    std.debug.print("ASDASD\n", .{});
+    // std.debug.print("ASDASD\n", .{});
 }
 
 pub fn selectedMove(self: *Self, dest: rl.Vector2, sim_data: SimData) void {
