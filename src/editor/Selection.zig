@@ -38,6 +38,24 @@ pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
     self.selected_entities.deinit(alloc);
 }
 
+fn recalculateBoundingBox(self: *Self, alloc: std.mem.Allocator, env: *Environment) !void {
+    // setup our own al-lencompassing rectangle
+    var rectangles: std.ArrayList(rl.Rectangle) = .empty;
+    defer rectangles.deinit(alloc);
+    for (self.selected_entities.items) |cap| {
+        const ent = env.entities.getByUUID(cap.ent_id);
+        try rectangles.append(alloc, ent.getRect());
+    }
+    const margin: f32 = 10;
+    self.bounding_rect = utils.getBoundingBox(rectangles.items, margin);
+    self.pos = .init(
+        self.bounding_rect.?.x + self.bounding_rect.?.width,
+        self.bounding_rect.?.y + self.bounding_rect.?.height,
+    );
+
+    self.state = .released;
+}
+
 pub fn update(
     self: *Self,
     alloc: std.mem.Allocator,
@@ -48,21 +66,12 @@ pub fn update(
     if (self.next_state) |next_state| {
         switch (next_state) {
             .released => {
-                // setup our own al-lencompassing rectangle
-                var rectangles: std.ArrayList(rl.Rectangle) = .empty;
-                defer rectangles.deinit(alloc);
-                for (self.selected_entities.items) |cap| {
-                    const ent = env.entities.getByUUID(cap.ent_id);
-                    try rectangles.append(alloc, ent.getRect());
-                }
-                const margin: f32 = 10;
-                self.bounding_rect = utils.getBoundingBox(rectangles.items, margin);
-                self.pos = .init(
-                    self.bounding_rect.?.x + self.bounding_rect.?.width,
-                    self.bounding_rect.?.y + self.bounding_rect.?.height,
-                );
-
-                self.state = .released;
+                try self.recalculateBoundingBox(alloc, env);
+                self.state = next_state;
+            },
+            .click_pending => {
+                try self.recalculateBoundingBox(alloc, env);
+                self.state = next_state;
             },
             else => self.state = next_state,
         }
