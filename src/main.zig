@@ -67,6 +67,11 @@ pub fn main(init: std.process.Init) !void {
     }
     _ = try rl.getFontDefault();
 
+    // window icon
+    const icon = try rl.loadImage("res/icon.png");
+    rl.setWindowIcon(icon);
+    defer rl.unloadImage(icon);
+
     // imgui setup + breakdown
     c.rlImGuiSetup(true);
     defer c.rlImGuiShutdown();
