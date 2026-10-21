@@ -46,7 +46,7 @@ pub fn init(alloc: std.mem.Allocator) Self {
         .queues = .empty,
         .portals = .empty,
         .quadtree = Quadtree.init(alloc, 8),
-        .pathfinding = try Pathfinding.init(alloc),
+        .pathfinding = Pathfinding.init(alloc),
     };
 }
 
@@ -136,6 +136,9 @@ pub fn loadScene(
     for (scene.entities) |snap| {
         try self.createEntity(alloc, try entity.Entity.fromSnapshot(alloc, snap, sim_data, agent_data));
     }
+
+    // generate the first navmesh
+    try self.pathfinding.rebuildGraph(alloc, self);
 }
 
 pub fn saveScene(self: *Self, alloc: std.mem.Allocator, io: std.Io, path: []const u8) !void {

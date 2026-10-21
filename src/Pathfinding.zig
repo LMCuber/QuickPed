@@ -14,7 +14,7 @@ const rlutils = @import("rlutils.zig");
 // !!! DON'T FUCKING USE POINTERS TO ARRAYLIST ITEMS! THE FUCKING ARRAYLIST
 // REALLOCATES SO YOU'RE LEFT WITH A FUCKING DANGLING FUCKING POINTER ! USE INDICES INSTEAD !!!
 // ...
-// what did Pathfinding.zig do to you bro tell that to the Agent file
+// ... I guess bro
 
 // "vertices" are the original obstacle corners, "edges" are all connections of those obstacles.
 // We populate this and pass them to the triangulator
@@ -51,7 +51,7 @@ pub const Node = struct {
     }
 };
 
-pub fn init(alloc: std.mem.Allocator) !Self {
+pub fn init(alloc: std.mem.Allocator) Self {
     return .{
         .triangles = .empty,
         .obstacle_vertices = .empty,
@@ -265,7 +265,7 @@ pub fn rebuildGraph(self: *Self, alloc: std.mem.Allocator, env: *Environment) !v
                     const closed = c.points.items[0].equals(c.points.items[c.points.items.len - 1]);
                     const n: usize = if (closed) c.points.items.len - 1 else c.points.items.len;
 
-                    // extend all obstacle vertices by all the vertices in this contour's points
+                    // "extend" the obstacle vertices by all the vertices in this contour's points
                     for (c.points.items[0..n]) |point| {
                         try self.obstacle_vertices.append(alloc, point);
                     }
@@ -306,17 +306,41 @@ pub fn rebuildGraph(self: *Self, alloc: std.mem.Allocator, env: *Environment) !v
     try self.obstacle_vertices.append(alloc, .init(990, 990));
     try self.obstacle_vertices.append(alloc, .init(0, 990));
 
+    // save other necessary constraint vertices
+    for (env.entities.items()) |ent| {
+        switch (ent.kind) {
+            .revolver => |r| {
+                try self.obstacle_vertices.append(alloc, r.pos);
+            },
+            else => {},
+        }
+    }
+
     // triangulate
-    var result = try delaunay.triangulateConstrained(
+    const boundary_poly = [_]rl.Vector2{
+        .{ .x = 0, .y = 0 },
+        .{ .x = 990, .y = 0 },
+        .{ .x = 990, .y = 990 },
+        .{ .x = 0, .y = 990 },
+    };
+    var result = try delaunay.triangulateQuality(
         alloc,
-        self.obstacle_vertices.items,
-        self.obstacle_edges.items,
+        &self.obstacle_vertices,
+        &self.obstacle_edges,
+        &boundary_poly,
+        obstacle_polys.items,
+        2.0,
+        300,
+        1.0,
     );
+
     defer result.deinit(alloc);
-    try delaunay.filterObstacleTriangles(alloc, &result, self.obstacle_vertices.items, obstacle_polys.items);
 
     // create the triangles
     self.triangles.clearRetainingCapacity();
+
+    std.debug.print("{}\n", .{result.triangles.items.len});
+
     for (result.triangles.items) |tri| {
         try self.triangles.append(alloc, tri);
     }
@@ -362,6 +386,4 @@ pub fn rebuildGraph(self: *Self, alloc: std.mem.Allocator, env: *Environment) !v
             }
         }
     }
-
-    // std.debug.print("{}\n", .{result.triangles.items.len});
 }

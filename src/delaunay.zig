@@ -37,9 +37,9 @@ pub const DelaunayResult = struct {
     }
 };
 
-// CONSTRAINED delaunay triangulation takes as argument a "planar straight-line graph" (PSLG)
-// (list of vertices, and edges connecting those vertices. simple.)
-// the resulting triangulation MUST keep in mind this given geometry
+// CONSTRAINED triangulation takes as argument a "planar straight-line graph" (PSLG)
+//     (list of vertices and edges connecting those vertices. ez.)
+// (the resulting triangulation MUST keep in mind this given geometry)
 pub fn triangulateConstrained(
     alloc: std.mem.Allocator,
     points: []const rl.Vector2,
@@ -137,6 +137,164 @@ pub fn filterObstacleTriangles(
 
     result.triangles.deinit(alloc);
     result.triangles = clean_list;
+}
+
+// ----------------------------------------------------------------------------
+// QUALITY REFINEMENT (Ruppert-style)
+// ----------------------------------------------------------------------------
+
+fn dist(a: rl.Vector2, b: rl.Vector2) f32 {
+    return @sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
+}
+
+// circumradius / shortest edge. Equilateral = 0.577. Bigger = thinner.
+// 1.0 ~ 30 deg min angle, 1.2 ~ 25 deg, 1.414 ~ 20.7 deg (Ruppert's termination guarantee)
+fn radiusEdgeRatio(a: rl.Vector2, b: rl.Vector2, c: rl.Vector2) f32 {
+    const la = dist(b, c);
+    const lb = dist(c, a);
+    const lc = dist(a, b);
+    const area2 = @abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+    if (area2 < 1e-9) return std.math.inf(f32);
+    const r = (la * lb * lc) / (2.0 * area2);
+    return r / @min(la, @min(lb, lc));
+}
+
+fn circumcenter(a: rl.Vector2, b: rl.Vector2, c: rl.Vector2) ?rl.Vector2 {
+    const bx = b.x - a.x;
+    const by = b.y - a.y;
+    const cx = c.x - a.x;
+    const cy = c.y - a.y;
+    const d = 2.0 * (bx * cy - by * cx);
+    if (@abs(d) < 1e-9) return null;
+    const b2 = bx * bx + by * by;
+    const c2 = cx * cx + cy * cy;
+    return .{
+        .x = a.x + (cy * b2 - by * c2) / d,
+        .y = a.y + (bx * c2 - cx * b2) / d,
+    };
+}
+
+// point lies inside the diametral circle of segment u-v
+fn encroaches(p: rl.Vector2, u: rl.Vector2, v: rl.Vector2) bool {
+    const mid = rl.Vector2{ .x = (u.x + v.x) * 0.5, .y = (u.y + v.y) * 0.5 };
+    return dist(p, mid) < dist(u, v) * 0.5 - 1e-4;
+}
+
+/// Same as triangulateConstrained + filterObstacleTriangles, but keeps adding
+/// points until every triangle has radius-edge ratio <= max_ratio.
+/// `points` and `constraints` are MODIFIED (Steiner points appended, segments split).
+/// `boundary` is your outer polygon.
+/// `max_new_points` is a safety cap on inserted points.
+/// `min_edge` is the smallest feature worth refining (world units). Triangles whose
+///   shortest edge is below this are left alone, and segments shorter than 2*min_edge
+///   are never split. This is what guarantees termination.
+/// Hard cap of 40 passes so it can never spin forever. Progress is printed to stderr.
+pub fn triangulateQuality(
+    alloc: std.mem.Allocator,
+    points: *std.ArrayList(rl.Vector2),
+    constraints: *std.ArrayList(Edge),
+    boundary: []const rl.Vector2,
+    obstacles: []const []const rl.Vector2,
+    max_ratio: f32,
+    max_new_points: usize,
+    min_edge: f32,
+) !DelaunayResult {
+    var added: usize = 0;
+    var pass: usize = 0;
+
+    while (true) {
+        var result = try triangulateConstrained(alloc, points.items, constraints.items);
+        errdefer result.deinit(alloc);
+        try filterObstacleTriangles(alloc, &result, points.items, obstacles);
+
+        pass += 1;
+        std.debug.print("refine pass {d}: pts={d} tris={d} added={d}\n", .{ pass, points.items.len, result.triangles.items.len, added });
+        if (added >= max_new_points or pass >= 40) return result;
+
+        var new_pts: std.ArrayList(rl.Vector2) = .empty;
+        defer new_pts.deinit(alloc);
+
+        const split = try alloc.alloc(bool, constraints.items.len);
+        defer alloc.free(split);
+        @memset(split, false);
+
+        for (result.triangles.items) |tri| {
+            const a = points.items[tri.p1];
+            const b = points.items[tri.p2];
+            const c = points.items[tri.p3];
+
+            // skip hull slivers outside the map
+            const centroid = rl.Vector2{ .x = (a.x + b.x + c.x) / 3.0, .y = (a.y + b.y + c.y) / 3.0 };
+            if (!isPointInPolygon(centroid, boundary)) continue;
+
+            // skip triangles already smaller than we care about (guarantees termination)
+            const shortest = @min(dist(a, b), @min(dist(b, c), dist(c, a)));
+            if (shortest < min_edge) continue;
+
+            if (radiusEdgeRatio(a, b, c) <= max_ratio) continue;
+
+            const cc = circumcenter(a, b, c) orelse continue;
+
+            // If the circumcenter would encroach a constraint, split that segment instead
+            var enc = false;
+            for (constraints.items, 0..) |e, i| {
+                const u = points.items[e.p1];
+                const v = points.items[e.p2];
+                if (encroaches(cc, u, v)) {
+                    if (dist(u, v) >= 2.0 * min_edge) split[i] = true;
+                    enc = true; // skip this triangle either way
+                }
+            }
+            if (enc) continue;
+
+            if (!isPointInPolygon(cc, boundary)) continue;
+            var in_obstacle = false;
+            for (obstacles) |poly| {
+                if (isPointInPolygon(cc, poly)) {
+                    in_obstacle = true;
+                    break;
+                }
+            }
+            if (in_obstacle) continue;
+
+            // Don't drop several points on top of each other in one pass
+            const min_sep = shortest * 0.5;
+            var too_close = false;
+            for (new_pts.items) |q| {
+                if (dist(q, cc) < min_sep) {
+                    too_close = true;
+                    break;
+                }
+            }
+            if (too_close) continue;
+
+            try new_pts.append(alloc, cc);
+        }
+
+        // Apply segment splits (midpoint)
+        const n_cons = constraints.items.len;
+        var did_split = false;
+        for (0..n_cons) |i| {
+            if (!split[i]) continue;
+            const e = constraints.items[i];
+            const u = points.items[e.p1];
+            const v = points.items[e.p2];
+            const mid = rl.Vector2{ .x = (u.x + v.x) * 0.5, .y = (u.y + v.y) * 0.5 };
+            const mi = points.items.len;
+            try points.append(alloc, mid);
+            constraints.items[i] = .{ .p1 = e.p1, .p2 = mi };
+            try constraints.append(alloc, .{ .p1 = mi, .p2 = e.p2 });
+            did_split = true;
+            added += 1;
+        }
+
+        if (new_pts.items.len == 0 and !did_split) return result; // all triangles good
+
+        try points.appendSlice(alloc, new_pts.items);
+        added += new_pts.items.len;
+
+        result.deinit(alloc);
+    }
 }
 
 // ----------------------------------------------------------------------------

@@ -166,6 +166,7 @@ pub fn update(
                     cap.origin = ent.getOrigin();
                     try self.recalculateBoundingBox(alloc, env);
                 }
+                changed = true;
             }
         },
         .dragging => |dragging| {
@@ -185,8 +186,6 @@ pub fn update(
                     .width = self.bounding_rect.?.width,
                     .height = self.bounding_rect.?.height,
                 };
-
-                changed = true;
             }
 
             // go back to released if lets loose of mouse
@@ -197,8 +196,6 @@ pub fn update(
                     const ent = env.entities.getByUUID(cap.ent_id);
                     cap.origin = ent.getOrigin();
                 }
-
-                // make sure to report that the environment changed
                 changed = true;
             }
         },

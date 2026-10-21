@@ -200,7 +200,7 @@ pub fn main(init: std.process.Init) !void {
                 try env.quadtree.rebuild(&env.agents, sim_rect);
 
                 // rebuild the navmesh used for pathfinding
-                try env.pathfinding.rebuildGraph(alloc, &env);
+                // try env.pathfinding.rebuildGraph(alloc, &env);
 
                 // update the agents
                 var check_count: i32 = 0;
@@ -244,14 +244,19 @@ pub fn main(init: std.process.Init) !void {
                 // before checking mouse inputs in raylib!
                 gui_capturing = z.io.getWantCaptureMouse();
 
-                // update the mouse selector
+                // update the mouse selector and process the output of the "FSM"
                 if (!gui_capturing and in_progress_entity == null) {
-                    const env_update = try selection.update(
+                    const env_change = try selection.update(
                         alloc,
                         &env,
                         sim_data,
                     );
-                    selected_entity = env_update.ent_id;
+                    selected_entity = env_change.ent_id;
+
+                    // update the navmesh if any shit is changed from the environment
+                    if (env_change.changed) {
+                        try env.pathfinding.rebuildGraph(alloc, &env);
+                    }
                 }
             }
 
