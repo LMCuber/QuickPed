@@ -9,6 +9,7 @@ const palette = @import("palette.zig");
 const delaunay = @import("delaunay.zig");
 const astar = @import("astar.zig");
 const commons = @import("commons.zig");
+const rlutils = @import("rlutils.zig");
 
 // !!! DON'T FUCKING USE POINTERS TO ARRAYLIST ITEMS! THE FUCKING ARRAYLIST
 // REALLOCATES SO YOU'RE LEFT WITH A FUCKING DANGLING FUCKING POINTER ! USE INDICES INSTEAD !!!
@@ -215,7 +216,7 @@ pub fn find(
         const start_pt = path_vertices.items[current_index];
         const candidate_pt = path_vertices.items[test_index];
 
-        const line = commons.hasLineOfSight(start_pt, candidate_pt, env);
+        const line = rlutils.hasLineOfSight(start_pt, candidate_pt, env);
         if (line) {
             continue;
         } else {

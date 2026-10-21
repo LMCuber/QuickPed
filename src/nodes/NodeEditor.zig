@@ -14,6 +14,7 @@ const Environment = @import("../environment/Environment.zig");
 const Settings = @import("../Settings.zig");
 const Agent = @import("../Agent.zig");
 const commons = @import("../commons.zig");
+const rlutils = @import("../rlutils.zig");
 const imnodes = @import("imnodesez");
 const UUID = @import("../UUID.zig");
 
@@ -104,15 +105,15 @@ pub fn render(
             if (z.beginMenu("Add node", true)) {
                 defer z.endMenu();
 
-                if (z.menuItem("Spawner", .{ .enabled = commons.existsAnyObject(env, .spawner) })) {
+                if (z.menuItem("Spawner", .{ .enabled = rlutils.existsAnyObject(env, .spawner) })) {
                     try self.graph.addNode(alloc, node.Node.initSpawner(rand, env, .{ .constant = .{} }));
                 }
 
-                if (z.menuItem("Area", .{ .enabled = commons.existsAnyObject(env, .area) })) {
+                if (z.menuItem("Area", .{ .enabled = rlutils.existsAnyObject(env, .area) })) {
                     try self.graph.addNode(alloc, node.Node.initArea(rand, env, .{ .constant = .{} }));
                 }
 
-                if (z.menuItem("Queue", .{ .enabled = commons.existsAnyObject(env, .queue) })) {
+                if (z.menuItem("Queue", .{ .enabled = rlutils.existsAnyObject(env, .queue) })) {
                     try self.graph.addNode(alloc, node.Node.initQueue(rand, env, .{ .constant = .{ .wait = 1000 } }));
                 }
 
@@ -134,7 +135,7 @@ pub fn render(
                 if (z.beginMenu("other", true)) {
                     defer z.endMenu();
 
-                    if (z.menuItem("Portal", .{ .enabled = commons.existsAnyObject(env, .portal) })) {
+                    if (z.menuItem("Portal", .{ .enabled = rlutils.existsAnyObject(env, .portal) })) {
                         try self.graph.addNode(alloc, node.Node.initPortal(rand, env));
                     }
                 }

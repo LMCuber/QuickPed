@@ -3,6 +3,7 @@ const std = @import("std");
 const rl = @import("raylib");
 const color = @import("../color.zig");
 const palette = @import("../palette.zig");
+const rlutils = @import("../rlutils.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../editor/SimData.zig");
@@ -42,7 +43,7 @@ pub fn fromSnapshot(snap: PortalSnapshot) Self {
 }
 
 pub fn checkCollision(self: *Self, pos: rl.Vector2) bool {
-    return commons.vecToLineSegment(pos, self.source.p1, self.source.p2).length() <= 5;
+    return rlutils.vecToLineSegment(pos, self.source.p1, self.source.p2).length() <= 5;
 }
 
 pub fn getSourcePosFromU(self: Self, u: f32) rl.Vector2 {
@@ -57,7 +58,7 @@ pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityA
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
         // place new point
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
+        if (rlutils.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
             self.point_count += 1;
             switch (self.point_count) {
                 1 => self.source.p1 = self.pos,

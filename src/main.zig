@@ -106,7 +106,8 @@ pub fn main(init: std.process.Init) !void {
     // environmental objects
     var env: Environment = Environment.init(alloc);
     defer env.deinit(alloc);
-    var current_entity: ?entity.Entity = null;
+    var in_progress_entity: ?entity.Entity = null;
+    var selected_entity: ?UUID = null;
 
     // load saved data
     sim_data = try SimData.loadFromFile(alloc, io, "data/sim_data.json");
@@ -177,7 +178,7 @@ pub fn main(init: std.process.Init) !void {
                 }
 
                 // update in-progress entity
-                if (current_entity) |*ent| {
+                if (in_progress_entity) |*ent| {
                     current_entity_action = try ent.update(
                         alloc,
                         dt,
@@ -188,7 +189,7 @@ pub fn main(init: std.process.Init) !void {
                     switch (current_entity_action) {
                         .placed => {
                             try env.createEntity(alloc, ent.*);
-                            current_entity = null;
+                            in_progress_entity = null;
                         },
                         else => {},
                     }
@@ -244,8 +245,13 @@ pub fn main(init: std.process.Init) !void {
                 gui_capturing = z.io.getWantCaptureMouse();
 
                 // update the mouse selector
-                if (!gui_capturing and current_entity == null) {
-                    try selection.update(alloc, &env, sim_data);
+                if (!gui_capturing and in_progress_entity == null) {
+                    const env_update = try selection.update(
+                        alloc,
+                        &env,
+                        sim_data,
+                    );
+                    selected_entity = env_update.ent_id;
                 }
             }
 
@@ -307,7 +313,7 @@ pub fn main(init: std.process.Init) !void {
                 }
 
                 // render the in-progress selected entity
-                if (current_entity) |*ent|
+                if (in_progress_entity) |*ent|
                     ent.draw(sim_data, agent_data, node_editor.active);
 
                 // render all pedestrians
@@ -380,48 +386,56 @@ pub fn main(init: std.process.Init) !void {
 
                         // contour
                         if (try EB.contourButton(alloc, button_size)) {
-                            resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.contour, alloc, rand, next_id, sim_data, agent_data);
+                            resetCurrentEntity(alloc, &in_progress_entity);
+                            in_progress_entity = try entity.Entity.init(.contour, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // // spawner
                         z.sameLine(.{});
                         if (try EB.spawnerButton(alloc, button_size)) {
-                            resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.spawner, alloc, rand, next_id, sim_data, agent_data);
+                            resetCurrentEntity(alloc, &in_progress_entity);
+                            in_progress_entity = try entity.Entity.init(.spawner, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // area
                         z.sameLine(.{});
                         if (try EB.areaButton(alloc, button_size)) {
-                            resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.area, alloc, rand, next_id, sim_data, agent_data);
+                            resetCurrentEntity(alloc, &in_progress_entity);
+                            in_progress_entity = try entity.Entity.init(.area, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // revolver
                         z.sameLine(.{});
                         if (try EB.revolverButton(alloc, button_size)) {
-                            resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.revolver, alloc, rand, next_id, sim_data, agent_data);
+                            resetCurrentEntity(alloc, &in_progress_entity);
+                            in_progress_entity = try entity.Entity.init(.revolver, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // queue
                         z.sameLine(.{});
                         if (try EB.queueButton(alloc, button_size)) {
-                            resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.queue, alloc, rand, next_id, sim_data, agent_data);
+                            resetCurrentEntity(alloc, &in_progress_entity);
+                            in_progress_entity = try entity.Entity.init(.queue, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         // portal
                         z.sameLine(.{});
                         if (try EB.portalButton(alloc, button_size)) {
-                            resetCurrentEntity(alloc, &current_entity);
-                            current_entity = try entity.Entity.init(.portal, alloc, rand, next_id, sim_data, agent_data);
+                            resetCurrentEntity(alloc, &in_progress_entity);
+                            in_progress_entity = try entity.Entity.init(.portal, alloc, rand, next_id, sim_data, agent_data);
                         }
 
                         if (try EB.evacuationButton(alloc, button_size)) {
-                            resetCurrentEntity(alloc, &current_entity);
+                            resetCurrentEntity(alloc, &in_progress_entity);
                             // current_entity = try entity.Entity.init(.evac, alloc, rand, next_id, sim_data, agent_data);
+                        }
+
+                        // edit the selected entity
+                        if (selected_entity) |ent_id| {
+                            const ent = env.entities.getByUUID(ent_id);
+                            z.newLine();
+                            try ent.edit(alloc);
+                            z.newLine();
                         }
                     }
                     // ------------------------------------------------------------------
@@ -452,7 +466,7 @@ pub fn main(init: std.process.Init) !void {
                             z.setKeyboardFocusHere(0);
                         }
 
-                        if (current_entity) |*ent| {
+                        if (in_progress_entity) |*ent| {
                             const node_width: i32 = 130;
 
                             // ent.name_edit_buf = .{0} ** 256;
@@ -460,7 +474,7 @@ pub fn main(init: std.process.Init) !void {
                             var name_str: [:0]const u8 = "";
                             if (z.inputText("name", .{ .buf = &ent.name_edit_buf })) {
                                 name_str = std.mem.sliceTo(&ent.name_edit_buf, 0);
-                                try current_entity.?.setName(alloc, name_str);
+                                try in_progress_entity.?.setName(alloc, name_str);
                             }
 
                             name_str = std.mem.sliceTo(&ent.name_edit_buf, 0);
@@ -491,13 +505,13 @@ pub fn main(init: std.process.Init) !void {
                                 try env.createEntity(alloc, ent.*);
                                 // don't deinit!
 
-                                current_entity = null;
+                                in_progress_entity = null;
                             }
                             z.sameLine(.{});
                             if (z.button("cancel", .{})) {
                                 z.closeCurrentPopup();
                                 ent.deinit(alloc);
-                                current_entity = null;
+                                in_progress_entity = null;
                             }
                         } else unreachable;
                     }
@@ -505,7 +519,7 @@ pub fn main(init: std.process.Init) !void {
                     // confirm creation popup
                     if (z.beginPopupModal("Confirm creation", .{ .flags = .{ .always_auto_resize = true } })) {
                         defer z.endPopup();
-                        if (current_entity) |*ent| {
+                        if (in_progress_entity) |*ent| {
                             // entity-specific widgets
                             switch (ent.kind) {
                                 .area => |*a| a.confirmInit(),
@@ -524,7 +538,7 @@ pub fn main(init: std.process.Init) !void {
                             if (z.button("cancel", .{})) {
                                 z.closeCurrentPopup();
                                 ent.deinit(alloc);
-                                current_entity = null;
+                                in_progress_entity = null;
                             }
                         } else unreachable;
                     }
@@ -547,7 +561,7 @@ pub fn main(init: std.process.Init) !void {
         }
     }
     // deinit current entity and decrement the increased ID back to the previous since it hasn't been placed in the end
-    resetCurrentEntity(alloc, &current_entity);
+    resetCurrentEntity(alloc, &in_progress_entity);
 
     // save the simulation data, scene, nodes
     try save(alloc, io, &env, &node_editor, &schedule);

@@ -3,6 +3,7 @@ const std = @import("std");
 const rl = @import("raylib");
 const color = @import("../color.zig");
 const palette = @import("../palette.zig");
+const rlutils = @import("../rlutils.zig");
 const commons = @import("../commons.zig");
 const entity = @import("entity.zig");
 const Entity = @import("entity.zig").Entity;
@@ -63,7 +64,7 @@ pub fn update(
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
         // place new point
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
+        if (rlutils.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
             // only add if it's not the same point twice
             var can_add_point = false;
             if (self.points.items.len > 0) {
@@ -109,6 +110,28 @@ pub fn getRect(self: Self) rl.Rectangle {
         .width = max_x - min_x,
         .height = max_y - min_y,
     };
+}
+
+pub fn getOrigin(self: Self) rl.Vector2 {
+    const rect = self.getRect();
+    return .init(rect.x, rect.y);
+}
+
+pub fn selectedMove(
+    self: *Self,
+    dest: rl.Vector2,
+    sim_data: SimData,
+    snap: bool,
+) void {
+    const snapped = if (snap)
+        commons.roundVec2(dest, sim_data)
+    else
+        dest;
+
+    const og = self.getOrigin();
+    for (self.points.items) |*point| {
+        point.* = snapped.add(point.subtract(og));
+    }
 }
 
 pub fn draw(self: Self, _: SimData, _: AgentData) void {

@@ -3,6 +3,7 @@ const std = @import("std");
 const z = @import("zgui");
 const implot = @import("implot");
 const Agent = @import("../Agent.zig");
+const rlutils = @import("../rlutils.zig");
 const commons = @import("../commons.zig");
 const Environment = @import("../environment/Environment.zig");
 const rl = @import("raylib");
@@ -108,7 +109,7 @@ pub fn updateUi(self: *Self, alloc: std.mem.Allocator, agents: *Environment.Agen
             if (implot.beginPlot("Agents", -1.0, 0.0, implot.Flags.none)) {
                 defer implot.endPlot();
 
-                const time: f64 = commons.getTimeMillis();
+                const time: f64 = rlutils.getTimeMillis();
                 if (time - self.last_update >= @as(f64, @floatFromInt(self.update_interval))) {
                     // make a new point pair
                     try self.x_data.append(alloc, rl.getTime());
@@ -119,7 +120,7 @@ pub fn updateUi(self: *Self, alloc: std.mem.Allocator, agents: *Environment.Agen
                     try self.num_waiting_queue_agents.append(alloc, num_waiting.queue);
 
                     // reset last update
-                    self.last_update = commons.getTimeMillis();
+                    self.last_update = rlutils.getTimeMillis();
                 }
                 // calculate x-interval
                 const x_count: f64 = rl.getTime();

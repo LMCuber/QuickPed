@@ -4,6 +4,7 @@ const rl = @import("raylib");
 const z = @import("zgui");
 const color = @import("../color.zig");
 const palette = @import("../palette.zig");
+const rlutils = @import("../rlutils.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../editor/SimData.zig");
@@ -38,14 +39,14 @@ pub fn fromSnapshot(snap: SpawnerSnapshot) Self {
 }
 
 pub fn getRandomSpawnPos(self: Self, rand: std.Random) rl.Vector2 {
-    return commons.getRandomPointBetweenVectors(rand, self.points.p1, self.points.p2);
+    return rlutils.getRandomPointBetweenVectors(rand, self.points.p1, self.points.p2);
 }
 
 pub fn update(self: *Self, sim_data: SimData, settings: Settings) Entity.EntityAction {
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
         // place new point
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
+        if (rlutils.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
             if (self.point_count == 0) {
                 self.points.p1 = self.pos;
                 self.point_count += 1;

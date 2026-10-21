@@ -4,7 +4,7 @@ const rl = @import("raylib");
 const color = @import("../color.zig");
 const palette = @import("../palette.zig");
 const commons = @import("../commons.zig");
-const utils = @import("../utils.zig");
+const rlutils = @import("../rlutils.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../editor/SimData.zig");
 const Settings = @import("../Settings.zig");
@@ -78,7 +78,7 @@ pub const StandingData = struct {
     }
 
     pub fn checkSelected(self: @This(), rect: rl.Rectangle) bool {
-        return utils.checkCollisionRecInside(self.rect, rect);
+        return rlutils.checkCollisionRecInside(self.rect, rect);
     }
 };
 
@@ -237,7 +237,7 @@ pub fn update(self: *Self, alloc: std.mem.Allocator, sim_data: SimData, settings
 
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
+        if (rlutils.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
             switch (self.style) {
                 inline .standing, .seating => |*data| {
                     if (!data.anchored) {
@@ -398,6 +398,11 @@ pub fn getRect(self: Self) rl.Rectangle {
     };
 }
 
+pub fn getOrigin(self: Self) rl.Vector2 {
+    const rect = self.getRect();
+    return .init(rect.x, rect.y);
+}
+
 pub fn checkSelected(self: Self, rect: rl.Rectangle) bool {
     return switch (self.style) {
         .standing => |s| s.checkSelected(rect),
@@ -450,12 +455,20 @@ pub fn draw(self: Self) void {
                 color.navy;
             const size = 10;
             if (!data.anchored) {
-                // not placed topleft yet
+                // not placed topleft yet (not anchored)
                 rl.drawRectangleV(self.pos.subtract(.{ .x = size / 2, .y = size / 2 }), .{ .x = size, .y = size }, col);
             } else {
-                // placed topleft
+                // placed everything
                 rl.drawRectangleRec(data.rect, col);
-                rl.drawRectangleLinesEx(data.rect, 4, palette.env.navy);
+                // rl.drawRectangleLinesEx(data.rect, 4, palette.env.navy);
+
+                rlutils.drawDashedRectangle(
+                    data.rect,
+                    4.0,
+                    6,
+                    6,
+                    palette.env.yellow,
+                );
             }
         },
         else => {},

@@ -310,6 +310,35 @@ fn pixelDisc(dl: anytype, cx: f32, cy: f32, r: f32, dx: f32, col: u32) void {
         rect(dl, .{ cx - hw, top + fi, cx + hw, top + fi + 1.0 }, dx, col);
     }
 }
+// Rect in the arm's local space (x along the arm, y across it), rotated by k * 90 degrees
+fn localRect(dl: anytype, cx: f32, cy: f32, k: usize, x0: f32, y0: f32, x1: f32, y1: f32, dx: f32, col: u32) void {
+    const a: [2]f32 = switch (k) {
+        0 => .{ x0, y0 },
+        1 => .{ -y0, x0 },
+        2 => .{ -x0, -y0 },
+        else => .{ y0, -x0 },
+    };
+    const b: [2]f32 = switch (k) {
+        0 => .{ x1, y1 },
+        1 => .{ -y1, x1 },
+        2 => .{ -x1, -y1 },
+        else => .{ y1, -x1 },
+    };
+    rect(dl, .{
+        cx + @min(a[0], b[0]), cy + @min(a[1], b[1]),
+        cx + @max(a[0], b[0]), cy + @max(a[1], b[1]),
+    }, dx, col);
+}
+
+// Triangular woosh along one arm: 1px columns that grow from 0 at the hub to w at the tip
+fn wedge(dl: anytype, cx: f32, cy: f32, k: usize, start: f32, len: f32, h: f32, w: f32, dx: f32, col: u32) void {
+    var i: f32 = start;
+    while (i < len) : (i += 1.0) {
+        const hgt = @round(w * (i - start) / (len - start));
+        if (hgt < 1.0) continue;
+        localRect(dl, cx, cy, k, i, h, i + 1.0, h + hgt, dx, col);
+    }
+}
 
 pub fn revolverButton(alloc: std.mem.Allocator, bs: f32) !bool {
     const clicked = z.invisibleButton("##revolver", .{ .w = bs, .h = bs });
@@ -329,51 +358,30 @@ pub fn revolverButton(alloc: std.mem.Allocator, bs: f32) !bool {
     dl.addRectFilled(.{ .pmin = min, .pmax = max, .col = bg_col });
 
     const off = @max(1.0, @round(bs * 0.035));
-    const t = @max(2.0, 2.0 * @round(bs * 0.03)); // wing thickness (even)
+    const t = @max(3.0, 2.0 * @round(bs * 0.04)); // arm thickness (even)
     const h = t * 0.5;
 
     const cx = @round((min[0] + max[0]) * 0.5);
     const cy = @round((min[1] + max[1]) * 0.5);
-    const R = @round(bs * 0.40); // housing radius
-    const rim = @max(2.0, @round(bs * 0.045));
-    const L = @round((R - rim) * 0.88); // wing half-length
+    const L = @round(bs * 0.40); // arm length
+    const ww = @round(bs * 0.17); // max woosh width at the tip
+    const hs = @round(t * 1.2); // hub half-size
 
-    // Housing: shadow, ring, void
-    pixelDisc(dl, cx, cy, R, off, shadow_col);
-    pixelDisc(dl, cx, cy, R, 0, ring_col);
-    pixelDisc(dl, cx, cy, R - rim, 0, void_col);
+    // Pass 1: shadows (wedges and arms)
+    for (0..4) |k| {
+        wedge(dl, cx, cy, k, hs, L, h, ww, off, shadow_col);
+        localRect(dl, cx, cy, k, -h, -h, L, h, off, shadow_col);
+    }
 
-    // Wings (plus shape): shadows first, then faces
-    const wings = [2][4]f32{
-        .{ cx - L, cy - h, cx + L, cy + h },
-        .{ cx - h, cy - L, cx + h, cy + L },
-    };
-    for (wings) |w| rect(dl, w, off, shadow_col);
-    for (wings) |w| rect(dl, w, 0, wing_col);
+    // Pass 2: woosh wedges
+    for (0..4) |k| wedge(dl, cx, cy, k, hs, L, h, ww, 0, ring_col);
+
+    // Pass 3: arms on top
+    for (0..4) |k| localRect(dl, cx, cy, k, -h, -h, L, h, 0, wing_col);
 
     // Hub
-    const hs = @round(t * 1.1);
     rect(dl, .{ cx - hs, cy - hs, cx + hs, cy + hs }, off, shadow_col);
     rect(dl, .{ cx - hs, cy - hs, cx + hs, cy + hs }, 0, hub_col);
-
-    // Woosh: shrinking squares trailing behind each wing tip along a circle
-    const pi: f32 = 3.14159265;
-    const lag = [3]f32{ 0.20, 0.42, 0.66 }; // radians behind the tip
-    const sizes = [3]f32{
-        @max(1.0, @round(t * 0.7)),
-        @max(1.0, @round(t * 0.5)),
-        @max(1.0, @round(t * 0.3)),
-    };
-    for (0..4) |k| {
-        const base = @as(f32, @floatFromInt(k)) * pi * 0.5;
-        for (0..3) |j| {
-            const ang = base - lag[j];
-            const px = @round(cx + L * @cos(ang));
-            const py = @round(cy + L * @sin(ang));
-            const s = sizes[j];
-            rect(dl, .{ px - s, py - s, px + s, py + s }, 0, trail_cols[j]);
-        }
-    }
 
     return clicked;
 }

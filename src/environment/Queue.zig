@@ -4,6 +4,7 @@ const rl = @import("raylib");
 const z = @import("zgui");
 const color = @import("../color.zig");
 const palette = @import("../palette.zig");
+const rlutils = @import("../rlutils.zig");
 const commons = @import("../commons.zig");
 const Entity = @import("entity.zig").Entity;
 const SimData = @import("../editor/SimData.zig");
@@ -81,7 +82,7 @@ pub fn update(
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
         // place new point
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
+        if (rlutils.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
             try self.points.append(alloc, self.pos);
         }
         // finish points with keypress

@@ -4,6 +4,7 @@ const rl = @import("raylib");
 const z = @import("zgui");
 const color = @import("../color.zig");
 const palette = @import("../palette.zig");
+const rlutils = @import("../rlutils.zig");
 const commons = @import("../commons.zig");
 const SimData = @import("../editor/SimData.zig");
 const Settings = @import("../Settings.zig");
@@ -52,9 +53,10 @@ pub fn update(self: *Self, dt: f32, sim_data: SimData, settings: Settings) !Enti
     if (self.angle >= 360) {
         self.angle = @rem(self.angle, 360.0);
     }
+
     if (!self.placed) {
         self.pos = commons.roundMousePos(sim_data);
-        if (commons.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
+        if (rlutils.editorCapturingMouse(settings) and rl.isMouseButtonPressed(.left)) {
             self.placed = true;
             return .confirm;
         }
@@ -88,6 +90,54 @@ pub fn getRotatedVector(self: Self, a: f32) rl.Vector2 {
     const rad: f32 = std.math.degreesToRadians(self.angle);
     var vec: rl.Vector2 = .{ .x = @floatFromInt(self.length), .y = 0 };
     return vec.rotate(rad + a);
+}
+
+pub fn getRect(self: Self) rl.Rectangle {
+    var points: [4]rl.Vector2 = undefined;
+    for (0..4) |i| {
+        const angle: f32 = @as(f32, @floatFromInt(i)) * 0.5 * std.math.pi;
+        const offset = rl.Vector2.init(@floatFromInt(self.length), 0).rotate(angle);
+        const pos = self.pos.add(offset);
+        points[i] = pos;
+    }
+
+    var min_x: f32 = points[0].x;
+    var max_x: f32 = points[0].x;
+    var min_y: f32 = points[0].y;
+    var max_y: f32 = points[0].y;
+
+    for (points[1..]) |pt| {
+        if (pt.x < min_x) min_x = pt.x;
+        if (pt.x > max_x) max_x = pt.x;
+        if (pt.y < min_y) min_y = pt.y;
+        if (pt.y > max_y) max_y = pt.y;
+    }
+
+    return .{
+        .x = min_x,
+        .y = min_y,
+        .width = max_x - min_x,
+        .height = max_y - min_y,
+    };
+}
+
+pub fn getOrigin(self: Self) rl.Vector2 {
+    const rect = self.getRect();
+    return .init(rect.x, rect.y);
+}
+
+pub fn selectedMove(
+    self: *Self,
+    dest: rl.Vector2,
+    sim_data: SimData,
+    snap: bool,
+) void {
+    const snapped = if (snap)
+        commons.roundVec2(dest, sim_data)
+    else
+        dest;
+
+    self.pos = snapped.add(self.pos.subtract(self.getOrigin()));
 }
 
 pub fn draw(self: *Self) void {

@@ -3,7 +3,7 @@ const std = @import("std");
 const Self = @This();
 const palette = @import("../palette.zig");
 const commons = @import("../commons.zig");
-const utils = @import("../utils.zig");
+const utils = @import("../rlutils.zig");
 const entity = @import("../environment/entity.zig");
 const Environment = @import("../environment/Environment.zig");
 const SimData = @import("SimData.zig");
@@ -20,6 +20,11 @@ pub const State = union(enum) {
     },
 };
 
+pub const EnvironmentChange = struct {
+    ent_id: ?UUID,
+    changed: bool,
+};
+
 pub const Capture = struct {
     ent_id: UUID,
     origin: rl.Vector2,
@@ -29,9 +34,8 @@ state: State = .none,
 pos: rl.Vector2 = .zero(),
 bounding_rect: ?rl.Rectangle = null,
 next_state: ?State = null,
-
-// highlighted_entities: std.ArrayList(Capture) = .empty,
 selected_entities: std.ArrayList(Capture) = .empty,
+selected_entity: ?UUID = null,
 
 pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
     // self.highlighted_entities.deinit(alloc);
@@ -56,12 +60,22 @@ fn recalculateBoundingBox(self: *Self, alloc: std.mem.Allocator, env: *Environme
     self.state = .released;
 }
 
+fn getSelectedEntity(self: Self) ?UUID {
+    if (self.selected_entities.items.len == 1) {
+        return self.selected_entities.items[0].ent_id;
+    }
+    return null;
+}
+
+// Basically an extended mealy finite state machine
 pub fn update(
     self: *Self,
     alloc: std.mem.Allocator,
     env: *Environment,
     sim_data: SimData,
-) !void {
+) !EnvironmentChange {
+    var changed: bool = false;
+
     // resolve unresolved state changes and initialize payloads
     if (self.next_state) |next_state| {
         switch (next_state) {
@@ -94,7 +108,7 @@ pub fn update(
                     if (ent.checkSelected(rect)) {
                         try self.selected_entities.append(alloc, .{
                             .ent_id = ent.uuid,
-                            .origin = ent.getCenter(),
+                            .origin = ent.getOrigin(),
                         });
                     }
                 }
@@ -134,6 +148,7 @@ pub fn update(
                     // clicked out of bounds, so change to anchored
                     self.selected_entities.clearRetainingCapacity();
                     self.next_state = .{ .anchor = commons.mousePos() };
+                    self.selected_entity = null;
                 }
             }
 
@@ -147,8 +162,8 @@ pub fn update(
             if (arrow_move) |vel| {
                 for (self.selected_entities.items) |*cap| {
                     const ent = env.entities.getByUUID(cap.ent_id);
-                    ent.selectedMove(cap.origin.add(vel), sim_data, false);
-                    cap.origin = ent.getCenter();
+                    ent.selectedMove(cap.origin.add(vel), cap.origin, sim_data, false);
+                    cap.origin = ent.getOrigin();
                     try self.recalculateBoundingBox(alloc, env);
                 }
             }
@@ -162,7 +177,7 @@ pub fn update(
 
                 // move the entity AND the selection rectangle
                 // std.debug.print("{}\n", .{mouse_diff});
-                ent.selectedMove(cap.origin.add(mouse_diff), sim_data, true);
+                ent.selectedMove(cap.origin.add(mouse_diff), cap.origin, sim_data, true);
                 const rect_dest = dragging.rect_origin.add(mouse_diff);
                 self.bounding_rect = .{
                     .x = rect_dest.x,
@@ -170,6 +185,8 @@ pub fn update(
                     .width = self.bounding_rect.?.width,
                     .height = self.bounding_rect.?.height,
                 };
+
+                changed = true;
             }
 
             // go back to released if lets loose of mouse
@@ -178,8 +195,11 @@ pub fn update(
                 // also update the entity origins
                 for (self.selected_entities.items) |*cap| {
                     const ent = env.entities.getByUUID(cap.ent_id);
-                    cap.origin = ent.getCenter();
+                    cap.origin = ent.getOrigin();
                 }
+
+                // make sure to report that the environment changed
+                changed = true;
             }
         },
     }
@@ -193,7 +213,7 @@ pub fn update(
                     if (rl.checkCollisionPointRec(commons.mousePos(), ent.getRect())) {
                         try self.selected_entities.append(alloc, .{
                             .ent_id = ent.uuid,
-                            .origin = ent.getCenter(),
+                            .origin = ent.getOrigin(),
                         });
                         any = true;
                         break;
@@ -201,11 +221,17 @@ pub fn update(
                 }
                 if (any) {
                     self.next_state = .{ .click_pending = commons.mousePos() };
+                    self.selected_entity = self.getSelectedEntity();
                 }
             }
         },
         else => {},
     }
+
+    return .{
+        .changed = changed,
+        .ent_id = self.selected_entity,
+    };
 }
 
 pub fn draw(self: Self, env: *Environment) void {

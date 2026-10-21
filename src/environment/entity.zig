@@ -11,7 +11,7 @@ const Environment = @import("Environment.zig");
 const AgentData = @import("../editor/AgentData.zig");
 const Manager = @import("../Manager.zig").Manager;
 const commons = @import("../commons.zig");
-const utils = @import("../utils.zig");
+const rlutils = @import("../rlutils.zig");
 const UUID = @import("../UUID.zig");
 const std = @import("std");
 const rl = @import("raylib");
@@ -148,32 +148,38 @@ pub const Entity = struct {
     pub fn checkSelected(self: @This(), rect: rl.Rectangle) bool {
         return switch (self.kind) {
             .area => |c| c.checkSelected(rect),
-            .contour => |k| utils.checkCollisionRecInside(k.getRect(), rect),
-            inline else => false,
+            inline .contour, .revolver => |k| rlutils.checkCollisionRecInside(k.getRect(), rect),
+            else => unreachable,
         };
     }
 
     pub fn getRect(self: @This()) rl.Rectangle {
         return switch (self.kind) {
-            inline .area, .contour => |a| a.getRect(),
+            inline .area, .contour, .revolver => |k| k.getRect(),
             else => unreachable,
         };
     }
 
-    pub fn getCenter(self: @This()) rl.Vector2 {
-        const rect = switch (self.kind) {
-            inline .area, .contour => |a| a.getRect(),
+    pub fn getOrigin(self: @This()) rl.Vector2 {
+        return switch (self.kind) {
+            inline .area, .contour, .revolver => |k| k.getOrigin(),
             else => unreachable,
-        };
-        return .{
-            .x = rect.x,
-            .y = rect.y,
         };
     }
 
-    pub fn selectedMove(self: *@This(), dest: rl.Vector2, sim_data: SimData, snap: bool) void {
+    pub fn selectedMove(
+        self: *@This(),
+        dest: rl.Vector2,
+        _: rl.Vector2,
+        sim_data: SimData,
+        snap: bool,
+    ) void {
         switch (self.kind) {
-            .area => |*a| a.selectedMove(dest, sim_data, snap),
+            inline .area, .revolver, .contour => |*k| k.selectedMove(
+                dest,
+                sim_data,
+                snap,
+            ),
             else => {},
         }
     }

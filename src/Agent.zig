@@ -27,7 +27,7 @@ const Quadtree = @import("Quadtree.zig");
 const Benchmarker = @import("Benchmarker.zig");
 const UUID = @import("UUID.zig");
 const Pathfinding = @import("Pathfinding.zig");
-const utils = @import("utils.zig");
+const rlutils = @import("rlutils.zig");
 
 uuid: UUID,
 pos: rl.Vector2,
@@ -83,7 +83,7 @@ pub const WaitPayload = struct {
         // used to init all waiting variables (flag, amount of wait, timer) all at once
         self.waiting = true;
         self.wait = wait;
-        self.last_wait = commons.getTimeMillis();
+        self.last_wait = rlutils.getTimeMillis();
     }
 };
 
@@ -122,7 +122,7 @@ pub fn init(
         .graph = graph,
         .wait = .{},
         .payload = null,
-        .last_spawn = commons.getTimeMillis(),
+        .last_spawn = rlutils.getTimeMillis(),
     };
     obj.current_node_id = spawner_node_id;
     try obj.traverseFromCurrent(alloc, rand, &graph.nodes, env);
@@ -227,7 +227,7 @@ pub fn processCurrentNode(
     env: *Environment,
 ) !void {
     const current_node: *node.Node = nodes.getByUUID(self.current_node_id.?);
-    const time: f64 = commons.getTimeMillis();
+    const time: f64 = rlutils.getTimeMillis();
 
     switch (current_node.kind) {
         .area => |*area_node| {
@@ -258,7 +258,7 @@ pub fn processCurrentNode(
             // check whether the agent has line of sight to his next position
             const edge = self.steering.paths.items[self.steering.path_index];
             const edge_center = edge.a.add(edge.b).scale(0.5);
-            if (!commons.hasLineOfSight(self.pos, edge_center, env)) {
+            if (!rlutils.hasLineOfSight(self.pos, edge_center, env)) {
                 self.steering.paths.clearRetainingCapacity();
                 try env.pathfinding.find(
                     alloc,
@@ -342,7 +342,7 @@ fn obstacleForceFromTwoVectors(
     sim_data: SimData,
     agent_data: AgentData,
 ) rl.Vector2 {
-    const D = commons.vecToLineSegment(self.pos, A, B);
+    const D = rlutils.vecToLineSegment(self.pos, A, B);
     const dist = D.length();
     const n = D.normalize();
 
@@ -403,7 +403,7 @@ fn calculateInteractiveForce(
     scratch_buf: *std.ArrayList(rl.Vector2),
 ) !rl.Vector2 {
     // this prevents agents that spawn on top of each other to launch each other apart diep.io spike style
-    if (commons.getTimeMillis() - self.last_spawn <= 1000) return .zero();
+    if (rlutils.getTimeMillis() - self.last_spawn <= 1000) return .zero();
 
     var force: rl.Vector2 = .{ .x = 0, .y = 0 };
 

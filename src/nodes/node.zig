@@ -13,6 +13,7 @@ const Queue = @import("../environment/Queue.zig");
 const Portal = @import("../environment/Portal.zig");
 const Agent = @import("../Agent.zig");
 const Graph = @import("Graph.zig");
+const rlutils = @import("../rlutils.zig");
 const commons = @import("../commons.zig");
 const palette = @import("../palette.zig");
 const entity = @import("../environment/entity.zig");
@@ -538,7 +539,7 @@ pub const SpawnerNode = struct {
             };
         }
 
-        const time: f64 = commons.getTimeMillis();
+        const time: f64 = rlutils.getTimeMillis();
         if (time - self.last_spawn >= self.inter.? * std.time.ms_per_min) {
             const pos: rl.Vector2 = env.entities.getByUUID(self.getSpawnerUUID()).kind.spawner.getRandomSpawnPos(rand);
 
@@ -553,7 +554,7 @@ pub const SpawnerNode = struct {
             try env.agents.append(alloc, a);
 
             // reset timer and get next interarrival time
-            self.last_spawn = commons.getTimeMillis();
+            self.last_spawn = rlutils.getTimeMillis();
             self.inter = switch (self.wait) {
                 .poisson => |p| p.getInter(rand),
                 inline else => |w| w.getInter(),
